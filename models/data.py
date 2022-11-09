@@ -10,7 +10,7 @@ def data_partition(data:np.ndarray,
                     SHUFFLE:bool=True,
                     REMOVE_MEAN:bool=False,
                     data_type:dtype=np.float32,
-                    rng:Optional[np.random.Generator]=None) -> tuple[np.ndarray]: 
+                    rng:Optional[np.random.Generator]=None) -> list[np.ndarray]: 
     '''Split the data into sets.
     
     Arguments:\n
@@ -22,7 +22,8 @@ def data_partition(data:np.ndarray,
         data_type: default numpy.float32.\n
         rng: a numpy random number generator\n
     Return:\n
-        A tuple of numpy arrays
+        datasets: [data_1, data_2 ...]\n
+        means: [mean_of_data_1, mean_of_data_2 ...], empty list if REMOVE_MEAN is false
     '''
     if np.sum(partition) > data.shape[axis]:
         raise ValueError("Not enough snapshots in the dataset.")
@@ -37,15 +38,21 @@ def data_partition(data:np.ndarray,
             np.random.shuffle(d)
 
     # split into sets
-    datasets = [np.moveaxis(d[:partition[0],...],0,axis).astype(data_type)]
-    for i in range(1,len(partition)):
-        if REMOVE_MEAN:
-            a = d[partition[i-1]:(partition[i]+partition[i-1]),...] - np.mean(d[partition[i-1]:partition[i],...],axis=0)
+    datasets = []
+    means = []
+    parts = [0]
+    parts.extend(partition) 
+    for i in range(1,len(partition)+1):
+        a = d[parts[i-1]:(parts[i]+parts[i-1]),...]
+        if REMOVE_MEAN: 
+            # each set is centred around 0.
+            a_m = np.mean(a,axis=0)
+            means.append(a_m)
+            a = a - a_m
             a = np.moveaxis(a,0,axis)
-            datasets.append(np.moveaxis(a,0,axis).astype(data_type))
+            datasets.append(a.astype(data_type))
         else:
-            a = d[partition[i-1]:(partition[i]+partition[i-1]),...]
             a = np.moveaxis(a,0,axis)
             datasets.append(a.astype(data_type))
     
-    return datasets
+    return datasets,means 
