@@ -4,10 +4,14 @@ from pathlib import Path
 import warnings
 from typing import Union, Optional
 
-from .loggers import logger
+import logging
 
 path = Union[str,Path]
 number = Union[float, int, np.number]
+
+logger = logging.getLogger(f'fr.{__name__}')
+logger.warning('warning')
+logger.info('info')
 
 def read_data(dir:path, idx_body:int):
     '''Read the data for 2d triangle bluff body simulation.

@@ -8,7 +8,7 @@ import jax
 import haiku as hk
 import optax
 
-from models.data import data_partition
+from flowrec.data import data_partition
 from utils import simulation2d as project
 from utils import training_state as state_utils
 from utils.training_state import TrainingState
