@@ -1,3 +1,6 @@
+import logging
+logger = logging.getLogger(f'fr.{__name__}')
+
 import jax
 from jax.tree_util import Partial
 import haiku as hk
@@ -7,9 +10,7 @@ import pickle
 from pathlib import Path
 
 
-# import .models
 from .models._general import BaseModel
-
 
 from typing import Union, NamedTuple, Callable, Any
 
@@ -23,25 +24,27 @@ class TrainingState(NamedTuple):
 
 def generate_update_fn(model:Model, 
             optax_optimiser, 
-            loss_fn:Callable) -> None:
-    '''Calculate the weights and update the weights once.
+            loss_fn:Callable) -> Callable:
+    '''Generates a model specifiec function to calculate the weights and update the weights once.
     
     Arguments:\n
         model with an apply method.\n
         state: a training state.\n
-        loss_fn: a loss function.\n
-        x: input.\n
-        y: output.
+        loss_fn: a loss function that takes (Model,params,input,output). \n
 
     Return:
         update function
     '''
     loss_fn_partial = jax.jit(Partial(loss_fn,model))
+    logger.debug('Constructing a partial loss function by holding Model constant.')
 
-    def step(state: TrainingState, x:Array, y:Array):
+    def step(state: TrainingState, x:Array, y:Array)->None:
         loss,grads = jax.value_and_grad(loss_fn_partial)(state.params,x,y)
+        logger.debug('Successfully calculated loss and taken gradient from partial loss function.')
+
         updates, opt_state = optax_optimiser.update(grads,state.opt_state,state.params)
         params = optax.apply_updates(state.params,updates)
+        logger.debug('Successfully updated weights once.')
         return loss, TrainingState(params,opt_state)
         
     return jax.jit(step)
@@ -58,6 +61,11 @@ def save_trainingstate(ckpt_dir:Union[Path,str],
         state: class TrainingState.\n
         f_name: file name to be used (the prefix).\n
     '''
+    ckpt_dir = Path(ckpt_dir)
+    if not ckpt_dir.is_dir():
+        logger.warning('Taget directory for saving checkpoint does not exist. Creating Target directory and its parents.')
+        ckpt_dir.mkdir(parents=True)
+
     with open(Path(ckpt_dir, (f_name + ".npy")), "wb") as f:
         for x in jax.tree_util.tree_leaves(state):
             np.save(f, x, allow_pickle=False)
@@ -76,6 +84,8 @@ def restore_trainingstate(ckpt_dir:Union[Path,str], f_name:str):
     returns:
         a training state
     '''
+    if not Path(ckpt_dir).is_dir():
+        raise ValueError('Cannot find checkpoint directory.')
 
     with open(Path(ckpt_dir, (f_name + ".pkl")), "rb") as f:
         tree_struct = pickle.load(f)

@@ -10,15 +10,17 @@ import optax
 
 from flowrec.data import data_partition
 from utils import simulation2d as project
-from utils import training_state as state_utils
-from utils.training_state import TrainingState
-
+import flowrec.training_and_states as train
+from flowrec.training_and_states import TrainingState
+from flowrec.models.feedforward import Model as FeedForward
+from flowrec import losses
 import time
 
 train_test_split = [600,100,100]
 learning_rate = 0.0001
-epochs = 12000
-# epochs = 5
+layers = [31] # size of the intermediate layers
+# epochs = 12000
+epochs = 5
 
 print("Started at: ", time.asctime(time.localtime(time.time())))
 
@@ -39,62 +41,55 @@ pb_test = pp_test[:,0,49:80] # pressure at the base
 (nt,nx,ny) = ux_train.shape
 n_base = pb_train.shape[-1]
 
+layers.extend([nx*ny])
+
 # ==================== define network ============================
 
 # set up model
-def feedforward(x):
-    mlp = hk.nets.MLP([200,nx*ny],
-                        activation=jax.nn.tanh,
-                        w_init=hk.initializers.VarianceScaling(1.0,"fan_avg","uniform"))
-    return mlp(x)
-mdl = hk.transform(feedforward)
-mdl = hk.without_apply_rng(mdl)
-
+rng = jax.random.PRNGKey(15)
+mdl = FeedForward(layers,rng=rng,APPLY_RNG=False)
 
 # set up optimiser
 optimizer = optax.adamw(learning_rate, weight_decay=1e-5)
 
 # define loss
-@jax.jit
-def loss(params,x,y):
-    pred = mdl.apply(params,x)
-    l = jnp.mean((pred - y)**2)
-    return l
+loss_fn = losses.loss_mse
+mdl_loss = jax.jit(jax.tree_util.Partial(loss_fn,mdl))
 
-@jax.jit
-def update(state: TrainingState, x, y):
-    l, grads = jax.value_and_grad(loss)(state.params, x, y)
-    updates, opt_state = optimizer.update(grads, state.opt_state, state.params)
-    params = optax.apply_updates(state.params, updates)
-    return l, TrainingState(params, opt_state)
+# update function: update 
+update = train.generate_update_fn(mdl,optimizer,loss_fn)
 
 
 # ======================== train ==============================
 
-def fit(x_train,y_train,x_val,y_val,state,epochs,f_name):
+def fit(x_train,y_train,x_val,y_val,state,epochs,f_name,rng):
     loss_train = []
     loss_val = []
 
     best_state = state
     min_loss = np.inf
     for i in range(1,epochs+1):
+
+        [rng] = jax.random.split(rng,1)
         
-        xx_train = jax.random.permutation(jax.random.PRNGKey(i),
-                                            x_train,axis=0,
+        xx_train = jax.random.permutation(rng,
+                                            x_train,
+                                            axis=0,
                                             independent=False)
-        yy_train = jax.random.permutation(jax.random.PRNGKey(i),
-                                            y_train,axis=0,
+        yy_train = jax.random.permutation(rng,
+                                            y_train,
+                                            axis=0,
                                             independent=False)
 
         l, state = update(state, xx_train, yy_train)
         loss_train.append(l)
 
-        l_val = loss(state.params,x_val,y_val)
+        l_val = mdl_loss(state.params,x_val,y_val)
         loss_val.append(l_val)        
         if l_val < min_loss:
             best_state = state
             min_loss = l_val
-            state_utils.save(Path("./local_results"),state,f_name)
+            train.save_trainingstate(Path("./local_results"),state,f_name)
 
         if i%200 == 0:
             print(f'epoch: {i}, loss: {l:.7f}')
@@ -110,7 +105,7 @@ print("Start training ux ...")
 ux_train = jnp.reshape(ux_train,(train_test_split[0],-1))
 ux_val = jnp.reshape(ux_val,(train_test_split[1],-1))
 rng = jax.random.PRNGKey(1)
-params = mdl.init(rng,pb_train[0,:]) # initalise weights
+params = mdl.init(pb_train[0,:]) # initalise weights
 opt_state = optimizer.init(params)
 ux_state = TrainingState(params, opt_state)
 
@@ -120,7 +115,8 @@ ux_state, ux_loss_train, ux_loss_val = fit(pb_train,
                                             ux_val,
                                             ux_state,
                                             epochs,
-                                            "ux_state")
+                                            "ux_state",
+                                            rng)
 
 
 
@@ -129,7 +125,7 @@ print("Start training uy ...")
 uy_train = jnp.reshape(uy_train,(train_test_split[0],-1))
 uy_val = jnp.reshape(uy_val,(train_test_split[1],-1))
 rng = jax.random.PRNGKey(2)
-params = mdl.init(rng,pb_train[0,:]) # initalise weights
+params = mdl.init(pb_train[0,:]) # initalise weights
 opt_state = optimizer.init(params)
 uy_state = TrainingState(params, opt_state)
 
@@ -139,7 +135,8 @@ uy_state, uy_loss_train, uy_loss_val = fit(pb_train,
                                             uy_val,
                                             uy_state,
                                             epochs,
-                                            "uy_state")
+                                            "uy_state",
+                                            rng)
 
 
 # ================= save results =======================

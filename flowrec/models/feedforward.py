@@ -6,6 +6,8 @@ from ._general import BaseModel
 import jax 
 import haiku as hk
 
+from typing import Optional
+
 
 class Model(BaseModel):
     def __init__(self, 
@@ -14,12 +16,16 @@ class Model(BaseModel):
                 APPLY_RNG:bool = True,
                 activation=jax.nn.tanh,
                 w_init=hk.initializers.VarianceScaling(1.0,"fan_avg","uniform"),
-                **kwargs) -> None:
+                **mlp_kwargs) -> None:
         '''Make a feedforward model.
 
         Arguments:\n
             layers: a list of the number of nodes in each layer.\n
-            rng: a jax 
+            rng: a jax random number generator.\n
+            APPLY_RNG: If False, the .appply() method does not use rng.\n
+            activation: activation function to use in the intermediate layers. Default tanh.\n
+            w_init: weight initialisation scheme. Default Golort uniform. 
+            mlp_kwargs: keyword arguments to be passed to haiku.nets.MLP.
         '''
         super().__init__()
         self.layers = layers
@@ -31,7 +37,7 @@ class Model(BaseModel):
             mlp = hk.nets.MLP(self.layers,
                                 activation=activation,
                                 w_init=w_init,
-                                **kwargs)
+                                **mlp_kwargs)
             return mlp(x)
         self.mdl = hk.transform(feedforward)
         if not APPLY_RNG:
