@@ -1,6 +1,6 @@
 import os
-os.environ["CUDA_VISIBLE_DEVICES"] = "1"
-os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"]=".10"
+os.environ["CUDA_VISIBLE_DEVICES"] = "2"
+os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"]=".20"
 from pathlib import Path
 import numpy as np
 import h5py
@@ -19,13 +19,13 @@ import wandb
 
 
 train_test_split = [600,100,100]
-learning_rate = 0.0001
-layers = [31] # size of the intermediate layers
-epochs = 8000
+learning_rate = 0.0002
+layers = [2] # size of the intermediate layers
+epochs = 20000
 # epochs = 5
 
 print("Started at: ", time.asctime(time.localtime(time.time())))
-results_dir = time.strftime("%y%m%d%H%M",time.localtime(time.time()))
+results_dir = time.strftime("%y%m%d%H%M%S",time.localtime(time.time()))
 
 # ======================= pre-processing =========================
 (ux,uy,pp) = project.read_data(Path("./local_data/re100"),132)
@@ -49,7 +49,7 @@ layers.extend([nx*ny])
 # ==================== define network ============================
 
 # set up model
-rng = jax.random.PRNGKey(2)
+rng = jax.random.PRNGKey(np.random.randint(1,20))
 mdl = FeedForward(layers,rng=rng,APPLY_RNG=False)
 
 # set up optimiser
