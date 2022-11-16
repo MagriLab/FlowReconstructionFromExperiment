@@ -19,10 +19,13 @@ import wandb
 
 
 train_test_split = [600,100,100]
-learning_rate = 0.0002
-layers = [2] # size of the intermediate layers
+learning_rate = 0.0005
+layers = [31] # size of the intermediate layers
+dropout_rate = 0.05
 epochs = 20000
 # epochs = 5
+
+WANDB = True
 
 print("Started at: ", time.asctime(time.localtime(time.time())))
 results_dir = time.strftime("%y%m%d%H%M%S",time.localtime(time.time()))
@@ -50,32 +53,34 @@ layers.extend([nx*ny])
 
 # set up model
 rng = jax.random.PRNGKey(np.random.randint(1,20))
-mdl = FeedForward(layers,rng=rng,APPLY_RNG=False)
+mdl = FeedForward(layers,rng=rng,dropout_rate=dropout_rate)
 
 # set up optimiser
 optimizer = optax.adamw(learning_rate, weight_decay=1e-5)
 
 # define loss
 loss_fn = losses.loss_mse
-mdl_loss = jax.jit(jax.tree_util.Partial(loss_fn,mdl))
+mdl_validation_loss = jax.jit(jax.tree_util.Partial(loss_fn,mdl.apply,TRAINING=False))
 
 # update function: update 
-update = train.generate_update_fn(mdl,optimizer,loss_fn)
+update = train.generate_update_fn(mdl.apply,optimizer,loss_fn)
 
 # ===================== weights & biases ======================
 
-wandb_config = {
-    "learning_rate": learning_rate,
-    "layers": layers,
-    "number_of_layers": len(layers),
-    "activation": "tanh",
-    "loss_fn": "mse"
-}
-run = wandb.init(config=wandb_config,
-            project="FlowReconstruction",
-            group="FF",
-            name=f'2layer-{results_dir}'
-)
+if WANDB:
+    wandb_config = {
+        "learning_rate": learning_rate,
+        "layers": layers,
+        "number_of_layers": len(layers),
+        "activation": "tanh",
+        "loss_fn": "mse",
+        "dropout_rate":dropout_rate
+    }
+    run = wandb.init(config=wandb_config,
+                project="FlowReconstruction",
+                group="FF",
+                name=f'2layer-{results_dir}'
+    )
 
 
 # ======================== train ==============================
@@ -99,15 +104,20 @@ def fit(x_train,y_train,x_val,y_val,state,epochs,f_name,rng):
                                             axis=0,
                                             independent=False)
 
-        l, state = update(state, xx_train, yy_train)
-        loss_train.append(l)
+        l, state = update(state, rng, xx_train, yy_train)
+        if dropout_rate is None:
+            loss_train.append(l)
+        else:
+            l = mdl_validation_loss(state.params,None,xx_train,yy_train)
+            loss_train.append(l)
 
-        l_val = mdl_loss(state.params,x_val,y_val)
+        l_val = mdl_validation_loss(state.params,None,x_val,y_val)
         loss_val.append(l_val)        
-        wandb.log({f'loss_{f_name}':l, 
-                    f'loss_val_{f_name}':l_val,
-                    f'epochs_{f_name}':i}
-        )
+        if WANDB:
+            wandb.log({f'loss_{f_name}':l, 
+                        f'loss_val_{f_name}':l_val,
+                        f'epochs_{f_name}':i}
+            )
         if l_val < min_loss:
             best_state = state
             min_loss = l_val
@@ -162,7 +172,8 @@ uy_state, uy_loss_train, uy_loss_val = fit(pb_train,
                                             "uy",
                                             rng)
 
-run.finish()
+if WANDB:
+    run.finish()
 # ================= save results =======================
 
 pb_train = pb_train.reshape((train_test_split[0],n_base))

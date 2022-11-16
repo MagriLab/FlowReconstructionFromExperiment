@@ -6,15 +6,32 @@ import numpy as np
 from .models._general import BaseModel
 
 import chex
-from typing import Union, Optional
+from typing import Union, Optional, Callable
 
 Array = Union[np.ndarray, jnp.ndarray]
 Model = Union[BaseModel, hk.Transformed]
 
 
-def loss_mse(model:Model, params:hk.Params, x:Array, y:Array):
-    '''Mean squared error for use as loss in training.'''
-    pred = model.apply(params,x)
+def loss_mse(apply_fn:Callable, 
+            params:hk.Params, 
+            rng:jax.random.PRNGKey, 
+            x:Array, 
+            y:Array,
+            **kwargs) -> float:
+    '''Mean squared error for use as loss in training.
+    
+    Arguments:\n
+        apply_fn: an hk.Transformed.apply that takes (params, rng, inputs) and returns an output.\n
+        params: params for apply_fn.\n
+        rng: jax.random.PRNGKey for apply_fn.\n
+        x: input.\n
+        y: ground truth.\n
+        *args, **kwargs: for apply_fn.\n
+    
+    Returns:\n
+        loss: the mean squared error between y and predicted y (from x).
+    '''
+    pred = apply_fn(params, rng, x, **kwargs)
     loss = mse(pred,y)
     return loss
 
