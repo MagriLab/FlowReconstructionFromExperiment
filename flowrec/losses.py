@@ -12,6 +12,8 @@ Array = Union[np.ndarray, jnp.ndarray]
 Model = Union[BaseModel, hk.Transformed]
 
 
+# ====================== for during training =========================
+
 def loss_mse(apply_fn:Callable, 
             params:hk.Params, 
             rng:jax.random.PRNGKey, 
@@ -36,6 +38,9 @@ def loss_mse(apply_fn:Callable,
     return loss
 
 
+
+# ====================== regular calculations ========================
+
 def mse(pred:Array,true:Array) -> float:
     '''Mean squared error
     
@@ -54,3 +59,11 @@ def mse(pred:Array,true:Array) -> float:
         loss = jnp.mean(pred**2)
     
     return loss
+
+
+def sum_squared_element(tree):
+    '''Sum of squared of elements of all leaves in a pytree (e.g. a hk.Params).'''
+    squared = jax.tree_util.tree_map(lambda x: jnp.sum(jnp.square(x)), tree)
+    leaves = jax.tree_util.all_leaves(squared)
+    out = np.sum(leaves)
+    return out
