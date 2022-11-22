@@ -25,10 +25,13 @@ dropout_rate = 0.05
 epochs = 20000
 # epochs = 5
 
-WANDB = True
 
 print("Started at: ", time.asctime(time.localtime(time.time())))
 results_dir = time.strftime("%y%m%d%H%M%S",time.localtime(time.time()))
+
+WANDB = True
+wandb_group = 'FF'
+wandb_run = f'2layer-{results_dir}'
 
 # ======================= pre-processing =========================
 (ux,uy,pp) = project.read_data(Path("./local_data/re100"),132)
@@ -78,8 +81,8 @@ if WANDB:
     }
     run = wandb.init(config=wandb_config,
                 project="FlowReconstruction",
-                group="FF",
-                name=f'2layer-{results_dir}'
+                group=wandb_group,
+                name=wandb_run
     )
 
 
@@ -121,7 +124,7 @@ def fit(x_train,y_train,x_val,y_val,state,epochs,f_name,rng):
         if l_val < min_loss:
             best_state = state
             min_loss = l_val
-            train.save_trainingstate(Path(f'./local_results/{results_dir}')
+            train.save_trainingstate(Path(f'./local_results/ff_combined/{results_dir}')
                                     ,state,
                                     f'{f_name}_state')
 

@@ -6,3 +6,5 @@ tmp*
 
 __pycache__/
 wandb/
+
+system_config.yml
