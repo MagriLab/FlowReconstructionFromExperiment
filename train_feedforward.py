@@ -19,22 +19,24 @@ import wandb
 
 
 train_test_split = [600,100,100]
-learning_rate = 0.0005
+learning_rate = 0.0002
 layers = [31] # size of the intermediate layers
 dropout_rate = 0.05
+regularisation_strength = 0.0001
 epochs = 20000
 # epochs = 5
 
 
 print("Started at: ", time.asctime(time.localtime(time.time())))
-results_dir = time.strftime("%y%m%d%H%M%S",time.localtime(time.time()))
+time_stamp = time.strftime("%y%m%d%H%M%S",time.localtime(time.time()))
+results_dir = f'ff_combined/{time_stamp}'
 
 WANDB = True
 wandb_group = 'FF'
-wandb_run = f'2layer-{results_dir}'
+wandb_run = f'2layer-{time_stamp}'
 
 # ======================= pre-processing =========================
-(ux,uy,pp) = project.read_data(Path("./local_data/re100"),132)
+(ux,uy,pp) = project.read_data(Path("./local_data/re200"),132)
 x = np.stack([ux,uy,pp],axis=0)
 
 [x_train,x_val,x_test], [xm_train,xm_val,xm_test] = data_partition(x,1,train_test_split,REMOVE_MEAN=True)
@@ -50,16 +52,16 @@ pb_test = pp_test[:,0,49:80] # pressure at the base
 (nt,nx,ny) = ux_train.shape
 n_base = pb_train.shape[-1]
 
-layers.extend([nx*ny])
+layers.extend([2*nx*ny])
 
 # ==================== define network ============================
 
 # set up model
-rng = jax.random.PRNGKey(np.random.randint(1,20))
+rng = jax.random.PRNGKey(np.random.randint(1,30))
 mdl = FeedForward(layers,rng=rng,dropout_rate=dropout_rate)
 
 # set up optimiser
-optimizer = optax.adamw(learning_rate, weight_decay=1e-5)
+optimizer = optax.adamw(learning_rate, weight_decay=regularisation_strength)
 
 # define loss
 loss_fn = losses.loss_mse
@@ -77,7 +79,9 @@ if WANDB:
         "number_of_layers": len(layers),
         "activation": "tanh",
         "loss_fn": "mse",
-        "dropout_rate":dropout_rate
+        "dropout_rate":dropout_rate,
+        "l2_strength":regularisation_strength,
+        "Re": 200
     }
     run = wandb.init(config=wandb_config,
                 project="FlowReconstruction",
@@ -88,7 +92,7 @@ if WANDB:
 
 # ======================== train ==============================
 
-def fit(x_train,y_train,x_val,y_val,state,epochs,f_name,rng):
+def fit(x_train,y_train,x_val,y_val,state,epochs,rng):
     loss_train = []
     loss_val = []
 
@@ -117,16 +121,14 @@ def fit(x_train,y_train,x_val,y_val,state,epochs,f_name,rng):
         l_val = mdl_validation_loss(state.params,None,x_val,y_val)
         loss_val.append(l_val)        
         if WANDB:
-            wandb.log({f'loss_{f_name}':l, 
-                        f'loss_val_{f_name}':l_val,
-                        f'epochs_{f_name}':i}
-            )
+            wandb.log({f'loss':l, 
+                        f'loss_val':l_val})
         if l_val < min_loss:
             best_state = state
             min_loss = l_val
-            train.save_trainingstate(Path(f'./local_results/ff_combined/{results_dir}')
+            train.save_trainingstate(Path(f'./local_results/{results_dir}')
                                     ,state,
-                                    f'{f_name}_state')
+                                    'state')
 
         if i%200 == 0:
             print(f'epoch: {i}, loss: {l:.7f}, validation_loss: {l_val:.7f}', flush=True)
@@ -137,43 +139,28 @@ def fit(x_train,y_train,x_val,y_val,state,epochs,f_name,rng):
 pb_train = jnp.reshape(pb_train,(train_test_split[0],-1))
 pb_val = jnp.reshape(pb_val,(train_test_split[1],-1))
 
-# training ux
+# training 
 print("Start training ux ...")
 ux_train = jnp.reshape(ux_train,(train_test_split[0],-1))
 ux_val = jnp.reshape(ux_val,(train_test_split[1],-1))
-rng = jax.random.PRNGKey(np.random.randint(1,20))
-params = mdl.init(pb_train[0,:]) # initalise weights
-opt_state = optimizer.init(params)
-ux_state = TrainingState(params, opt_state)
-
-ux_state, ux_loss_train, ux_loss_val = fit(pb_train, 
-                                            ux_train,
-                                            pb_val,
-                                            ux_val,
-                                            ux_state,
-                                            epochs,
-                                            "ux",
-                                            rng)
-
-
-
-# training uy
-print("Start training uy ...")
 uy_train = jnp.reshape(uy_train,(train_test_split[0],-1))
 uy_val = jnp.reshape(uy_val,(train_test_split[1],-1))
-rng = jax.random.PRNGKey(np.random.randint(1,20))
+u_train = jnp.hstack((ux_train,uy_train))
+u_val = jnp.hstack((ux_val,uy_val))
+
+rng = jax.random.PRNGKey(np.random.randint(1,50))
 params = mdl.init(pb_train[0,:]) # initalise weights
 opt_state = optimizer.init(params)
-uy_state = TrainingState(params, opt_state)
+state = TrainingState(params, opt_state)
 
-uy_state, uy_loss_train, uy_loss_val = fit(pb_train, 
-                                            uy_train,
-                                            pb_val,
-                                            uy_val,
-                                            uy_state,
-                                            epochs,
-                                            "uy",
-                                            rng)
+state, loss_train, loss_val = fit(pb_train, 
+                                    u_train,
+                                    pb_val,
+                                    u_val,
+                                    state,
+                                    epochs,
+                                    rng)
+
 
 if WANDB:
     run.finish()
@@ -188,14 +175,14 @@ uy_val = uy_val.reshape((train_test_split[1],nx,ny))
 
 
 with h5py.File(Path(f'./local_results/{results_dir}/results.h5'),'w') as hf:
-    hf.create_dataset("ux_loss_train",data=np.array(ux_loss_train))
-    hf.create_dataset("ux_loss_val",data=np.array(ux_loss_val))
+    hf.create_dataset("loss_train",data=np.array(loss_train))
+    hf.create_dataset("loss_val",data=np.array(loss_val))
     hf.create_dataset("ux_train", data=ux_train)
     hf.create_dataset("ux_val", data=ux_val)
     hf.create_dataset("ux_test", data=ux_test)
     
-    hf.create_dataset("uy_loss_train",data=np.array(uy_loss_train))
-    hf.create_dataset("uy_loss_val",data=np.array(uy_loss_val))
+    # hf.create_dataset("uy_loss_train",data=np.array(uy_loss_train))
+    # hf.create_dataset("uy_loss_val",data=np.array(uy_loss_val))
     hf.create_dataset("uy_train", data=uy_train)
     hf.create_dataset("uy_val", data=uy_val)
     hf.create_dataset("uy_test", data=uy_test)
