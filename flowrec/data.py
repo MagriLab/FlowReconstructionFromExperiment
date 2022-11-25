@@ -1,6 +1,5 @@
 import numpy as np
 from typing import Optional, Union
-import sys
 
 dtype = Union[str,np.dtype]
 

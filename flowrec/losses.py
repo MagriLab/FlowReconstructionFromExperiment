@@ -7,6 +7,8 @@ from .models._general import BaseModel
 
 import chex
 from typing import Union, Optional, Callable
+import logging
+logger = logging.getLogger(f'fr.{__name__}')
 
 Array = Union[np.ndarray, jnp.ndarray]
 Model = Union[BaseModel, hk.Transformed]

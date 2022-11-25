@@ -61,9 +61,9 @@ class MLP(hk.Module):
     def __call__(self,x,TRAINING):
         '''Apply network to inputs x. No dropout if TRAINING is false.'''
         if TRAINING:
-            logger.debug('MLP is called in training mode.')
+            logger.info('MLP is called in training mode.')
         else:
-            logger.debug('MLP is called in prediction mode.')   
+            logger.info('MLP is called in prediction mode.')   
 
         num_layers = len(self.layers)
         out = x
@@ -80,18 +80,24 @@ class MLP(hk.Module):
 
 
 class Model(BaseModel):
+    '''Container for a jax feedforward model.\n
+    
+    Has methods:\n
+        init: same as haiku.Transformed.init.\n
+        apply: same as haiku.Transformed.apply.\n
+        predict: apply in prediction mode.
+    ''' 
+
     def __init__(self, 
                 layers:list, 
-                rng:jax.random.PRNGKey,
                 activation:Callable[[jnp.ndarray],jnp.ndarray]=jax.nn.tanh,
                 w_init:Optional[hk.initializers.Initializer]=hk.initializers.VarianceScaling(1.0,"fan_avg","uniform"),
                 dropout_rate:Optional[float]=None,
                 **mlp_kwargs) -> None:
-        '''Container for a jax feedforward model. 
+        '''Initialise class.
 
         Arguments:\n
             layers: a list of the number of nodes in each layer.\n
-            rng: a jax random number generator.\n
             APPLY_RNG: If False, the .appply() method does not use rng.\n
             activation: activation function to use in the intermediate layers. Default tanh.\n
             w_init: weight initialisation scheme. Default Golort uniform. 
@@ -99,7 +105,6 @@ class Model(BaseModel):
         '''
         super().__init__()
         self.layers = layers
-        self.rng = rng
 
 
         def forward_fn(x,TRAINING=True):
@@ -117,9 +122,9 @@ class Model(BaseModel):
 
         logger.info(f'Successfully created a MLP.')
     
-    def init(self, sample_input) -> hk.Params:
+    def init(self, rng, sample_input) -> hk.Params:
         '''Initialise params'''
-        params = self._init(self.rng, sample_input)
+        params = self._init(rng, sample_input)
         return params
 
     def apply(self, params: hk.Params, rng:jax.random.PRNGKey, *args, **kwargs):

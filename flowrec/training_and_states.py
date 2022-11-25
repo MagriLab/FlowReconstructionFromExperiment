@@ -38,7 +38,7 @@ def generate_update_fn(apply_fn:Callable,
         update function
     '''
     loss_fn_partial = jax.jit(Partial(loss_fn,apply_fn,**kwargs_loss))
-    logger.debug('Constructing a partial loss function by holding Model constant.')
+    logger.debug('Constructing a partial loss function by holding the apply_fn constant.')
 
     def step(state: TrainingState, rng:jax.random.PRNGKey, x:Array, y:Array):
         '''Update the state once.

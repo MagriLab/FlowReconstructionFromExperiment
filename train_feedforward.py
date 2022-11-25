@@ -31,7 +31,7 @@ print("Started at: ", time.asctime(time.localtime(time.time())))
 time_stamp = time.strftime("%y%m%d%H%M%S",time.localtime(time.time()))
 results_dir = f'ff_combined/{time_stamp}'
 
-WANDB = True
+WANDB = False
 wandb_group = 'FF'
 wandb_run = f'2layer-{time_stamp}'
 
@@ -57,8 +57,8 @@ layers.extend([2*nx*ny])
 # ==================== define network ============================
 
 # set up model
-rng = jax.random.PRNGKey(np.random.randint(1,30))
-mdl = FeedForward(layers,rng=rng,dropout_rate=dropout_rate)
+# rng = jax.random.PRNGKey(np.random.randint(1,30))
+mdl = FeedForward(layers,dropout_rate=dropout_rate)
 
 # set up optimiser
 optimizer = optax.adamw(learning_rate, weight_decay=regularisation_strength)
@@ -121,8 +121,7 @@ def fit(x_train,y_train,x_val,y_val,state,epochs,rng):
         l_val = mdl_validation_loss(state.params,None,x_val,y_val)
         loss_val.append(l_val)        
         if WANDB:
-            wandb.log({f'loss':l, 
-                        f'loss_val':l_val})
+            wandb.log({'loss':l, 'loss_val':l_val})
         if l_val < min_loss:
             best_state = state
             min_loss = l_val
@@ -149,7 +148,7 @@ u_train = jnp.hstack((ux_train,uy_train))
 u_val = jnp.hstack((ux_val,uy_val))
 
 rng = jax.random.PRNGKey(np.random.randint(1,50))
-params = mdl.init(pb_train[0,:]) # initalise weights
+params = mdl.init(rng, pb_train[0,:]) # initalise weights
 opt_state = optimizer.init(params)
 state = TrainingState(params, opt_state)
 
