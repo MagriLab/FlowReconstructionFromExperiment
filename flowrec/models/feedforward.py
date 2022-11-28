@@ -98,9 +98,9 @@ class Model(BaseModel):
 
         Arguments:\n
             layers: a list of the number of nodes in each layer.\n
-            APPLY_RNG: If False, the .appply() method does not use rng.\n
             activation: activation function to use in the intermediate layers. Default tanh.\n
-            w_init: weight initialisation scheme. Default Golort uniform. 
+            w_init: weight initialisation scheme. Default Golort uniform. \n
+            dropout_rate: a float between 0.0 and 1.0. If None, do not use dropout.\n
             mlp_kwargs: keyword arguments to be passed to haiku.nets.MLP.
         '''
         super().__init__()

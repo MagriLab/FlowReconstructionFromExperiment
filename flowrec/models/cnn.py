@@ -80,6 +80,7 @@ class MLPWithCNN(hk.Module):
 
         out = self._mlp(x,TRAINING)
         logger.debug(f'Output of the MLP has shape {out.shape}.')
+        out = self.act(out)
 
         out = jnp.reshape(out,(-1,)+self.output_shape)
         logger.debug(f'Reshaped the output of MLP to {out.shape}.')

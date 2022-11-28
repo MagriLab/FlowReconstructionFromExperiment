@@ -1,5 +1,5 @@
 import os
-os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"]=".25"
 
 import sys
@@ -28,8 +28,8 @@ import wandb
 
 WANDB = True
 train_test_split = [600,100,100]
-learning_rate = 0.0002
-mlp_layers = [31] # size of the intermediate layers
+learning_rate = 0.0001
+mlp_layers = [] # size of the intermediate layers
 cnn_channels = [32,16,2]
 cnn_filter = [(3,3)]
 dropout_rate = 0.02
@@ -87,6 +87,7 @@ update = train.generate_update_fn(mdl.apply,optimizer,loss_fn) # this update wei
 if WANDB:
     wandb_config = {
         "learning_rate": learning_rate,
+        "layers": mlp_layers,
         "number_of_layers": len(mlp_layers)+len(cnn_channels),
         "cnn_filter": cnn_filter,
         "activation": "tanh",
@@ -217,7 +218,7 @@ with h5py.File(Path(f'./local_results/{results_dir}/results.h5'),'w') as hf:
 with h5py.File(Path(f'./local_results/{results_dir}/parameters.h5'),'w') as hf:
     hf.create_dataset("mlp_layers",data=mlp_layers)
     hf.create_dataset("cnn_channels",data=cnn_channels)
-    hf.create_dataset("cnn_filter",cnn_filter)
+    hf.create_dataset("cnn_filter",data=np.array(cnn_filter))
     hf.create_dataset("learning_rate",data=learning_rate)
 
 print("Finished at: ", time.asctime(time.localtime(time.time())))
