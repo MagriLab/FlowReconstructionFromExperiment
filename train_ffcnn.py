@@ -1,5 +1,5 @@
 import os
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+os.environ["CUDA_VISIBLE_DEVICES"] = "2"
 os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"]=".25"
 
 import sys
@@ -36,7 +36,7 @@ dropout_rate = 0.02
 regularisation_strength = 0.0001
 epochs = 20000
 nb_batches = 6
-data_dir = Path("./local_data/re100")
+data_dir = Path("./local_data/re200")
 
 print("Started at: ", time.asctime(time.localtime(time.time())))
 time_stamp = time.strftime("%y%m%d%H%M%S",time.localtime(time.time()))
@@ -94,7 +94,7 @@ if WANDB:
         "loss_fn": "mse",
         "dropout_rate":dropout_rate,
         "l2_strength":regularisation_strength,
-        "Re": 100
+        "Re": 200
     }
     run = wandb.init(config=wandb_config,
                 project="FlowReconstruction",
