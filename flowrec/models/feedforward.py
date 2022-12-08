@@ -72,6 +72,7 @@ class MLP(hk.Module):
             # dropout and activation is not applied after the last layer.
             if i < (num_layers - 1):                
                 if TRAINING and (self.dropout_rate is not None):
+                    logger.debug('Performing dropout.')
                     out = hk.dropout(hk.next_rng_key(), self.dropout_rate, out)
                 out = self.act(out)
 
@@ -120,6 +121,8 @@ class Model(BaseModel):
         self._apply = jax.jit(self.mdl.apply,static_argnames=['TRAINING'])
         self._init = jax.jit(self.mdl.init)
 
+        self._predict = jax.jit(jax.tree_util.Partial(self.mdl.apply,TRAINING=False))
+
         logger.info(f'Successfully created a MLP.')
     
     def init(self, rng, sample_input) -> hk.Params:
@@ -139,4 +142,4 @@ class Model(BaseModel):
 
     def predict(self, params:hk.Params, x, **kwargs):
         '''Same as apply, but Training flag is False and no randomness.'''
-        return self._apply(params,None,x,TRAINING=False,**kwargs)
+        return self._predict(params,None,x,**kwargs)
