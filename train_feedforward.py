@@ -39,7 +39,7 @@ wandb_run = f'2layer-{time_stamp}'
 (ux,uy,pp) = project.read_data(Path("./local_data/re200"),132)
 x = np.stack([ux,uy,pp],axis=0)
 
-[x_train,x_val,x_test], [xm_train,xm_val,xm_test] = data_partition(x,1,train_test_split,REMOVE_MEAN=True)
+[x_train,x_val,x_test], [xm_train,xm_val,xm_test] = data_partition(x,1,train_test_split,REMOVE_MEAN=True,SHUFFLE=False)
 
 [ux_train,uy_train,pp_train] = np.squeeze(np.split(x_train,3,axis=0))
 [ux_val,uy_val,pp_val] = np.squeeze(np.split(x_val,3,axis=0))

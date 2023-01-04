@@ -9,7 +9,7 @@ def data_partition(data:np.ndarray,
                     SHUFFLE:bool=True,
                     REMOVE_MEAN:bool=False,
                     data_type:dtype=np.float32,
-                    rng:Optional[np.random.Generator]=None) -> list[np.ndarray]: 
+                    randseed:Optional[int]=None) -> list[np.ndarray]: 
     '''Split the data into sets.
     
     Arguments:\n
@@ -19,7 +19,7 @@ def data_partition(data:np.ndarray,
         SHUFFLE: if true the data is shuffled. Default true.\n
         REMOVE_MEAN: if true the data is centered around 0. Default false.\n
         data_type: default numpy.float32.\n
-        rng: a numpy random number generator\n
+        randseed: an integer as random seed.\n
     Return:\n
         datasets: [data_1, data_2 ...]\n
         means: [mean_of_data_1, mean_of_data_2 ...], empty list if REMOVE_MEAN is false
@@ -29,12 +29,12 @@ def data_partition(data:np.ndarray,
     d = np.copy(data) # shuffle is an in-place operation
 
     d = np.moveaxis(d,axis,0)
+    d = d[:np.sum(partition),...]
 
     if SHUFFLE:
-        if rng is not None:
-            rng.shuffle(d)
-        else:
-            np.random.shuffle(d)
+        rng = np.random.default_rng(randseed)
+        idx_shuffle, _ = shuffle_with_idx(d.shape[0],rng)
+        d = d[idx_shuffle,...]
 
     # split into sets
     datasets = []
@@ -42,7 +42,9 @@ def data_partition(data:np.ndarray,
     parts = [0]
     parts.extend(partition) 
     for i in range(1,len(partition)+1):
-        a = d[parts[i-1]:(parts[i]+parts[i-1]),...]
+        idx = np.sum(parts[:i])
+        a = d[idx:(idx+parts[i]),...]
+
         if REMOVE_MEAN: 
             # each set is centred around 0.
             a_m = np.mean(a,axis=0)
@@ -54,4 +56,21 @@ def data_partition(data:np.ndarray,
             a = np.moveaxis(a,0,axis)
             datasets.append(a.astype(data_type))
     
-    return datasets,means 
+    return datasets,means
+
+
+
+
+def shuffle_with_idx(length:int,rng:np.random.Generator):
+    '''Create index for shuffling and unshuffling using a random number generator.\n
+
+    Arguments:\n
+        length: integer. Number of items to shuffle. For example, to shuffle a dataset with shape (10,2,5) along the first axis, length should be 10.\n
+        rng: a numpy random number generator.
+
+    
+    '''
+    idx_shuffle = np.arange(length)
+    rng.shuffle(idx_shuffle)
+    idx_unshuffle = np.argsort(idx_shuffle)
+    return idx_shuffle, idx_unshuffle

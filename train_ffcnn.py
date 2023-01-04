@@ -52,7 +52,7 @@ x_base = 132
 x = np.stack([ux,uy,pp],axis=0)
 
 data_randseed = np.random.randint(1,1000000)
-[x_train,x_val,x_test], [xm_train,xm_val,xm_test] = data_partition(x,1,train_test_split,REMOVE_MEAN=True,rng=np.random.default_rng(data_randseed))
+[x_train,x_val,x_test], [xm_train,xm_val,xm_test] = data_partition(x,1,train_test_split,REMOVE_MEAN=True,rng=data_randseed,SHUFFLE=True)
 
 [ux_train,uy_train,pp_train] = np.squeeze(np.split(x_train,3,axis=0))
 [ux_val,uy_val,pp_val] = np.squeeze(np.split(x_val,3,axis=0))
@@ -114,18 +114,21 @@ def fit(x_train,y_train,x_val,y_val,state,epochs,rng,batch=1):
 
         [rng] = jax.random.split(rng,1)
         
-        xx_train = jax.random.permutation(rng,
-                                            x_train,
-                                            axis=0,
-                                            independent=False)
-        yy_train = jax.random.permutation(rng,
-                                            y_train,
-                                            axis=0,
-                                            independent=False) # slow
+        # xx_train = jax.random.permutation(rng,
+        #                                     x_train,
+        #                                     axis=0,
+        #                                     independent=False)
+        # yy_train = jax.random.permutation(rng,
+        #                                     y_train,
+        #                                     axis=0,
+        #                                     independent=False) # slow
                         
+        # xx_batched = jnp.array_split(xx_train,batch,axis=0)
+        # yy_batched = jnp.array_split(yy_train,batch,axis=0) # slow
 
-        xx_batched = jnp.array_split(xx_train,batch,axis=0)
-        yy_batched = jnp.array_split(yy_train,batch,axis=0) # slow
+        xx_batched = jnp.array_split(x_train,batch,axis=0)
+        yy_batched = jnp.array_split(y_train,batch,axis=0) # slow
+
         loss_epoch = []
         for b in range(batch):
             l, state = update(state, rng, xx_batched[b], yy_batched[b])
@@ -191,29 +194,6 @@ with h5py.File(Path(f'./local_results/{results_dir}/results.h5'),'w') as hf:
     hf.create_dataset('x_base',data=x_base)
     hf.create_dataset('triangle_base_coords',data=triangle_base_coords)
     hf.create_dataset("data_dir",data=data_dir.absolute().as_posix())
-    # hf.create_dataset("ux_train", data=ux_train)
-    # hf.create_dataset("ux_val", data=ux_val)
-    # hf.create_dataset("ux_test", data=ux_test)
-    
-    # hf.create_dataset("uy_train", data=uy_train)
-    # hf.create_dataset("uy_val", data=uy_val)
-    # hf.create_dataset("uy_test", data=uy_test)
-    
-    # hf.create_dataset("pb_train", data=pb_train)
-    # hf.create_dataset("pb_val", data=pb_val)
-    # hf.create_dataset("pb_test", data=pb_test)
-
-    # hf.create_dataset("ux_train_m", data=xm_train[0,...])
-    # hf.create_dataset("ux_val_m", data=xm_val[0,...])
-    # hf.create_dataset("ux_test_m", data=xm_test[0,...])
-
-    # hf.create_dataset("uy_train_m", data=xm_train[1,...])
-    # hf.create_dataset("uy_val_m", data=xm_val[1,...])
-    # hf.create_dataset("uy_test_m", data=xm_test[1,...])
-
-    # hf.create_dataset("pb_train_m", data=xm_train[2,...])
-    # hf.create_dataset("pb_val_m", data=xm_val[2,...])
-    # hf.create_dataset("pb_test_m", data=xm_test[2,...])
 
 with h5py.File(Path(f'./local_results/{results_dir}/parameters.h5'),'w') as hf:
     hf.create_dataset("mlp_layers",data=mlp_layers)
