@@ -25,7 +25,8 @@ class TrainingState(NamedTuple):
 def generate_update_fn(apply_fn:Callable, 
             optax_optimiser, 
             loss_fn:Callable,
-            kwargs_loss:dict={}) -> Callable:
+            kwargs_loss:dict={},
+            kwargs_value_and_grad:dict={}) -> Callable:
     '''Generates a model specifiec function to calculate the weights and update the weights once.
     
     Arguments:\n
@@ -53,7 +54,7 @@ def generate_update_fn(apply_fn:Callable,
             loss: training loss for the current step.\n
             state: updated state.
         '''
-        loss,grads = jax.value_and_grad(loss_fn_partial)(state.params,rng,x,y)
+        loss,grads = jax.value_and_grad(loss_fn_partial,**kwargs_value_and_grad)(state.params,rng,x,y)
         logger.debug('Successfully calculated loss and taken gradient from partial loss function.')
 
         updates, opt_state = optax_optimiser.update(grads,state.opt_state,state.params)

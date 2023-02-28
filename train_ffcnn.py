@@ -197,7 +197,7 @@ with h5py.File(Path(f'./local_results/{results_dir}/results.h5'),'w') as hf:
 
 with h5py.File(Path(f'./local_results/{results_dir}/parameters.h5'),'w') as hf:
     hf.create_dataset("mlp_layers",data=mlp_layers)
-    hf.create_dataset("cnn_channels",data=cnn_channels)
+    hf.create_dataset("cnn_channels",data=list(cnn_channels))
     hf.create_dataset("cnn_filter",data=np.array(cnn_filter))
     hf.create_dataset("learning_rate",data=learning_rate)
 
