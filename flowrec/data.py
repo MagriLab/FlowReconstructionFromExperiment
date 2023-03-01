@@ -1,15 +1,17 @@
 import numpy as np
-from typing import Optional, Union
+from typing import Optional, Union, List, Sequence
+from dataclasses import dataclass
 
 dtype = Union[str,np.dtype]
+Scalar = Union[int,float]
 
 def data_partition(data:np.ndarray,
                     axis:int,
-                    partition:list,
+                    partition:List,
                     SHUFFLE:bool=True,
                     REMOVE_MEAN:bool=False,
                     data_type:dtype=np.float32,
-                    randseed:Optional[int]=None) -> list[np.ndarray]: 
+                    randseed:Optional[int]=None) -> List[np.ndarray]: 
     '''Split the data into sets.
     
     Arguments:\n
@@ -74,3 +76,44 @@ def shuffle_with_idx(length:int,rng:np.random.Generator):
     rng.shuffle(idx_shuffle)
     idx_unshuffle = np.argsort(idx_shuffle)
     return idx_shuffle, idx_unshuffle
+
+
+
+
+@dataclass(frozen=True)
+class DataMetadata():
+    '''A collection of information about the dataset.\n
+
+    Initialise with:\n
+        re: a scalar, Reynolds number\n
+        discretisation: a sequence of [dt,dx,dy] or [dt,dx,dy,dz]\n
+        axis_index: a sequence of integers that specify which axis in the data is for [time, x, y] or [time, x, y, z]\n
+        problem_2d: True if data is for a 2D flow.
+    '''
+    re: Scalar
+    discretisation: Sequence[Scalar]
+    axis_index: Sequence[int]
+    problem_2d: bool = True
+
+    def __post_init__(self):
+        if not np.isscalar(self.re):
+            raise ValueError('Reynolds number must be given as a scalar.')
+
+        if self.problem_2d:
+            if (len(self.discretisation) != 3) or (len(self.axis_index) != 3):
+                raise ValueError('Expected 2D data but received unexpected number of velocity componenets.')
+        else:
+            if (len(self.discretisation) != 4) or (len(self.axis_index) != 4):
+                raise ValueError('Expected 3D data but received unexpected number of velocity componenets.')
+            
+        self.axt = self.axis_index[0]
+        self.axx = self.axis_index[1]
+        self.axy = self.axis_index[2]
+        self.dt = self.discretisation[0]
+        self.dx = self.discretisation[1]
+        self.dy = self.discretisation[2]
+        if not self.problem_2d:
+            self.axz = self.axis_index[3]
+            self.dz = self.discretisation[3]
+
+        

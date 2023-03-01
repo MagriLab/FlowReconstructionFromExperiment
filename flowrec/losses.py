@@ -5,6 +5,7 @@ import numpy as np
 
 from .models._general import BaseModel
 from .physics_and_derivatives import div_field, momentum_residue_field
+from .data import DataMetadata
 
 import chex
 from typing import Union, Optional, Callable
@@ -79,13 +80,8 @@ def sum_squared_element(tree):
 def divergence(
     ux:Array,
     uy:Array,
-    dx:Scalar,
-    dy:Scalar,
-    x_axis:int,
-    y_axis:int,
-    uz:Optional[Array]=None,
-    dz:Optional[Scalar]=None,
-    z_axis:Optional[int]=None)-> float:
+    datainfo:DataMetadata,
+    uz:Optional[Array]=None) -> float:
 
     '''Calculate the diveregence loss.
     The diveregence loss the the squared mean of the divergence field.
@@ -93,30 +89,15 @@ def divergence(
     Arguments:\n
         ux: an array of velocity in x direction.\n
         uy: an array of velocity in x direction.\n
-        dx: space in the x direction between each value in ux.\n
-        dy: space in the y direction between each value in uy.\n
-        x_axis: which axis is x axis.\n
-        y_axis: which axis is y axis.\n
+        datainfo: an instance of DataMetadata.\n
         uz: an array of velocity in z direction, None if the 2D flow.\n
-        dz: space in the z direction between each value in uz, None if the 2D flow.\n
-        z_axis: which axis is z axis, None if the 2D flow.\n
 
     Return:\n
         A non-negative scalar, square of the mean of the divergence field.
     '''
 
-    div_field = div_field(ux,uy,dx,dy,x_axis,y_axis,uz=uz,dz=dz,z_axis=z_axis)
-    div_loss = jnp.mean(div_field**2) # div_loss >= 0
+    div = div_field(ux,uy,datainfo,uz)
+    div_loss = jnp.mean(div**2) # div_loss >= 0
 
     return div_loss
 
-
-#         # Use a dataclass for ux, uy, uz, p, index, dt, dx
-# def physics_residue(
-#         ux:Array,
-#         uy:Array,
-
-
-
-
-# ) -> float:
