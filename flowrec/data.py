@@ -1,6 +1,6 @@
 import numpy as np
 from typing import Optional, Union, List, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 dtype = Union[str,np.dtype]
 Scalar = Union[int,float]
@@ -80,7 +80,7 @@ def shuffle_with_idx(length:int,rng:np.random.Generator):
 
 
 
-@dataclass(frozen=True)
+@dataclass
 class DataMetadata():
     '''A collection of information about the dataset.\n
 
@@ -94,6 +94,16 @@ class DataMetadata():
     discretisation: Sequence[Scalar]
     axis_index: Sequence[int]
     problem_2d: bool = True
+
+    axt: int = field(init=False)
+    axx: int = field(init=False)
+    axy: int = field(init=False)
+    axz: int = field(init=False)
+    dt: Scalar = field(init=False)
+    dx: Scalar = field(init=False)
+    dy: Scalar = field(init=False)
+    dz: Scalar = field(init=False)
+
 
     def __post_init__(self):
         if not np.isscalar(self.re):

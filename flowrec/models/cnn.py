@@ -1,5 +1,6 @@
 import logging
 logger = logging.getLogger(f'fr.{__name__}')
+import warnings
 
 import jax
 import jax.numpy as jnp
@@ -123,6 +124,9 @@ class Model(BaseModel):
             cnn_channels: list of number of output channels, each corresponds to one convolution layer. \n
             cnn_filters: a tuple or a list of tuples, where each tuple is is a filter size. If only one size is given, it is applied to all cnn layers. If multiple sizes are given, each size correspond to one layer.
         '''
+        if cnn_channels[-1] != output_shape[-1]:
+            warnings.warn('Output shape of the network may not be expected. The output shape of the network does not match the output shape of the mlp layers.')
+
         super().__init__()
 
         def forward_fn(x,TRAINING=True):
