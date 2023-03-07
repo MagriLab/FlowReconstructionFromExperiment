@@ -47,6 +47,7 @@ def loss_mse(apply_fn:Callable,
 
 
 
+
 # ====================== regular calculations ========================
 
 def mse(pred:Array,true:Array) -> float:
@@ -101,3 +102,10 @@ def divergence(
 
     return div_loss
 
+
+def relative_error(pred,true):
+    err = np.sqrt(
+        np.einsum('t x y -> ', (pred-true)**2)
+        / np.einsum('t x y -> ', true**2)
+    )
+    return err

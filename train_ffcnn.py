@@ -30,13 +30,13 @@ import wandb
 
 WANDB = True
 train_test_split = [600,100,100]
-learning_rate = 0.0001
+learning_rate = 0.00005
 mlp_layers = [] # size of the intermediate layers
 cnn_channels = [32,16,3]
 cnn_filter = [(3,3)]
-dropout_rate = 0.02
-regularisation_strength = 0.0001
-epochs = 10000
+dropout_rate = 0.00
+regularisation_strength = 0.0000
+epochs = 40000
 nb_batches = 6
 re = 100
 data_dir = Path("./local_data/re"+str(re))
@@ -45,7 +45,7 @@ dx = 12/512
 dy = 4/128
 
 sensor_slicing_space = np.s_[::15,::5] # taking points as sensors
-weighting = [0.01,0.99] # weighting terms for [physics,sensors]
+weighting = [0.1,0.9] # weighting terms for [physics,sensors]
 e = 0.01 # when to consider the solution 'converged'
 
 print("Started at: ", time.asctime(time.localtime(time.time())))
