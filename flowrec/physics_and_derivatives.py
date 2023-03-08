@@ -26,7 +26,7 @@ def div_field(
     Return:\n
         An array of divergence of the flow with the same as ux, uy and uz.
     '''
-    if uz:
+    if uz is not None:
         chex.assert_equal_shape((ux,uy,uz))
     else:
         chex.assert_equal_shape((ux,uy))

@@ -1,5 +1,5 @@
 import numpy as np
-from typing import Optional, Union, List, Sequence
+from typing import Optional, Union, List, Sequence, NamedTuple
 from dataclasses import dataclass, field
 
 dtype = Union[str,np.dtype]
