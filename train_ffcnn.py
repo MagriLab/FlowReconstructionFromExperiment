@@ -36,7 +36,7 @@ cnn_channels = [32,16,3]
 cnn_filter = [(3,3)]
 dropout_rate = 0.00
 regularisation_strength = 0.0000
-epochs = 40000
+epochs = 80000
 nb_batches = 6
 re = 100
 data_dir = Path("./local_data/re"+str(re))
@@ -54,7 +54,7 @@ results_dir = f'ffcnn_physics/{time_stamp}'
 
 
 wandb_group = 'FF_CNN'
-wandb_run = f'pi{time_stamp}'
+wandb_run = f'pi{time_stamp}relu'
 
 # ======================= pre-processing =========================
 x_base = 132
