@@ -22,6 +22,7 @@ from flowrec.data import data_partition, DataMetadata
 import flowrec.training_and_states as train
 from flowrec.training_and_states import TrainingState
 from flowrec import losses
+import flowrec.physics_and_derivatives as derivatives
 from flowrec.models.cnn import Model
 import jax 
 import jax.numpy as jnp
@@ -118,14 +119,14 @@ def loss_fn(apply_fn,params,rng,x,y,w=[0.5,0.5],e=0.0001,**kwargs):
     pred = apply_fn(params, rng, x, **kwargs)
     logger.debug(f'Prediction has shape {pred.shape}')
     loss_div = losses.divergence(pred[...,0], pred[...,1], datainfo)
-    loss_mom_x = jnp.mean(losses.momentum_residue_field(
+    loss_mom_x = jnp.mean(derivatives.momentum_residue_field(
                             1,
                             ux=pred[...,0],
                             uy=pred[...,1],
                             p=pred[...,2],
                             datainfo=datainfo)**2
                             )
-    loss_mom_y = jnp.mean(losses.momentum_residue_field(
+    loss_mom_y = jnp.mean(derivatives.momentum_residue_field(
                             2,
                             ux=pred[...,0],
                             uy=pred[...,1],
