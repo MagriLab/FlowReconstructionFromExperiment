@@ -78,6 +78,68 @@ def derivative2(f:Array, h:Scalar, ax:int=0) -> Array:
 
 
 
+@jax.tree_util.Partial(jax.jit,static_argnames=('ax'))
+def derivative1(f:Array, h:Scalar, ax:int=0) -> Array:
+    '''First derivatives with second order central difference for interior points and second order forward/backward difference for boundaries.\n
+    
+    Arguments:\n
+        f: array of values to differentiate.\n
+        h: step size, only constant step is supported.\n
+        ax: int. Which axis to take derivative.\n
+    
+    Returns:
+        dfdx: array of 1st derivatives with the same shape as f.
+    '''
+
+    f = jnp.asarray(f)
+
+    try:
+        chex.assert_axis_dimension_gteq(f,ax,3) # 
+    except AssertionError as err:
+        logger.error('Not enough nodes in the selected axis for the numerical scheme used.')
+        raise err
+
+    # initialise empty array for output
+    dfdx = jnp.empty_like(f)
+
+    # for slicing the input later
+    slice1 = [slice(None)]*f.ndim
+    slice2 = [slice(None)]*f.ndim
+    slice3 = [slice(None)]*f.ndim
+
+    # interior points, central difference second order
+    # = (f(x+h) - f(x-h)) / 2h
+    slice1[ax] = slice(2,None)
+    slice2[ax] = slice(1,-1)
+    slice3[ax] = slice(None,-2)
+
+    dfdx = dfdx.at[tuple(slice2)].set(
+        (f[tuple(slice1)] - f[tuple(slice3)]) / (2*h)
+    )
+
+    # left boundary, second order forward difference
+    # = (-3f(x) + 4f(x+h) - f(x+2h)) / 2h
+    slice1[ax] = slice(0,1)
+    slice2[ax] = slice(1,2)
+    slice3[ax] = slice(2,3)
+
+    dfdx = dfdx.at[tuple(slice1)].set(
+        (-3*f[tuple(slice1)] + 4*f[tuple(slice2)] - f[tuple(slice3)]) / (2*h)
+    )
+
+    # right boundary, second order backward difference
+    # = ( 3f(x) - 4f(x+h) + f(x+2h)) / 2h
+    slice1[ax] = slice(-1,None)
+    slice2[ax] = slice(-2,-1)
+    slice3[ax] = slice(-3,-2)
+
+    dfdx = dfdx.at[tuple(slice1)].set(
+        (3*f[tuple(slice1)] - 4*f[tuple(slice2)] + f[tuple(slice3)]) / (2*h)
+    )
+
+    return dfdx
+
+
 
 def div_field(
     ux:Array,
