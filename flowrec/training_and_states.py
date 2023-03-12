@@ -54,6 +54,7 @@ def generate_update_fn(apply_fn:Callable,
             loss: training loss for the current step.\n
             state: updated state.
         '''
+        logger.debug(f'Is update functin in jit: {isinstance(jax.numpy.array(0),jax.core.Tracer)}')
         loss,grads = jax.value_and_grad(loss_fn_partial,**kwargs_value_and_grad)(state.params,rng,x,y)
         logger.debug('Successfully calculated loss and taken gradient from partial loss function.')
 

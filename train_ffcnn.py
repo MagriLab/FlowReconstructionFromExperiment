@@ -46,8 +46,8 @@ dx = 12/512
 dy = 4/128
 
 sensor_slicing_space = np.s_[::15,::5] # taking points as sensors
-weighting = [0.1,0.9] # weighting terms for [physics,sensors]
-e = 0.01 # when to consider the solution 'converged'
+weighting = [1,0] # weighting terms for [physics,sensors]
+e = 0.00 # when to consider the solution 'converged'
 
 print("Started at: ", time.asctime(time.localtime(time.time())))
 time_stamp = time.strftime("%y%m%d%H%M%S",time.localtime(time.time()))
@@ -55,7 +55,7 @@ results_dir = f'ffcnn_physics/{time_stamp}'
 
 
 wandb_group = 'FF_CNN'
-wandb_run = f'pi{time_stamp}relu'
+wandb_run = f'pi{time_stamp}replace'
 
 # ======================= pre-processing =========================
 x_base = 132
@@ -117,6 +117,7 @@ mdl = Model(mlp_layers,output_shape=(nx,ny,3),cnn_channels=cnn_channels,cnn_filt
 # loss_fn = losses.loss_mse
 def loss_fn(apply_fn,params,rng,x,y,w=[0.5,0.5],e=0.0001,**kwargs):
     pred = apply_fn(params, rng, x, **kwargs)
+    pred = pred.at[sensor_slicing].set(y)
     logger.debug(f'Prediction has shape {pred.shape}')
     loss_div = losses.divergence(pred[...,0], pred[...,1], datainfo)
     loss_mom_x = jnp.mean(derivatives.momentum_residue_field(
@@ -135,8 +136,8 @@ def loss_fn(apply_fn,params,rng,x,y,w=[0.5,0.5],e=0.0001,**kwargs):
                             )
     loss_sensor = losses.mse(pred[sensor_slicing], y)
 
-    return w[0]*jax.nn.relu(loss_div+loss_mom_x+loss_mom_y-e) + w[1]*loss_sensor, (loss_div,loss_mom_x+loss_mom_y,loss_sensor)
-    # return w[0]*(loss_div+(loss_mom_x+loss_mom_y-e)**2) + w[1]*loss_sensor, (loss_div,loss_mom_x+loss_mom_y,loss_sensor)
+    # return w[0]*jax.nn.relu(loss_div+loss_mom_x+loss_mom_y-e) + w[1]*loss_sensor, (loss_div,loss_mom_x+loss_mom_y,loss_sensor)
+    return w[0]*(loss_div+loss_mom_x+loss_mom_y)+w[1]*loss_sensor, (loss_div,loss_mom_x+loss_mom_y,loss_sensor)
 
 
 mdl_validation_loss = jax.jit(jax.tree_util.Partial(loss_fn,mdl.apply,TRAINING=False,w=weighting,e=e))
@@ -172,6 +173,8 @@ if WANDB:
     run.save('train_ffcnn.py')
     if weighting[0] > 0.0:
         run.tags = run.tags + ('PhysicsInformed',)
+    if weighting[1] == 0:
+        run.tags = run.tags + ('PhysicsOnly',)
 
 
 # ====================== training =========================
