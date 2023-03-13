@@ -14,14 +14,14 @@ Scalar = Union[int,float]
 
 
 
-@jax.tree_util.Partial(jax.jit,static_argnames=('ax'))
-def derivative2(f:Array, h:Scalar, ax:int=0) -> Array:
+@jax.tree_util.Partial(jax.jit,static_argnames=('axis'))
+def derivative2(f:Array, h:Scalar, axis:int=0) -> Array:
     '''Second derivatives with second order central difference for interior points and second order forward/backward difference for boundaries.\n
     
     Arguments:\n
         f: array of values to differentiate.\n
         h: step size, only constant step is supported.\n
-        ax: int. Which axis to take derivative.\n
+        axis: int. Which axis to take derivative.\n
     
     Returns:
         d2fdx2: array of second derivatives with the same shape as f.
@@ -30,7 +30,7 @@ def derivative2(f:Array, h:Scalar, ax:int=0) -> Array:
     f = jnp.asarray(f)
 
     try:
-        chex.assert_axis_dimension_gteq(f,ax,4) # 
+        chex.assert_axis_dimension_gteq(f,axis,4) # 
     except AssertionError as err:
         logger.error('Not enough nodes in the selected axis for the numerical scheme used.')
         raise err
@@ -48,29 +48,29 @@ def derivative2(f:Array, h:Scalar, ax:int=0) -> Array:
     # interior points
     # second order scheme used f(x+h), f(x) and f(x-h)
     # = (f(x+h) - 2f(x) + f(x-h)) / (h**2)
-    slice1[ax] = slice(2,None)
-    slice2[ax] = slice(1,-1)
-    slice3[ax] = slice(None,-2)
+    slice1[axis] = slice(2,None)
+    slice2[axis] = slice(1,-1)
+    slice3[axis] = slice(None,-2)
 
     d2fdx2 = d2fdx2.at[tuple(slice2)].set((f[tuple(slice1)] - 2*f[tuple(slice2)] + f[tuple(slice3)]) / (h**2))
 
     # left boundary (x=0)
     # second order forward difference
     # = (2f(x) - 5f(x+h) + 4f(x+2h) - f(x+3h)) / (h**2)
-    slice1[ax] = slice(0,1)
-    slice2[ax] = slice(1,2)
-    slice3[ax] = slice(2,3)
-    slice4[ax] = slice(3,4)
+    slice1[axis] = slice(0,1)
+    slice2[axis] = slice(1,2)
+    slice3[axis] = slice(2,3)
+    slice4[axis] = slice(3,4)
 
     d2fdx2 = d2fdx2.at[tuple(slice1)].set((2*f[tuple(slice1)] - 5*f[tuple(slice2)] + 4*f[tuple(slice3)] - f[tuple(slice4)]) / (h**2)) 
     
     # right boundary (x=L)
     # second order backward difference
     # = (2f(x) - 5f(x-h) + 4f(x-2h) - f(x-3h)) / (h**2)
-    slice1[ax] = slice(-1,None)
-    slice2[ax] = slice(-2,-1)
-    slice3[ax] = slice(-3,-2)
-    slice4[ax] = slice(-4,-3)
+    slice1[axis] = slice(-1,None)
+    slice2[axis] = slice(-2,-1)
+    slice3[axis] = slice(-3,-2)
+    slice4[axis] = slice(-4,-3)
 
     d2fdx2 = d2fdx2.at[tuple(slice1)].set((2*f[tuple(slice1)] - 5*f[tuple(slice2)] + 4*f[tuple(slice3)] - f[tuple(slice4)]) / (h**2)) 
 
@@ -78,14 +78,14 @@ def derivative2(f:Array, h:Scalar, ax:int=0) -> Array:
 
 
 
-@jax.tree_util.Partial(jax.jit,static_argnames=('ax'))
-def derivative1(f:Array, h:Scalar, ax:int=0) -> Array:
+@jax.tree_util.Partial(jax.jit,static_argnames=('axis'))
+def derivative1(f:Array, h:Scalar, axis:int=0) -> Array:
     '''First derivatives with second order central difference for interior points and second order forward/backward difference for boundaries.\n
     
     Arguments:\n
         f: array of values to differentiate.\n
         h: step size, only constant step is supported.\n
-        ax: int. Which axis to take derivative.\n
+        axis: int. Which axis to take derivative.\n
     
     Returns:
         dfdx: array of 1st derivatives with the same shape as f.
@@ -94,7 +94,7 @@ def derivative1(f:Array, h:Scalar, ax:int=0) -> Array:
     f = jnp.asarray(f)
 
     try:
-        chex.assert_axis_dimension_gteq(f,ax,3) # 
+        chex.assert_axis_dimension_gteq(f,axis,3) # 
     except AssertionError as err:
         logger.error('Not enough nodes in the selected axis for the numerical scheme used.')
         raise err
@@ -109,9 +109,9 @@ def derivative1(f:Array, h:Scalar, ax:int=0) -> Array:
 
     # interior points, central difference second order
     # = (f(x+h) - f(x-h)) / 2h
-    slice1[ax] = slice(2,None)
-    slice2[ax] = slice(1,-1)
-    slice3[ax] = slice(None,-2)
+    slice1[axis] = slice(2,None)
+    slice2[axis] = slice(1,-1)
+    slice3[axis] = slice(None,-2)
 
     dfdx = dfdx.at[tuple(slice2)].set(
         (f[tuple(slice1)] - f[tuple(slice3)]) / (2*h)
@@ -119,9 +119,9 @@ def derivative1(f:Array, h:Scalar, ax:int=0) -> Array:
 
     # left boundary, second order forward difference
     # = (-3f(x) + 4f(x+h) - f(x+2h)) / 2h
-    slice1[ax] = slice(0,1)
-    slice2[ax] = slice(1,2)
-    slice3[ax] = slice(2,3)
+    slice1[axis] = slice(0,1)
+    slice2[axis] = slice(1,2)
+    slice3[axis] = slice(2,3)
 
     dfdx = dfdx.at[tuple(slice1)].set(
         (-3*f[tuple(slice1)] + 4*f[tuple(slice2)] - f[tuple(slice3)]) / (2*h)
@@ -129,9 +129,9 @@ def derivative1(f:Array, h:Scalar, ax:int=0) -> Array:
 
     # right boundary, second order backward difference
     # = ( 3f(x) - 4f(x+h) + f(x+2h)) / 2h
-    slice1[ax] = slice(-1,None)
-    slice2[ax] = slice(-2,-1)
-    slice3[ax] = slice(-3,-2)
+    slice1[axis] = slice(-1,None)
+    slice2[axis] = slice(-2,-1)
+    slice3[axis] = slice(-3,-2)
 
     dfdx = dfdx.at[tuple(slice1)].set(
         (3*f[tuple(slice1)] - 4*f[tuple(slice2)] + f[tuple(slice3)]) / (2*h)
