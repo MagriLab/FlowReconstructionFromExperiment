@@ -45,9 +45,9 @@ dt = 0.0002*625
 dx = 12/512
 dy = 4/128
 
-sensor_slicing_space = np.s_[::15,::5] # taking points as sensors
-weighting = [0.1,0.9] # weighting terms for [physics,sensors]
-e = 0.00 # when to consider the solution 'converged'
+sensor_slicing_space = np.s_[::15,::10] # taking points as sensors
+weighting = [1.0,0.0] # weighting terms for [physics,sensors]
+# e = 0.00 # when to consider the solution 'converged'
 
 print("Started at: ", time.asctime(time.localtime(time.time())))
 time_stamp = time.strftime("%y%m%d%H%M%S",time.localtime(time.time()))
@@ -116,7 +116,7 @@ mdl = Model(mlp_layers,output_shape=(nx,ny,3),cnn_channels=cnn_channels,cnn_filt
 
 # ==================== Define loss function ====================
 # loss_fn = losses.loss_mse
-def loss_fn(apply_fn,params,rng,x,y,w=[0.5,0.5],e=0.0001,**kwargs):
+def loss_fn(apply_fn,params,rng,x,y,w=[0.5,0.5],**kwargs):
     pred = apply_fn(params, rng, x, **kwargs)
     loss_sensor = losses.mse(pred[sensor_slicing], y)
 
@@ -141,14 +141,14 @@ def loss_fn(apply_fn,params,rng,x,y,w=[0.5,0.5],e=0.0001,**kwargs):
 
     # return w[0]*jax.nn.relu(loss_div+loss_mom_x+loss_mom_y-e) + w[1]*loss_sensor, (loss_div,loss_mom_x+loss_mom_y,loss_sensor)
     # return w[0]*(loss_div+loss_mom_x+loss_mom_y)+w[1]*loss_sensor, (loss_div,loss_mom_x+loss_mom_y,loss_sensor)
-    return loss_div+loss_mom_x+loss_mom_y, (loss_div,loss_mom_x+loss_mom_y,loss_sensor)
+    return w[0]*(loss_div+loss_mom_x+loss_mom_y)+w[1]*loss_sensor, (loss_div,loss_mom_x+loss_mom_y,loss_sensor)
 
 
-mdl_validation_loss = jax.jit(jax.tree_util.Partial(loss_fn,mdl.apply,TRAINING=False,w=weighting,e=e))
+mdl_validation_loss = jax.jit(jax.tree_util.Partial(loss_fn,mdl.apply,TRAINING=False,w=weighting))
 
 # update = train.generate_update_fn(mdl.apply,optimizer,loss_fn) # this update weights once.
 # update = train.generate_update_fn(mdl.apply,optimizer,loss_fn) # this update weights once.
-update = train.generate_update_fn(mdl.apply,optimizer,loss_fn,kwargs_value_and_grad={'has_aux':True},kwargs_loss={'w':weighting,'e':e}) # this update weights once.
+update = train.generate_update_fn(mdl.apply,optimizer,loss_fn,kwargs_value_and_grad={'has_aux':True},kwargs_loss={'w':weighting}) # this update weights once.
 
 
 # ===================== weights & biases ======================
@@ -163,10 +163,11 @@ if WANDB:
         "dropout_rate":dropout_rate,
         "l2_strength":regularisation_strength,
         "Re": re,
-        "weight_physics":weighting[0],
-        "weight_sensors":weighting[1],
+        # "weight_physics":weighting[0],
+        # "weight_sensors":weighting[1],
         "percent_observed":percent_observed,
-        "convergence_threshold":e
+        # "convergence_threshold":e
+        "batches":nb_batches
     }
     run = wandb.init(config=wandb_config,
                 project="FlowReconstruction",
@@ -182,71 +183,6 @@ if WANDB:
 
 
 # ====================== training =========================
-# def fit(x_train,
-#         y_train,
-#         x_val,
-#         y_val,
-#         state,
-#         epochs,
-#         rng,
-#         batch=1):
-#     loss_train = []
-#     loss_val = []
-
-#     best_state = state
-#     min_loss = np.inf
-#     for i in range(1,epochs+1):
-
-#         [rng] = jax.random.split(rng,1)
-        
-#         # xx_train = jax.random.permutation(rng,
-#         #                                     x_train,
-#         #                                     axis=0,
-#         #                                     independent=False)
-#         # yy_train = jax.random.permutation(rng,
-#         #                                     y_train,
-#         #                                     axis=0,
-#         #                                     independent=False) # slow
-                        
-#         # xx_batched = jnp.array_split(xx_train,batch,axis=0)
-#         # yy_batched = jnp.array_split(yy_train,batch,axis=0) # slow
-
-#         xx_batched = jnp.array_split(x_train,batch,axis=0)
-#         yy_batched = jnp.array_split(y_train,batch,axis=0) # slow
-
-#         loss_epoch = []
-#         for b in range(batch):
-#             l, state = update(state, rng, xx_batched[b], yy_batched[b])
-#             if dropout_rate is None:
-#                 loss_epoch.append(l)
-#             else:
-#                 l = mdl_validation_loss(state.params,None,xx_batched[b],yy_batched[b])
-#                 loss_epoch.append(l)
-#             logger.debug(f'batch size is {xx_batched[b].shape[0]}')
-#             logger.info(f'batch: {b}, loss: {l:.7f}')
-#         loss_train.append(np.mean(loss_epoch))
-        
-
-#         l_val = mdl_validation_loss(state.params,None,x_val,y_val)
-#         loss_val.append(l_val)        
-
-#         if WANDB:
-#             wandb.log({'loss':l, 'loss_val':l_val})
-        
-#         if l_val < min_loss:
-#             best_state = state
-#             min_loss = l_val
-#             train.save_trainingstate(Path('./local_results',results_dir),state,'state')
-
-#         if i%200 == 0:
-#             print(f'epoch: {i}, loss: {loss_train[i-1]:.7f}, validation_loss: {l_val:.7f}', flush=True)
-#     state = best_state
-
-#     return state, loss_train, loss_val
-
-
-
-
 def fit(
     x_train_batched,
     y_train_batched,
@@ -320,15 +256,6 @@ params = mdl.init(rng,pb_train[0,:]) # initalise weights
 logger.debug(jax.tree_util.tree_map(lambda x: x.shape,params))
 opt_state = optimizer.init(params)
 state = TrainingState(params, opt_state)
-# state, loss_train, loss_val = fit(
-                                # pb_train,
-                                # u_train,
-                                # pb_val,
-                                # u_val,
-                                # state,
-                                # epochs,
-                                # rng,
-                                # batch=nb_batches)
 
 
 xx_batched = jnp.array_split(pb_train,nb_batches,axis=0)
