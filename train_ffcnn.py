@@ -31,14 +31,14 @@ import wandb
 
 WANDB = True
 train_test_split = [600,100,100]
-learning_rate = 0.00005
+learning_rate = 0.0001
 mlp_layers = [] # size of the intermediate layers
 cnn_channels = [32,16,3]
 cnn_filter = [(3,3)]
 dropout_rate = 0.00
 regularisation_strength = 0.0000
 epochs = 80000
-nb_batches = 6
+nb_batches = 20
 re = 100
 data_dir = Path("./local_data/re"+str(re))
 dt = 0.0002*625
@@ -46,7 +46,7 @@ dx = 12/512
 dy = 4/128
 
 sensor_slicing_space = np.s_[::15,::5] # taking points as sensors
-weighting = [1,0] # weighting terms for [physics,sensors]
+weighting = [0.1,0.9] # weighting terms for [physics,sensors]
 e = 0.00 # when to consider the solution 'converged'
 
 print("Started at: ", time.asctime(time.localtime(time.time())))
@@ -55,7 +55,8 @@ results_dir = f'ffcnn_physics/{time_stamp}'
 
 
 wandb_group = 'FF_CNN'
-wandb_run = f'pi{time_stamp}replace'
+# wandb_run = f'pi{time_stamp}replace'
+wandb_run = 'test'
 
 # ======================= pre-processing =========================
 x_base = 132
@@ -117,6 +118,9 @@ mdl = Model(mlp_layers,output_shape=(nx,ny,3),cnn_channels=cnn_channels,cnn_filt
 # loss_fn = losses.loss_mse
 def loss_fn(apply_fn,params,rng,x,y,w=[0.5,0.5],e=0.0001,**kwargs):
     pred = apply_fn(params, rng, x, **kwargs)
+    loss_sensor = losses.mse(pred[sensor_slicing], y)
+
+
     pred = pred.at[sensor_slicing].set(y)
     logger.debug(f'Prediction has shape {pred.shape}')
     loss_div = losses.divergence(pred[...,0], pred[...,1], datainfo)
@@ -134,10 +138,10 @@ def loss_fn(apply_fn,params,rng,x,y,w=[0.5,0.5],e=0.0001,**kwargs):
                             p=pred[...,2],
                             datainfo=datainfo)**2
                             )
-    loss_sensor = losses.mse(pred[sensor_slicing], y)
 
     # return w[0]*jax.nn.relu(loss_div+loss_mom_x+loss_mom_y-e) + w[1]*loss_sensor, (loss_div,loss_mom_x+loss_mom_y,loss_sensor)
-    return w[0]*(loss_div+loss_mom_x+loss_mom_y)+w[1]*loss_sensor, (loss_div,loss_mom_x+loss_mom_y,loss_sensor)
+    # return w[0]*(loss_div+loss_mom_x+loss_mom_y)+w[1]*loss_sensor, (loss_div,loss_mom_x+loss_mom_y,loss_sensor)
+    return loss_div+loss_mom_x+loss_mom_y, (loss_div,loss_mom_x+loss_mom_y,loss_sensor)
 
 
 mdl_validation_loss = jax.jit(jax.tree_util.Partial(loss_fn,mdl.apply,TRAINING=False,w=weighting,e=e))
