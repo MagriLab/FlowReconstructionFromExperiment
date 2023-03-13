@@ -162,11 +162,11 @@ def div_field(
     else:
         chex.assert_equal_shape((ux,uy))
     
-    dudx = jnp.gradient(ux,datainfo.dx,axis=datainfo.axx)
-    dvdy = jnp.gradient(uy,datainfo.dy,axis=datainfo.axy)
+    dudx = derivative1(ux,datainfo.dx,axis=datainfo.axx)
+    dvdy = derivative1(uy,datainfo.dy,axis=datainfo.axy)
     div = dudx + dvdy
     if not datainfo.problem_2d:
-        dwdz = jnp.gradient(uz,datainfo.dz,axis=datainfo.axz)
+        dwdz = derivative1(uz,datainfo.dz,axis=datainfo.axz)
         div = div + dwdz
         logger.info('Divergence calculated for 3D flow.')
     return div
@@ -227,23 +227,23 @@ def momentum_residue_field(
         raise ValueError('Please set "which_velocity" to 1/2/3 for ux/uy/uz')
 
     
-    dudt = jnp.gradient(u,datainfo.dt,axis=datainfo.axt)
+    dudt = derivative1(u,datainfo.dt,axis=datainfo.axt)
 
-    dudx = jnp.gradient(u,datainfo.dx,axis=datainfo.axx)
-    d2udx2 = jnp.gradient(dudx,datainfo.dx,axis=datainfo.axx)
+    dudx = derivative1(u,datainfo.dx,axis=datainfo.axx)
+    d2udx2 = derivative2(u,datainfo.dx,axis=datainfo.axx)
     ux_dudx = ux*dudx
 
-    dudy = jnp.gradient(u,datainfo.dy,axis=datainfo.axy)
-    d2udy2 = jnp.gradient(dudy,datainfo.dy,axis=datainfo.axy)
+    dudy = derivative1(u,datainfo.dy,axis=datainfo.axy)
+    d2udy2 = derivative2(u,datainfo.dy,axis=datainfo.axy)
     uy_dudy = uy*dudy
 
-    dp = jnp.gradient(p,p_dx,axis=axp)
+    dp = derivative1(p,p_dx,axis=axp)
 
     residue = dudt + ux_dudx + uy_dudy + dp - (d2udx2 + d2udy2)/datainfo.re
 
     if not datainfo.problem_2d:
-        dudz = jnp.gradient(u,datainfo.dz,axis=datainfo.axz)
-        d2udz2 = jnp.gradient(dudz,datainfo.dz,axis=datainfo.axz)
+        dudz = derivative1(u,datainfo.dz,axis=datainfo.axz)
+        d2udz2 = derivative2(u,datainfo.dz,axis=datainfo.axz)
         uz_dudz = uz*dudz
         residue = residue + uz_dudz - d2udz2/datainfo.re
     
