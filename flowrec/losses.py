@@ -9,12 +9,10 @@ from .data import DataMetadata
 
 import chex
 from typing import Union, Optional, Callable
+from ._typing import Array, ClassDataMetadata
 import logging
 logger = logging.getLogger(f'fr.{__name__}')
 
-Array = Union[np.ndarray, jnp.ndarray]
-Model = Union[BaseModel, hk.Transformed]
-Scalar = Union[int,float]
 
 
 # ====================== for during training =========================
@@ -62,7 +60,11 @@ def mse(pred:Array,true:Array) -> float:
     '''
     if true is not None:
         # Avoid broadcasting logic for "-" operator.
-        chex.assert_equal_shape((pred, true))
+        try:
+            chex.assert_equal_shape((pred, true))
+        except AssertionError as err:
+            logger.error('Cannot calculate mean squared error, input shape mismatch.')
+            raise err
         loss = jnp.mean((pred-true)**2)
     else:
         loss = jnp.mean(pred**2)
@@ -81,7 +83,7 @@ def sum_squared_element(tree):
 def divergence(
     ux:Array,
     uy:Array,
-    datainfo:DataMetadata,
+    datainfo:ClassDataMetadata,
     uz:Optional[Array]=None) -> float:
 
     '''Calculate the diveregence loss.

@@ -13,9 +13,8 @@ from pathlib import Path
 from .models._general import BaseModel
 
 from typing import Union, NamedTuple, Callable, Any
+from ._typing import Array, Model
 
-Array = Union[np.ndarray, jax.numpy.ndarray]
-Model = Union[BaseModel, hk.Transformed]
 
 class TrainingState(NamedTuple):
     params: hk.Params
