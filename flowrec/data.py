@@ -1,9 +1,9 @@
 import numpy as np
 from typing import Optional, Union, List, Sequence, NamedTuple
+from ._typing import Scalar
 from dataclasses import dataclass, field
 
 dtype = Union[str,np.dtype]
-Scalar = Union[int,float]
 
 def data_partition(data:np.ndarray,
                     axis:int,
@@ -79,6 +79,29 @@ def shuffle_with_idx(length:int,rng:np.random.Generator):
 
 
 
+class _Metadata2d(NamedTuple):
+    re: Scalar
+    discretisation: Sequence[Scalar]
+    axis_index: Sequence[int]
+    axt: int 
+    axx: int 
+    axy: int 
+    dt: Scalar
+    dx: Scalar
+    dy: Scalar
+
+class _Metadata3d(NamedTuple):
+    re: Scalar
+    discretisation: Sequence[Scalar]
+    axis_index: Sequence[int]
+    axt: int 
+    axx: int 
+    axy: int 
+    axz: int 
+    dt: Scalar 
+    dx: Scalar 
+    dy: Scalar 
+    dz: Scalar 
 
 @dataclass
 class DataMetadata():
@@ -109,6 +132,9 @@ class DataMetadata():
         if not np.isscalar(self.re):
             raise ValueError('Reynolds number must be given as a scalar.')
 
+        if not isinstance(self.problem_2d, bool):
+            raise ValueError("Flag 'problem_2d' must be boolean.")
+
         if self.problem_2d:
             if (len(self.discretisation) != 3) or (len(self.axis_index) != 3):
                 raise ValueError('Expected 2D data but received unexpected number of velocity componenets.')
@@ -126,4 +152,31 @@ class DataMetadata():
             self.axz = self.axis_index[3]
             self.dz = self.discretisation[3]
 
+    def to_named_tuple(self):
+        if self.problem_2d:
+            return _Metadata2d(
+                self.re,
+                self.discretisation,
+                self.axis_index,
+                self.axt,
+                self.axx,
+                self.axy,
+                self.dt,
+                self.dx,
+                self.dy
+            )
+        else:
+            return _Metadata3d(
+                self.re,
+                self.discretisation,
+                self.axis_index,
+                self.axt,
+                self.axx,
+                self.axy,
+                self.axz,
+                self.dt,
+                self.dx,
+                self.dy,
+                self.dz
+            )
         

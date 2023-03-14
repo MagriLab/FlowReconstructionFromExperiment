@@ -7,10 +7,7 @@ import logging
 logger = logging.getLogger(f'fr.{__name__}')
 
 from .data import DataMetadata
-
-Array = Union[np.ndarray, jax.Array]
-Scalar = Union[int,float]
-
+from ._typing import Array, Scalar, ClassDataMetadata
 
 
 
@@ -144,7 +141,7 @@ def derivative1(f:Array, h:Scalar, axis:int=0) -> Array:
 def div_field(
     ux:Array,
     uy:Array,
-    datainfo:DataMetadata,
+    datainfo:ClassDataMetadata,
     uz:Optional[Array]=None) -> Array:
     '''Calculate the diveregence of the flow given some snapshots.\n
     
@@ -165,7 +162,7 @@ def div_field(
     dudx = derivative1(ux,datainfo.dx,axis=datainfo.axx)
     dvdy = derivative1(uy,datainfo.dy,axis=datainfo.axy)
     div = dudx + dvdy
-    if not datainfo.problem_2d:
+    if uz is not None:
         dwdz = derivative1(uz,datainfo.dz,axis=datainfo.axz)
         div = div + dwdz
         logger.info('Divergence calculated for 3D flow.')
@@ -173,11 +170,10 @@ def div_field(
 
 
 def momentum_residue_field(
-    which_velocity:int,
     ux:Array,
     uy:Array,
     p:Array,
-    datainfo:DataMetadata,
+    datainfo:ClassDataMetadata,
     uz:Optional[Array] = None,
     **kwargs) -> Array:
     
@@ -185,7 +181,6 @@ def momentum_residue_field(
     Either 2D or 3D.\n
     
     Arguments:\n
-        which_velocity: either 1, 2 or 3 to calculate momentum about ux, uy or uz.\n
         ux: array of velocity in x direction.\n
         uy: array of velocity in y direction.\n
         p: array of pressure.\n
@@ -193,58 +188,64 @@ def momentum_residue_field(
         uz: array of velocity in z direction.\n
 
     return:\n
-        Momentum residue with the same shape as input flow field.
+        Momentum residue field, has shape [i,...], where i is the number of velocity and ... is the shape of the input velocity field (e.g. ux.shape).
     '''
 
-    chex.assert_equal_shape((ux,uy,p))
-
-    if (not datainfo.problem_2d) and (uz is None):
-        raise ValueError('Missing uz for 3D problem.')
-    
-    # set up which velocity 
-
-
-    ## jax.lax.switch replace if
-
-
-
-    if which_velocity == 1:
-        u = ux
-        axp = datainfo.axx
-        p_dx = datainfo.dx
-        logger.info('Momentum calculated for ux.')
-    elif which_velocity == 2:
-        u = uy
-        axp = datainfo.axy
-        p_dx = datainfo.dy
-        logger.info('Momentum calculated for uy.')
-    elif which_velocity == 3:
-        u = uz
-        axp = datainfo.axz
-        p_dx = datainfo.dz
-        logger.info('Momentum calculated for uz.')
-    else:
-        raise ValueError('Please set "which_velocity" to 1/2/3 for ux/uy/uz')
+    try:
+        chex.assert_equal_shape([ux,uy,p])
+        u = jnp.stack((ux,uy),axis=0)
+        if uz is not None:
+            chex.assert_equal_shape([ux,uz])
+            u = jnp.concatenate((u,uz[jnp.newaxis,...]),axis=0)
+    except AssertionError as err:
+        logger.error('Cannot calculate momentum residue, input shape mismatch.')
+        raise err
+    try:
+        chex.assert_rank(u,[2+u.shape[0]])
+    except AssertionError as err:
+        logger.error(f'Cannot calculate momentum, number of velocities does not match the number of dimensions.')
+        raise err
 
     
-    dudt = derivative1(u,datainfo.dt,axis=datainfo.axt)
+    step_space = datainfo.discretisation[1:]
+    axis_space = datainfo.axis_index[1:]
+    
 
-    dudx = derivative1(u,datainfo.dx,axis=datainfo.axx)
-    d2udx2 = derivative2(u,datainfo.dx,axis=datainfo.axx)
-    ux_dudx = ux*dudx
+    ## Define internal functions
+    v_derivative1 = jax.vmap(derivative1,(0,None,None),0)
+    v_derivative2 = jax.vmap(derivative2,(0,None,None),0)
+    
+    # function that applies a function to inn, and x,y,z in order
+    def _didj(de_fun,inn):
+        didj_T = de_fun(inn,datainfo.dx,datainfo.axx).reshape((-1,)+inn.shape)
+        for i in range (1,u.shape[0]):
+            didj_T = jnp.concatenate(
+                (
+                didj_T,
+                de_fun(inn,step_space[i],axis_space[i]).reshape((-1,)+inn.shape)
+                ),
+                axis=0
+            )
+        return didj_T # for de_fun = v_derivative1 and inn=u -> [j,i,t,x,y,z]
+    
 
-    dudy = derivative1(u,datainfo.dy,axis=datainfo.axy)
-    d2udy2 = derivative2(u,datainfo.dy,axis=datainfo.axy)
-    uy_dudy = uy*dudy
+    ## calculate derivatives
+    dui_dt = v_derivative1(u,datainfo.dt,datainfo.axt) # [i,t,x,y,z]
 
-    dp = derivative1(p,p_dx,axis=axp)
+    # # output convection terms
+    # (u*du/dx + v*du/dy,
+    #  u*dv/dx + v*dv/dy)
+    dui_dxj_T = _didj(v_derivative1,u)
+    ududx_i = jnp.einsum('j..., ji... -> i...', u, dui_dxj_T) # [i,t,x,y,z]
 
-    residue = dudt + ux_dudx + uy_dudy + dp - (d2udx2 + d2udy2)/datainfo.re
+    dpdx_i = _didj(derivative1,p) #[i,t,x,y,z]
 
-    if not datainfo.problem_2d:
-        dudz = derivative1(u,datainfo.dz,axis=datainfo.axz)
-        d2udz2 = derivative2(u,datainfo.dz,axis=datainfo.axz)
-        uz_dudz = uz*dudz
-        residue = residue + uz_dudz - d2udz2/datainfo.re
+    # # output second derivatives
+    # ((d2u/dx2, d2u/dy2),
+    #  (d2v/dx2, d2v/dy2))
+    d2ui_dxj2 = _didj(v_derivative2,u)
+    d2udx2_i = jnp.einsum('ji... - > i...', d2ui_dxj2) # [i,t,x,y,z]
+
+    residue = dui_dt + ududx_i + dpdx_i - (d2udx2_i/datainfo.re)
     
     return residue
