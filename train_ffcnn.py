@@ -29,7 +29,7 @@ import jax.numpy as jnp
 import optax
 import wandb
 
-WANDB = True
+WANDB = False
 train_test_split = [600,100,100]
 learning_rate = 0.0001
 mlp_layers = [] # size of the intermediate layers
@@ -87,7 +87,7 @@ datainfo = DataMetadata(
     discretisation=[dt,dx,dy],
     axis_index=[0,1,2],
     problem_2d=True
-)
+).to_named_tuple()
 
 mlp_layers.extend([3*nx*ny])
 
@@ -124,29 +124,18 @@ def loss_fn(apply_fn,params,rng,x,y,w=[0.5,0.5],**kwargs):
     pred = pred.at[sensor_slicing].set(y)
     logger.debug(f'Prediction has shape {pred.shape}')
     loss_div = losses.divergence(pred[...,0], pred[...,1], datainfo)
-    loss_mom_x = jnp.mean(derivatives.momentum_residue_field(
-                            1,
-                            ux=pred[...,0],
-                            uy=pred[...,1],
-                            p=pred[...,2],
-                            datainfo=datainfo)**2
-                            )
-    loss_mom_y = jnp.mean(derivatives.momentum_residue_field(
-                            2,
-                            ux=pred[...,0],
-                            uy=pred[...,1],
-                            p=pred[...,2],
-                            datainfo=datainfo)**2
-                            )
+    mom_field = derivatives.momentum_residue_field(
+                        ux=pred[...,0],
+                        uy=pred[...,1],
+                        p=pred[...,2],
+                        datainfo=datainfo) # [i,t,x,y]
+    loss_mom = jnp.mean(mom_field**2)*mom_field.shape[0]
 
-    # return w[0]*jax.nn.relu(loss_div+loss_mom_x+loss_mom_y-e) + w[1]*loss_sensor, (loss_div,loss_mom_x+loss_mom_y,loss_sensor)
-    # return w[0]*(loss_div+loss_mom_x+loss_mom_y)+w[1]*loss_sensor, (loss_div,loss_mom_x+loss_mom_y,loss_sensor)
-    return w[0]*(loss_div+loss_mom_x+loss_mom_y)+w[1]*loss_sensor, (loss_div,loss_mom_x+loss_mom_y,loss_sensor)
+    return w[0]*(loss_div+loss_mom)+w[1]*loss_sensor, (loss_div,loss_mom,loss_sensor)
 
 
 mdl_validation_loss = jax.jit(jax.tree_util.Partial(loss_fn,mdl.apply,TRAINING=False,w=weighting))
 
-# update = train.generate_update_fn(mdl.apply,optimizer,loss_fn) # this update weights once.
 # update = train.generate_update_fn(mdl.apply,optimizer,loss_fn) # this update weights once.
 update = train.generate_update_fn(mdl.apply,optimizer,loss_fn,kwargs_value_and_grad={'has_aux':True},kwargs_loss={'w':weighting}) # this update weights once.
 
@@ -163,10 +152,9 @@ if WANDB:
         "dropout_rate":dropout_rate,
         "l2_strength":regularisation_strength,
         "Re": re,
-        # "weight_physics":weighting[0],
-        # "weight_sensors":weighting[1],
+        "weight_physics":weighting[0],
+        "weight_sensors":weighting[1],
         "percent_observed":percent_observed,
-        # "convergence_threshold":e
         "batches":nb_batches
     }
     run = wandb.init(config=wandb_config,
@@ -288,11 +276,12 @@ with h5py.File(Path(f'./local_results/{results_dir}/results.h5'),'w') as hf:
     hf.create_dataset('x_base',data=x_base)
     hf.create_dataset('triangle_base_coords',data=triangle_base_coords)
     hf.create_dataset("data_dir",data=data_dir.absolute().as_posix())
+    hf.create_dataset("nb_batched",data=nb_batches)
 
 with h5py.File(Path(f'./local_results/{results_dir}/parameters.h5'),'w') as hf:
     hf.create_dataset("mlp_layers",data=mlp_layers)
     hf.create_dataset("cnn_channels",data=list(cnn_channels))
     hf.create_dataset("cnn_filter",data=np.array(cnn_filter))
-    hf.create_dataset("learning_rate",data=learning_rate)
+    hf.create_dataset("learning_rate",data=learning_rate)    
 
 print("Finished at: ", time.asctime(time.localtime(time.time())))

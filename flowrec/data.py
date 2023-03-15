@@ -1,9 +1,9 @@
 import numpy as np
 from typing import Optional, Union, List, Sequence, NamedTuple
-from ._typing import Scalar
 from dataclasses import dataclass, field
 
 dtype = Union[str,np.dtype]
+Scalar = Union[int, float]
 
 def data_partition(data:np.ndarray,
                     axis:int,
