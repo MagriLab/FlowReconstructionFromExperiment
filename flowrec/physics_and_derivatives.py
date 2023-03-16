@@ -33,9 +33,6 @@ def derivative2(f:Array, h:Scalar, axis:int=0) -> Array:
         raise err
 
     
-    # initialise empty array for output
-    d2fdx2 = jnp.empty_like(f)
-    
     # for slicing the input later
     slice1 = [slice(None)]*f.ndim
     slice2 = [slice(None)]*f.ndim
@@ -49,7 +46,7 @@ def derivative2(f:Array, h:Scalar, axis:int=0) -> Array:
     slice2[axis] = slice(1,-1)
     slice3[axis] = slice(None,-2)
 
-    d2fdx2 = d2fdx2.at[tuple(slice2)].set((f[tuple(slice1)] - 2*f[tuple(slice2)] + f[tuple(slice3)]) / (h**2))
+    interior = (f[tuple(slice1)] - 2*f[tuple(slice2)] + f[tuple(slice3)]) / (h**2)
 
     # left boundary (x=0)
     # second order forward difference
@@ -59,7 +56,7 @@ def derivative2(f:Array, h:Scalar, axis:int=0) -> Array:
     slice3[axis] = slice(2,3)
     slice4[axis] = slice(3,4)
 
-    d2fdx2 = d2fdx2.at[tuple(slice1)].set((2*f[tuple(slice1)] - 5*f[tuple(slice2)] + 4*f[tuple(slice3)] - f[tuple(slice4)]) / (h**2)) 
+    left = (2*f[tuple(slice1)] - 5*f[tuple(slice2)] + 4*f[tuple(slice3)] - f[tuple(slice4)]) / (h**2)
     
     # right boundary (x=L)
     # second order backward difference
@@ -69,9 +66,9 @@ def derivative2(f:Array, h:Scalar, axis:int=0) -> Array:
     slice3[axis] = slice(-3,-2)
     slice4[axis] = slice(-4,-3)
 
-    d2fdx2 = d2fdx2.at[tuple(slice1)].set((2*f[tuple(slice1)] - 5*f[tuple(slice2)] + 4*f[tuple(slice3)] - f[tuple(slice4)]) / (h**2)) 
+    right = (2*f[tuple(slice1)] - 5*f[tuple(slice2)] + 4*f[tuple(slice3)] - f[tuple(slice4)]) / (h**2)
 
-    return d2fdx2
+    return jnp.concatenate((left,interior,right),axis=axis)
 
 
 
@@ -96,9 +93,6 @@ def derivative1(f:Array, h:Scalar, axis:int=0) -> Array:
         logger.error('Not enough nodes in the selected axis for the numerical scheme used.')
         raise err
 
-    # initialise empty array for output
-    dfdx = jnp.empty_like(f)
-
     # for slicing the input later
     slice1 = [slice(None)]*f.ndim
     slice2 = [slice(None)]*f.ndim
@@ -110,9 +104,7 @@ def derivative1(f:Array, h:Scalar, axis:int=0) -> Array:
     slice2[axis] = slice(1,-1)
     slice3[axis] = slice(None,-2)
 
-    dfdx = dfdx.at[tuple(slice2)].set(
-        (f[tuple(slice1)] - f[tuple(slice3)]) / (2*h)
-    )
+    interior = (f[tuple(slice1)] - f[tuple(slice3)]) / (2*h)
 
     # left boundary, second order forward difference
     # = (-3f(x) + 4f(x+h) - f(x+2h)) / 2h
@@ -120,9 +112,7 @@ def derivative1(f:Array, h:Scalar, axis:int=0) -> Array:
     slice2[axis] = slice(1,2)
     slice3[axis] = slice(2,3)
 
-    dfdx = dfdx.at[tuple(slice1)].set(
-        (-3*f[tuple(slice1)] + 4*f[tuple(slice2)] - f[tuple(slice3)]) / (2*h)
-    )
+    left = (-3*f[tuple(slice1)] + 4*f[tuple(slice2)] - f[tuple(slice3)]) / (2*h)
 
     # right boundary, second order backward difference
     # = ( 3f(x) - 4f(x+h) + f(x+2h)) / 2h
@@ -130,11 +120,9 @@ def derivative1(f:Array, h:Scalar, axis:int=0) -> Array:
     slice2[axis] = slice(-2,-1)
     slice3[axis] = slice(-3,-2)
 
-    dfdx = dfdx.at[tuple(slice1)].set(
-        (3*f[tuple(slice1)] - 4*f[tuple(slice2)] + f[tuple(slice3)]) / (2*h)
-    )
+    right = (3*f[tuple(slice1)] - 4*f[tuple(slice2)] + f[tuple(slice3)]) / (2*h)
 
-    return dfdx
+    return jnp.concatenate((left,interior,right),axis=axis)
 
 
 
