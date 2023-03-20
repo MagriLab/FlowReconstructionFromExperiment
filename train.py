@@ -25,8 +25,8 @@ def wandb_init(wandb_config):
 
 
 def main(_):
-    data, datainfo = load_data(config)
-    observed = take_observation().measure()
+    data, datainfo = config.case.dataloader(data_config)
+    take_observation, insert_observation = config.case.observe(data_config)
     data = model.prep_data(data,config)
 
     mdl = model.make_model(config)

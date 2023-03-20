@@ -1,7 +1,10 @@
 from flowrec._typing import *
 from ml_collections.config_dict import ConfigDict
 from utils import simulation2d
+from utils.py_helper import slice_from_tuple
 from flowrec.data import data_partition
+
+import jax
 
 
 def dataloader_2dtriangle(cfg:ConfigDict) -> dict:
@@ -12,7 +15,9 @@ def dataloader_2dtriangle(cfg:ConfigDict) -> dict:
 
     (ux,uy,pp) = simulation2d.read_data(cfg.data_dir,x_base)
     x = np.stack([ux,uy,pp],axis=0)
-    x = x[cfg.slice_to_keep]# remove parts where uz is not zero
+    # remove parts where uz is not zero
+    s = slice_from_tuple(cfg.slice_to_keep)
+    x = x[s]
 
     if cfg.SHUFFLE:
         randseed = np.random.randint(1,10000)
@@ -53,25 +58,30 @@ def dataloader_2dtriangle(cfg:ConfigDict) -> dict:
         'inn_val': pb_val # [t,len]
     }
 
+    return data, datainfo
 
 
-class Measure_grid():
-    def __init__(self) -> None:
-        pass
+
+
+def observe_grid(data_config:ConfigDict):
+    s = slice_from_tuple(data_config.slice_to_keep)
+
+    def take_observation(*args) -> jax.Array:
+        out = []
+        for u in args:
+            out.append(u[s])
+
+        return (*out,)
+
+
+    def insert_observation(pred:jax.Array, observed:jax.Array) -> jax.Array:
+        return pred.at[s].set(observed)
     
-    def measured(u) -> Array:
-        # from u to observed
-        pass
-    
-    def insert_measurement(pred,observed) -> Array:
-        # prediction with parts replaced
-        pass
+    return take_observation, insert_observation
 
 
 
-class select_model():
-    def __init__(self) -> None:
-        pass
+def select_model_ffcnn(mdl_config,data_config):
 
     def prep_data(data,config) -> dict:
         # make data into suitable form
@@ -80,9 +90,14 @@ class select_model():
     def make_model(model_config) -> BaseModel:
         pass
 
+
+
+
+
+
 def make_loss_fn(**kwargs):
-    measure  = kwargs['take_observation'].measure
-    insert_measurement = kwargs['take_observation'].insert_measurement
+    measure  = kwargs['take_observation']
+    insert_measurement = kwargs['insert_observation']
     w = kwargs['w']
     def loss_fn(apply_fn,params,rng,x,y,**kwargs):
         pred = apply_fn(params, rng, x, **kwargs)
