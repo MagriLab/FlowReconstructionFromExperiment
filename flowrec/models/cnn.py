@@ -22,7 +22,7 @@ class MLPWithCNN(hk.Module):
                 mlp_layers:Sequence[int],
                 output_shape:Sequence[int],
                 cnn_channels:Sequence[int],
-                cnn_filters:List[tuple],
+                cnn_filters:Sequence[tuple],
                 activation:Callable[[jnp.ndarray],jnp.ndarray] = jax.nn.tanh,
                 w_init:Optional[hk.initializers.Initializer]=hk.initializers.VarianceScaling(1.0,"fan_avg","uniform"),
                 dropout_rate:Optional[float] = None,
@@ -41,8 +41,9 @@ class MLPWithCNN(hk.Module):
         self.act = activation
         self.dropout_rate = dropout_rate
 
-        if not isinstance(cnn_filters,list):
-            raise ValueError('cnn_filters must be given in list of tuples.')
+        if not isinstance(cnn_filters[0],tuple):
+            raise ValueError(f'cnn_filters must be given in a sequence of tuples. Currently received 1st filter is {cnn_filters[0]}')
+            
         if np.prod(output_shape) != mlp_layers[-1]:
             logger.error(f'Cannot reshape array with {mlp_layers[-1]} elements to shape {output_shape}.')
             raise ValueError('Cannot reshape the output of the MLP to the required output shape.')
