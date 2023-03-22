@@ -1,7 +1,9 @@
 from ml_collections import config_dict
 from ml_collections.config_dict import placeholder
 
-def get_config(cfgstr:str = 'ffcnn'):
+def get_config(cfgstr:str = 'ffcnn,physicswithdata'):
+
+    _mdl, _loss_fn = cfgstr.split(',')
 
     cfg = config_dict.ConfigDict()
 
@@ -20,18 +22,25 @@ def get_config(cfgstr:str = 'ffcnn'):
 
     cfg.config.mdl = cfgstr
     cfg.config.nb_batches = placeholder(int)
-    cfg.config.weight_physics = placeholder(float)
-    cfg.config.weight_sensors = placeholder(float)
     cfg.config.re = placeholder(float)
     cfg.config.dropout_rate = placeholder(float)
     cfg.config.regularisation_trength = placeholder(float)
+    cfg.config.learning_rate = placeholder(float)
     cfg.config.percent_observed = placeholder(float)
 
 
-    if cfgstr == 'ffcnn':
+    if _mdl == 'ffcnn':
         cfg.config.mlp_layers = placeholder(tuple)
         cfg.config.cnn_channels = placeholder(tuple)
         cfg.config.cnn_filter = placeholder(tuple)
+    else:
+        raise ValueError('Invalid model option for wandb configuration.')
+
+    if _loss_fn == 'physicswithdata':
+        cfg.config.weight_physics = placeholder(float)
+        cfg.config.weight_sensors = placeholder(float)
+    else:
+        raise ValueError('Invalid loss option for wandb configuration.')
 
 
     return cfg

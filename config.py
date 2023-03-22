@@ -13,10 +13,14 @@ def get_basic_config() -> config_dict.ConfigDict:
     ## Case
     cfg.case = config_dict.ConfigDict()
 
-    cfg.case.dataloader = getattr(train_options,'dataloader_2dtriangle')
-    cfg.case.observe = getattr(train_options, 'observe_grid')
-    cfg.case.select_model = getattr(train_options, 'select_model_ffcnn')
-    cfg.case.loss_fn = getattr(train_options, 'loss_fn_physicswithdata')
+    # cfg.case.dataloader = getattr(train_options,'dataloader_2dtriangle')
+    # cfg.case.observe = getattr(train_options, 'observe_grid')
+    # cfg.case.select_model = getattr(train_options, 'select_model_ffcnn')
+    # cfg.case.loss_fn = getattr(train_options, 'loss_fn_physicswithdata')
+    cfg.case.dataloader = placeholder(Callable)
+    cfg.case.observe = placeholder(Callable)
+    cfg.case.select_model = placeholder(Callable)
+    cfg.case.loss_fn = placeholder(Callable)
 
 
     ## Data
@@ -26,6 +30,7 @@ def get_basic_config() -> config_dict.ConfigDict:
     cfg.data_config.shuffle = False
     cfg.data_config.randseed = placeholder(int)
     cfg.data_config.remove_mean = False
+    cfg.data_config.train_test_split = [600,100,100]
     cfg.data_config.re = 100
     cfg.data_config.dt = 0.125
     cfg.data_config.dx = 12/512
@@ -42,10 +47,9 @@ def get_basic_config() -> config_dict.ConfigDict:
     ## Training
     cfg.train_config = config_dict.ConfigDict()
     
-    cfg.train_config.nb_batches = placeholder(int)
-    cfg.train_config.weight_physics = 0.9
-    cfg.train_config.weight_sensors = 0.1
+    cfg.train_config.nb_batches = 10
     cfg.train_config.learning_rate = 3e-4
+    cfg.train_config.regularisation_strength = 0.0
     cfg.train_config.epochs = 20000
 
 
@@ -66,7 +70,7 @@ def get_config(cfgstr:str = None):
     if cfgstr:
         user = dict([x.split('@') for x in cfgstr.split(',')])
     else:
-        user = None
+        user = {}
         logging.warning('No training case is selected, proceeds with the basic configuration.\n Are you sure this is not a mistake?')
 
     # Set up default options
@@ -82,17 +86,19 @@ def get_config(cfgstr:str = None):
     ## get functions from options
     if 'dataloader' in user:
         _dataloader = user['dataloader']
-        cfg.case.dataloader = getattr(train_options, f'dataloader_{_dataloader}')
     if 'observe' in user:
         _observe = user['observe']
-        cfg.case.observe = getattr(train_options, f'observe_{_observe}')
     if 'select_model' in user:
         _select_model = user['select_model']
-        cfg.case.select_model = getattr(train_options, f'select_model_{_select_model}')
     if 'loss_fn' in user:
         _loss_fn = user['loss_fn']
-        cfg.case.loss_fn = getattr(train_options, f'loss_fn_{_loss_fn}')
 
+    cfg.case.update({
+        'dataloader': getattr(train_options, f'dataloader_{_dataloader}'),
+        'observe': getattr(train_options, f'observe_{_observe}'),
+        'select_model': getattr(train_options, f'select_model_{_select_model}'),
+        'loss_fn': getattr(train_options, f'loss_fn_{_loss_fn}'),
+    })
 
 
     ## update config dictionary
@@ -114,14 +120,20 @@ def get_config(cfgstr:str = None):
 
     if _select_model == 'ffcnn':
         cfg.model_config.update({
-            'mlp_layers': ()
+            'mlp_layers': (96750,),
+            'output_shape': (250,129,3),
+            'cnn_channels': (32,16,3),
+            'cnn_filters': ((3,3),),
         })
     else:
         raise ValueError('Invalid select_model option.')
 
 
     if _loss_fn == 'physicswithdata':
-        pass
+        cfg.train_config.update({
+            'weight_physics': 1.0,
+            'weight_sensors': 0.0
+        })
     else:
         raise ValueError('Invalid loss_fn option.')
 

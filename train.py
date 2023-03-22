@@ -24,6 +24,7 @@ from flowrec._typing import *
 from flowrec.training_and_states import save_trainingstate, TrainingState, generate_update_fn
 from utils.py_helper import update_matching_keys
 
+print(__name__)
 
 FLAGS = flags.FLAGS
 
@@ -36,7 +37,8 @@ flags.DEFINE_bool('wandb',False,'Use --wandb to log the experiment to wandb.')
 flags.DEFINE_multi_string('debug',None,'Run these scripts in debug mode.')
 flags.DEFINE_integer('gpu_id',0,'Which gpu use.')
 flags.DEFINE_float('gpu_mem',0.3,'Fraction of gpu memory to use.')
-flags.DEFINE_string('result_dir','./local_results/','Path to a directory where the result will be saved.')
+# flags.DEFINE_string('result_dir','./local_results/','Path to a directory where the result will be saved.')
+flags.DEFINE_string('result_dir','./','Path to a directory where the result will be saved.')
 flags.DEFINE_string('result_folder_name',str(time_stamp),'Name of the folder where all files from this run will save to. Default the time stamp.')
 flags.DEFINE_bool('chatty',True,'Print information on where the program is at now.')
 
@@ -201,13 +203,13 @@ def main(_):
     percent_observed = 100*(observed_train[0,...,0].size/data['u_train'][0,...,0].size)
 
     # ==================== set up model ==============================
-    rng = jax.random.PRNGKey(time_stamp)
+    rng = jax.random.PRNGKey(int(time_stamp))
     optimizer = optax.adamw(
         learning_rate=traincfg.learning_rate,
         weight_decay=traincfg.regularisation_strength
     )
 
-    prep_data, make_model = cfg.case.select_model(datacfg,mdlcfg,traincfg)
+    prep_data, make_model = cfg.case.select_model(datacfg = datacfg, mdlcfg = mdlcfg, traincfg = traincfg)
     logger.info('Selected a model.')
     
     if FLAGS.wandb:
@@ -216,8 +218,10 @@ def main(_):
         update_matching_keys(wandbcfg.config, mdlcfg)
         update_matching_keys(wandbcfg.config, traincfg)
         update_matching_keys(wandbcfg.config, {'percent_observed':percent_observed})
-        run = wandb_init(wandbcfg)
+        # run = wandb_init(wandbcfg)
         logger.info('Successfully initalised werights and biases.')
+    else:
+        run = None
 
 
     mdl = make_model(mdlcfg)
@@ -250,7 +254,7 @@ def main(_):
 
     data = prep_data(data)
     x_batched = batching(traincfg.nb_batches, data['inn_train'])
-    y_batched = batching(traincfg.nb_batched, data['y_train'])
+    y_batched = batching(traincfg.nb_batches, data['y_train'])
     logger.info('Prepared data as required by the model selected and batched the data.')
 
 

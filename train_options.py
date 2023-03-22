@@ -4,7 +4,8 @@ from ml_collections.config_dict import ConfigDict
 from utils import simulation2d
 from utils.py_helper import slice_from_tuple
 from flowrec.data import data_partition
-from flowrec import models, losses
+from flowrec import losses
+from flowrec.models import cnn, feedforward
 from flowrec import physics_and_derivatives as derivatives
 
 import jax
@@ -114,10 +115,10 @@ def select_model_ffcnn(**kwargs):
 
 
     def make_model(cfg:ConfigDict) -> BaseModel:
-        mdl = models.cnn.Model(
-            list(cfg.mlp_layers),
+        mdl = cnn.Model(
+            mlp_layers = cfg.mlp_layers,
             output_shape = cfg.output_shape,
-            cnn_channels = list(cfg.cnn_channels),
+            cnn_channels = cfg.cnn_channels,
             cnn_filters = cfg.cnn_filters,
             dropout_rate = cfg.dropout_rate
         )
