@@ -1,13 +1,22 @@
 from flowrec._typing import *
 from ml_collections.config_dict import ConfigDict
+
 from utils import simulation2d
 from utils.py_helper import slice_from_tuple
 from flowrec.data import data_partition
+from flowrec import models, losses
+from flowrec import physics_and_derivatives as derivatives
 
 import jax
+import jax.numpy as jnp
 
+from typing import Callable, Sequence
+from haiku import Params
+
+# ====================== Dataloader ==========================
 
 def dataloader_2dtriangle(cfg:ConfigDict) -> dict:
+    '''Load data base on data_config.'''
     # u_train (tensor), u_val (tensor), inn_train (vector), inn_val (vector)
     # datainfo
     x_base = 132
@@ -19,13 +28,14 @@ def dataloader_2dtriangle(cfg:ConfigDict) -> dict:
     s = slice_from_tuple(cfg.slice_to_keep)
     x = x[s]
 
-    if cfg.SHUFFLE:
+    if cfg.shuffle:
         randseed = np.random.randint(1,10000)
+        cfg.update({'randseed':randseed})
     else:
         randseed = None
 
     
-    [x_train,x_val,_], _ = data_partition(x,1,cfg.train_test_split,REMOVE_MEAN=cfg.REMOVE_MEAN,randseed=randseed,SHUFFLE=cfg.SHUFFLE) # Do not shuffle, do not remove mean for training with physics informed loss
+    [x_train,x_val,_], _ = data_partition(x,1,cfg.train_test_split,REMOVE_MEAN=cfg.remove_mean,randseed=randseed,SHUFFLE=cfg.shuffle) # Do not shuffle, do not remove mean for training with physics informed loss
 
     [ux_train,uy_train,pp_train] = np.squeeze(np.split(x_train,3,axis=0))
     [ux_val,uy_val,pp_val] = np.squeeze(np.split(x_val,3,axis=0))
@@ -49,7 +59,6 @@ def dataloader_2dtriangle(cfg:ConfigDict) -> dict:
     u_train = np.stack((ux_train,uy_train,pp_train),axis=-1)
     u_val = np.stack((ux_val,uy_val,pp_val),axis=-1)
 
-    cfg.update({'randseed':randseed})
 
     data = {
         'u_train': u_train, # [t,x,y,3]
@@ -61,52 +70,72 @@ def dataloader_2dtriangle(cfg:ConfigDict) -> dict:
     return data, datainfo
 
 
-
+# ======================= Sensor placement ========================
 
 def observe_grid(data_config:ConfigDict):
     s = slice_from_tuple(data_config.slice_to_keep)
 
-    def take_observation(*args) -> jax.Array:
-        out = []
-        for u in args:
-            out.append(u[s])
-
-        return (*out,)
+    def take_observation(u:jax.Array,**kwargs) -> jax.Array:
+        return u[s]
 
 
-    def insert_observation(pred:jax.Array, observed:jax.Array) -> jax.Array:
+    def insert_observation(pred:jax.Array, observed:jax.Array, **kwargs) -> jax.Array:
         return pred.at[s].set(observed)
     
     return take_observation, insert_observation
 
 
+# ======================= Model =============================
 
-def select_model_ffcnn(mdl_config,data_config):
+def select_model_ffcnn(**kwargs):
 
-    def prep_data(data,config) -> dict:
+    def prep_data(data:dict) -> dict:
         # make data into suitable form
-        pass
-
-    def make_model(model_config) -> BaseModel:
-        pass
+        # data.update({'u_train':new_u_train,'inn_train':new_inn_train})
+        return data
 
 
+    def make_model(cfg:ConfigDict) -> BaseModel:
+        mdl = models.cnn.Model(
+            list(cfg.mlp_layers),
+            output_shape = cfg.output_shape,
+            cnn_channels = list(cfg.cnn_channels),
+            cnn_filters = cfg.cnn_filters,
+            dropout_rate = cfg.dropout_rate
+        )
+        return mdl
+
+    return prep_data, make_model
 
 
 
 
-def make_loss_fn(**kwargs):
-    measure  = kwargs['take_observation']
-    insert_measurement = kwargs['insert_observation']
-    w = kwargs['w']
-    def loss_fn(apply_fn,params,rng,x,y,**kwargs):
+# ======================= Loss Function ===================
+
+def loss_fn_physicswithdata(cfg,**kwargs):
+    take_observation: Callable = kwargs['take_observation']
+    insert_observation: Callable = kwargs['insert_observation']
+    
+    datainfo = kwargs['datainfo']
+
+    wp = cfg.train_config.weight_physics
+    ws = cfg.train_config.weight_sensors
+
+    def loss_fn(apply_fn:Callable ,params:Params, rng:jax.random.PRNGKey, x:Sequence[jax.Array], y:Sequence[jax.Array],**kwargs):
         pred = apply_fn(params, rng, x, **kwargs)
-        pred_measure = measure(pred)
-        loss_sensor = some_loss(pred_measure, y)
+        pred_observed = take_observation(pred)
+        loss_sensor = losses.mse(pred_observed, y)
 
-        pred_new = insert_measurement(pred,y)
+        pred_new = insert_observation(pred,y)
+        loss_div = losses.divergence(pred_new[...,0], pred_new[...,1], datainfo)
+        mom_field = derivatives.momentum_residue_field(
+                            ux=pred_new[...,0],
+                            uy=pred_new[...,1],
+                            p=pred_new[...,2],
+                            datainfo=datainfo) # [i,t,x,y]
+        loss_mom = jnp.mean(mom_field**2)*mom_field.shape[0]
         
-        # calculate mode loss
-        return w[0]*loss_sensor 
+        
+        return wp*(loss_div+loss_mom)+ws*loss_sensor, (loss_div,loss_mom,loss_sensor)
     
     return loss_fn

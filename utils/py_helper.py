@@ -1,6 +1,7 @@
 import logging
 logger = logging.getLogger(f'fr.{__name__}')
-from typing import Tuple
+from typing import Tuple, Union
+from ml_collections.config_dict import ConfigDict
 
 def slice_from_tuple(tu:Tuple) -> Tuple:
     '''Create a tuple of python slices from a tuple.\n
@@ -24,3 +25,14 @@ def slice_from_tuple(tu:Tuple) -> Tuple:
     logger.debug(f'Created index {s}.')
     
     return s
+
+
+def update_matching_keys(
+        dict_to_update:Union[dict,ConfigDict], 
+        dict_with_values:Union[dict,ConfigDict]) -> dict:
+    '''Update a dictionary in place with values from another dictionary where there are matching keys.'''
+
+    for key in dict_with_values.keys():
+        if key in dict_to_update:
+            logger.debug(f'{key} updated from {dict_to_update[key]} to {dict_with_values[key]}')
+            dict_to_update.update({key:dict_with_values[key]}) 
