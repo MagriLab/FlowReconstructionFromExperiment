@@ -13,6 +13,25 @@ import jax.numpy as jnp
 from typing import Callable, Sequence
 from haiku import Params
 
+
+def _dataloader_opt(data_config:ConfigDict) -> dict:
+    '''Example dataloader function.\n
+    
+    Load data and returns a dictionary with the following arrays. Pass 'dataloader@opt' to the config to use this dataloader in training. \n
+
+    u_train: [t,x,y,i] or [t,x,y,z,i]. i is the number of variables. The last dimension must be ordered u,v,p or u,v,w,p.\n
+    u_val: same rules as u_train.\n
+    inn_train: input vector [t,j], j is the number of inputs and t is the number of snapshots.\n
+    inn_val: same rules as inn_train
+    '''
+    pass
+
+
+
+
+
+
+
 # ====================== Dataloader ==========================
 
 def dataloader_2dtriangle(cfg:ConfigDict) -> dict:
@@ -43,8 +62,6 @@ def dataloader_2dtriangle(cfg:ConfigDict) -> dict:
     pb_train = simulation2d.take_measurement_base(pp_train,ly=triangle_base_coords,centrex=0)
     pb_val = simulation2d.take_measurement_base(pp_val,ly=triangle_base_coords,centrex=0)
 
-    (nt,nx,ny) = ux_train.shape
-
     # information about the grid
     datainfo = DataMetadata(
         re = cfg.re,
@@ -73,7 +90,8 @@ def dataloader_2dtriangle(cfg:ConfigDict) -> dict:
 # ======================= Sensor placement ========================
 
 def observe_grid(data_config:ConfigDict):
-    s = slice_from_tuple(data_config.slice_to_keep)
+    s_space = slice_from_tuple(data_config.slice_grid_sensors)
+    s = (np.s_[:],) + s_space + (np.s_[:],)
 
     def take_observation(u:jax.Array,**kwargs) -> jax.Array:
         return u[s]
@@ -139,3 +157,10 @@ def loss_fn_physicswithdata(cfg,**kwargs):
         return wp*(loss_div+loss_mom)+ws*loss_sensor, (loss_div,loss_mom,loss_sensor)
     
     return loss_fn
+
+
+
+
+def _dummy():
+    print('a fake function.')
+    return 1

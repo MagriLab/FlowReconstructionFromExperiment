@@ -261,7 +261,7 @@ def main(_):
         x_val=data['inn_val'],
         y_val=data['y_val'],
         state=state,
-        epochs=traincfg.epoches,
+        epochs=traincfg.epochs,
         rng=rng,
         n_batch=traincfg.nb_batches,
         update=update,
