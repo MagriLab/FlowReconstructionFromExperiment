@@ -1,7 +1,6 @@
 from ml_collections import config_dict
 from ml_collections.config_dict import placeholder
-from typing import Callable
-from absl import logging
+import warnings
 import train_options
 
 def _undefined_function():
@@ -69,7 +68,7 @@ def get_config(cfgstr:str = None):
         user = dict([x.split('@') for x in cfgstr.split(',')])
     else:
         user = {}
-        logging.warning('No training case is selected, proceeds with the basic configuration.\n Are you sure this is not a mistake?')
+        warnings.warn('No training case is selected, proceeds with the basic configuration.\n Are you sure this is not a mistake?')
 
     # Set up default options
     _dataloader = '2dtriangle'

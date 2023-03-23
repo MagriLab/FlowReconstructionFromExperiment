@@ -11,22 +11,22 @@ import jax
 import jax.numpy as jnp
 import optax
 
+import wandb
+from flowrec._typing import *
+from flowrec.training_and_states import save_trainingstate, TrainingState, generate_update_fn
+from utils.py_helper import update_matching_keys
+from utils.system import temporary_fix_absl_logging
+
 import logging
-logger = logging.getLogger(str(__name__))
+logger = logging.getLogger(f'fr.{__name__}')
 logger.propagate = False
 _handler = logging.StreamHandler(sys.stderr)
 _handler.setFormatter(logging.Formatter('%(name)s.%(funcName)s:%(lineno)d [%(levelname)s] %(message)s'))
 logger.addHandler(_handler)
 logger.setLevel(logging.WARNING)
 
+temporary_fix_absl_logging()
 
-# logging.getLogger('fr.flowrec').setLevel(logging.INFO)
-# print(logging.getLogger('fr.flowrec').level)
-
-import wandb
-from flowrec._typing import *
-from flowrec.training_and_states import save_trainingstate, TrainingState, generate_update_fn
-from utils.py_helper import update_matching_keys
 
 
 FLAGS = flags.FLAGS
@@ -37,11 +37,11 @@ time_stamp = time.strftime("%y%m%d%H%M%S",time.localtime(time.time()))
 
 # ====================== system config ============================
 flags.DEFINE_bool('wandb',False,'Use --wandb to log the experiment to wandb.')
+flags.DEFINE_bool('wandb_sweep',False,'Run script in wandb sweep mode.')
 flags.DEFINE_multi_string('debug',None,'Run these scripts in debug mode.')
 flags.DEFINE_integer('gpu_id',0,'Which gpu use.')
 flags.DEFINE_float('gpu_mem',0.3,'Fraction of gpu memory to use.')
-# flags.DEFINE_string('result_dir','./local_results/','Path to a directory where the result will be saved.')
-flags.DEFINE_string('result_dir','./','Path to a directory where the result will be saved.')
+flags.DEFINE_string('result_dir','./local_results/','Path to a directory where the result will be saved.')
 flags.DEFINE_string('result_folder_name',str(time_stamp),'Name of the folder where all files from this run will save to. Default the time stamp.')
 flags.DEFINE_bool('chatty',False,'Print information on where the program is at now.')
 
@@ -102,8 +102,10 @@ def fit(
                 loss_epoch_div.append(l_div)
                 loss_epoch_mom.append(l_mom)
                 loss_epoch_s.append(l_s)
-            logger.debug(f'batch size is {x_train_batched[b].shape[0]}')
-            logger.debug(f'batch: {b}, loss: {l:.7f}.')
+            
+            if b == 0 or b == n_batch-1:
+                logger.debug(f'batch {b} has size {x_train_batched[b].shape[0]}, loss: {l:.7f}.')
+
         loss_train.append(np.mean(loss_epoch))
         loss_div.append(np.mean(loss_epoch_div))
         loss_momentum.append(np.mean(loss_epoch_mom))
@@ -115,7 +117,8 @@ def fit(
 
 
         if FLAGS.wandb:
-            wandb_run.log({'loss':loss_train[-1], 'loss_val':l_val, 'loss_div':loss_div[-1], 'loss_momentum':loss_momentum[-1], 'loss_sensors':loss_sensors[-1]})
+            logger.debug('Logging with wandb.')
+            wandb_run.log({'loss':loss_train[-1], 'loss_val':float(l_val), 'loss_div':loss_div[-1], 'loss_momentum':loss_momentum[-1], 'loss_sensors':loss_sensors[-1]})
 
         if l_val < min_loss:
             best_state = state
@@ -152,7 +155,7 @@ def save_results(config:config_dict.ConfigDict):
 def wandb_init(wandbcfg:config_dict.ConfigDict):
     run = wandb.init(**wandbcfg)
 
-    if wandbcfg.config.weight_physcis > 0.0:
+    if wandbcfg.config.weight_physics > 0.0:
         run.tags = run.tags + ('PhysicsInformed',)
     if wandbcfg.config.weight_sensors == 0:
         run.tags = run.tags + ('PhysicsOnly',)
@@ -183,6 +186,9 @@ def main(_):
         debugger(FLAGS.debug)
         logger.info(f'Running these scripts in debug mode: {FLAGS.debug}.')
     
+    if FLAGS.wandb_sweep:
+        FLAGS.wandb = True
+        FLAGS.chatty = False
 
     # =================== pre-processing ================================
     
@@ -259,6 +265,7 @@ def main(_):
     x_batched = batching(traincfg.nb_batches, data['inn_train'])
     y_batched = batching(traincfg.nb_batches, data['y_train'])
     logger.info('Prepared data as required by the model selected and batched the data.')
+    logger.debug(f'First batch of input data has shape {x_batched[0].shape}.')
 
 
     logger.info('Starting training now...')
