@@ -12,19 +12,22 @@ import jax.numpy as jnp
 import optax
 
 import logging
-logger = logging.getLogger(f'fr.{__name__}')
+logger = logging.getLogger(str(__name__))
 logger.propagate = False
 _handler = logging.StreamHandler(sys.stderr)
 _handler.setFormatter(logging.Formatter('%(name)s.%(funcName)s:%(lineno)d [%(levelname)s] %(message)s'))
 logger.addHandler(_handler)
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.WARNING)
+
+
+# logging.getLogger('fr.flowrec').setLevel(logging.INFO)
+# print(logging.getLogger('fr.flowrec').level)
 
 import wandb
 from flowrec._typing import *
 from flowrec.training_and_states import save_trainingstate, TrainingState, generate_update_fn
 from utils.py_helper import update_matching_keys
 
-print(__name__)
 
 FLAGS = flags.FLAGS
 
@@ -40,7 +43,7 @@ flags.DEFINE_float('gpu_mem',0.3,'Fraction of gpu memory to use.')
 # flags.DEFINE_string('result_dir','./local_results/','Path to a directory where the result will be saved.')
 flags.DEFINE_string('result_dir','./','Path to a directory where the result will be saved.')
 flags.DEFINE_string('result_folder_name',str(time_stamp),'Name of the folder where all files from this run will save to. Default the time stamp.')
-flags.DEFINE_bool('chatty',True,'Print information on where the program is at now.')
+flags.DEFINE_bool('chatty',False,'Print information on where the program is at now.')
 
 
 # ======================= test config ===============================
@@ -218,7 +221,7 @@ def main(_):
         update_matching_keys(wandbcfg.config, mdlcfg)
         update_matching_keys(wandbcfg.config, traincfg)
         update_matching_keys(wandbcfg.config, {'percent_observed':percent_observed})
-        # run = wandb_init(wandbcfg)
+        run = wandb_init(wandbcfg)
         logger.info('Successfully initalised werights and biases.')
     else:
         run = None
