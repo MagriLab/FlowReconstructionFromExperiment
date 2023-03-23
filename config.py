@@ -4,6 +4,8 @@ from typing import Callable
 from absl import logging
 import train_options
 
+def _undefined_function():
+    pass
 
 
 def get_basic_config() -> config_dict.ConfigDict:
@@ -13,14 +15,10 @@ def get_basic_config() -> config_dict.ConfigDict:
     ## Case
     cfg.case = config_dict.ConfigDict()
 
-    # cfg.case.dataloader = getattr(train_options,'dataloader_2dtriangle')
-    # cfg.case.observe = getattr(train_options, 'observe_grid')
-    # cfg.case.select_model = getattr(train_options, 'select_model_ffcnn')
-    # cfg.case.loss_fn = getattr(train_options, 'loss_fn_physicswithdata')
-    cfg.case.dataloader = placeholder(Callable)
-    cfg.case.observe = placeholder(Callable)
-    cfg.case.select_model = placeholder(Callable)
-    cfg.case.loss_fn = placeholder(Callable)
+    cfg.case.dataloader = _undefined_function
+    cfg.case.observe = _undefined_function
+    cfg.case.select_model = _undefined_function
+    cfg.case.loss_fn = _undefined_function
 
 
     ## Data
