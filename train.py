@@ -17,6 +17,7 @@ from flowrec._typing import *
 from flowrec.training_and_states import save_trainingstate, TrainingState, generate_update_fn
 from utils.py_helper import update_matching_keys
 from utils.system import temporary_fix_absl_logging
+from sweep_process_config import sweep_preprocess_cfg
 
 import logging
 logger = logging.getLogger(f'fr.{__name__}')
@@ -236,7 +237,7 @@ def main(_):
         logger.info('Successfully initalised werights and biases.')
 
         if FLAGS.wandb_sweep:
-            sweep_params = wandb.config
+            sweep_params = sweep_preprocess_cfg(wandb.config)
             update_matching_keys(datacfg, sweep_params)
             update_matching_keys(mdlcfg, sweep_params)
             update_matching_keys(traincfg, sweep_params)
