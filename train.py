@@ -52,7 +52,9 @@ _WANDB = config_flags.DEFINE_config_file('wandbcfg','config_wandb.py','path to w
 
 
 
-def debugger(loggers):
+def debugger(loggers:Sequence[str]):
+    '''Set the logging level to DEBUG for the list of loggers. 
+    The input is a list of the names of the loggers.'''
     for l in loggers:
         logging.getLogger(f'fr.{l}').setLevel(logging.DEBUG)
 
@@ -153,7 +155,8 @@ def save_results(config:config_dict.ConfigDict):
 
 
 def wandb_init(wandbcfg:config_dict.ConfigDict):
-    run = wandb.init(**wandbcfg)
+    cfg_dict = wandbcfg.to_dict()
+    run = wandb.init(**cfg_dict)
 
     if wandbcfg.config.weight_physics > 0.0:
         run.tags = run.tags + ('PhysicsInformed',)
@@ -188,7 +191,6 @@ def main(_):
     
     if FLAGS.wandb_sweep:
         FLAGS.wandb = True
-        FLAGS.chatty = False
 
     # =================== pre-processing ================================
     
@@ -221,6 +223,7 @@ def main(_):
     prep_data, make_model = cfg.case.select_model(datacfg = datacfg, mdlcfg = mdlcfg, traincfg = traincfg)
     logger.info('Selected a model.')
     
+    ## Initialise wandb
     if FLAGS.wandb:
         logger.info('Updating wandb config with experiment config')
         update_matching_keys(wandbcfg.config, datacfg)
@@ -228,7 +231,17 @@ def main(_):
         update_matching_keys(wandbcfg.config, traincfg)
         update_matching_keys(wandbcfg.config, {'percent_observed':percent_observed})
         run = wandb_init(wandbcfg)
+        # wandb.config.update({'percent_observed':percent_observed})
         logger.info('Successfully initalised werights and biases.')
+
+        if FLAGS.wandb_sweep:
+            sweep_params = wandb.config
+            update_matching_keys(datacfg, sweep_params)
+            update_matching_keys(mdlcfg, sweep_params)
+            update_matching_keys(traincfg, sweep_params)
+            logger.info('Running in sweep mode, replace config parameters with sweep parameters.')
+            logger.debug(f'Running with {sweep_params}')
+
     else:
         run = None
 
@@ -284,13 +297,40 @@ def main(_):
     )
 
 
-    if FLAGS.wandb:
-        run.finish()
     logger.info('Finished training.')
 
     logger.info(f'writing configuration and results to {FLAGS.result_folder_name}')
-    save_config(cfg)
     save_results(cfg)
+    save_config(cfg)
+
+
+    if FLAGS.wandb_sweep:
+        api = wandb.Api()
+        tmp_dir = Path(FLAGS.result_dir,FLAGS.result_folder_name)
+
+        best_run = api.sweep(f'{run.entity}/{run.project}/{run.sweep_id}').best_run()
+        
+        try: 
+            if loss_train[-1] < best_run.summary['loss']:
+                logger.info('Best model so far, saving weights and configurations.')
+                artifact = wandb.Artifact(name=f'sweep_weights_{run.sweep_id}', type='model') 
+                artifact.add_dir(tmp_dir)
+                run.log_artifact(artifact)
+                run.finish_artifact(artifact)
+        except KeyError as e: # probably the first run of the sweep
+            logger.warning(e)
+            artifact = wandb.Artifact(name=f'sweep_weights_{run.sweep_id}', type='model') 
+            artifact.add_dir(tmp_dir)
+            run.log_artifact(artifact)
+            run.finish_artifact(artifact)
+            
+        for child in tmp_dir.iterdir(): 
+            child.unlink()
+        tmp_dir.rmdir()
+    
+    
+    if FLAGS.wandb:
+        run.finish()
 
 
 

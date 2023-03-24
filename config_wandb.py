@@ -9,7 +9,9 @@ def get_config(cfgstr:str = 'ffcnn,physicswithdata'):
 
     cfg.mode = 'online'
     cfg.project = 'FlowReconstruction'
+    cfg.entity = placeholder(str)
     cfg.group = placeholder(str)
+    cfg.job_type = placeholder(str)
     cfg.name = placeholder(str)
     cfg.tags = placeholder(tuple)
     cfg.save_code = placeholder(bool)
@@ -20,13 +22,16 @@ def get_config(cfgstr:str = 'ffcnn,physicswithdata'):
     ## config to pass to wandbinit.config
     cfg.config = config_dict.ConfigDict()
 
-    cfg.config.mdl = cfgstr
     cfg.config.nb_batches = placeholder(int)
     cfg.config.re = placeholder(float)
     cfg.config.dropout_rate = placeholder(float)
     cfg.config.regularisation_trength = placeholder(float)
     cfg.config.learning_rate = placeholder(float)
-    cfg.config.percent_observed = placeholder(float)
+
+    cfg.config._case_dataloader = placeholder(str)
+    cfg.config._case_observe = placeholder(str)
+    cfg.config._case_select_model = placeholder(str)
+    cfg.config._case_loss_fn = placeholder(str)
 
 
     if _mdl == 'ffcnn':

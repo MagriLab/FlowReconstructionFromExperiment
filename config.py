@@ -18,6 +18,10 @@ def get_basic_config() -> config_dict.ConfigDict:
     cfg.case.observe = _undefined_function
     cfg.case.select_model = _undefined_function
     cfg.case.loss_fn = _undefined_function
+    cfg.case._case_dataloader = placeholder(str)
+    cfg.case._case_observe = placeholder(str)
+    cfg.case._case_select_model = placeholder(str)
+    cfg.case._case_loss_fn = placeholder(str)
 
 
     ## Data
@@ -95,6 +99,10 @@ def get_config(cfgstr:str = None):
         'observe': getattr(train_options, f'observe_{_observe}'),
         'select_model': getattr(train_options, f'select_model_{_select_model}'),
         'loss_fn': getattr(train_options, f'loss_fn_{_loss_fn}'),
+        '_case_dataloader': _dataloader,
+        '_case_observe': _observe,
+        '_case_select_model': _select_model,
+        '_case_loss_fn': _loss_fn
     })
 
 
