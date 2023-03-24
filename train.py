@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 from typing import Sequence, Callable
 import time
+import h5py
 
 import numpy as np
 import jax
@@ -71,6 +72,7 @@ def fit(
     n_batch:int,
     update:Callable,
     mdl_validation_loss:Callable,
+    tmp_dir:Path,
     wandb_run
 ):
     '''Train a network'''
@@ -125,7 +127,7 @@ def fit(
         if l_val < min_loss:
             best_state = state
             min_loss = l_val
-            save_trainingstate(Path(FLAGS.result_dir,FLAGS.result_folder_name),state,'state')
+            save_trainingstate(tmp_dir,state,'state')
 
         if i%200 == 0:
             print(f'Epoch: {i}, loss: {loss_train[-1]:.7f}, validation_loss: {l_val:.7f}', flush=True)
@@ -141,16 +143,13 @@ def batching(nb_batches:int, data:jax.Array):
 
 
 
-def save_config(config:config_dict.ConfigDict):
+def save_config(config:config_dict.ConfigDict, tmp_dir:Path):
     '''Save config to file config.yml. Load with yaml.unsafe_load(file)'''
-    fname = Path(FLAGS.result_dir,FLAGS.result_folder_name,'config.yml')
+    fname = Path(tmp_dir,'config.yml')
     with open(fname,'x') as f:
         config.to_yaml(stream=f, default_flow_style=False)
 
 
-
-def save_results(config:config_dict.ConfigDict):
-    pass
 
 
 
@@ -181,6 +180,8 @@ def main(_):
     # ===================== setting up system ==========================
     os.environ["CUDA_VISIBLE_DEVICES"] = str(FLAGS.gpu_id)
     os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = str(FLAGS.gpu_mem)
+
+    tmp_dir = Path(FLAGS.result_dir,FLAGS.result_folder_name)
 
     if FLAGS.chatty:
         logger.setLevel(logging.INFO)
@@ -293,20 +294,28 @@ def main(_):
         n_batch=traincfg.nb_batches,
         update=update,
         mdl_validation_loss=mdl_validation_loss,
+        tmp_dir=tmp_dir,
         wandb_run=run
     )
 
 
     logger.info('Finished training.')
 
+    # ===================== Save results
     logger.info(f'writing configuration and results to {FLAGS.result_folder_name}')
-    save_results(cfg)
-    save_config(cfg)
+    save_config(cfg,tmp_dir)
 
+    with h5py.File(Path(tmp_dir,'results.h5'),'w') as hf:
+        hf.create_dataset("loss_train",data=np.array(loss_train))
+        hf.create_dataset("loss_val",data=np.array(loss_val))
+        hf.create_dataset("loss_div",data=np.array(loss_div))
+        hf.create_dataset("loss_momentum",data=np.array(loss_momentum))
+        hf.create_dataset("loss_sensors",data=np.array(loss_sensors))
+    
 
+    # ============= Save only best model if doing sweep ==========
     if FLAGS.wandb_sweep:
         api = wandb.Api()
-        tmp_dir = Path(FLAGS.result_dir,FLAGS.result_folder_name)
 
         best_run = api.sweep(f'{run.entity}/{run.project}/{run.sweep_id}').best_run()
         
