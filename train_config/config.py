@@ -32,7 +32,7 @@ def get_basic_config() -> config_dict.ConfigDict:
     cfg.data_config.randseed = placeholder(int)
     cfg.data_config.remove_mean = False
     cfg.data_config.train_test_split = [600,100,100]
-    cfg.data_config.re = 100
+    cfg.data_config.re = 100.0
     cfg.data_config.dt = 0.125
     cfg.data_config.dx = 12/512
     cfg.data_config.dy = 4/128
