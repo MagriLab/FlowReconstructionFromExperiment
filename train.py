@@ -17,7 +17,7 @@ from flowrec._typing import *
 from flowrec.training_and_states import save_trainingstate, TrainingState, generate_update_fn
 from utils.py_helper import update_matching_keys
 from utils.system import temporary_fix_absl_logging
-from sweep_process_config import sweep_preprocess_cfg
+from train_config.sweep_process_config import sweep_preprocess_cfg
 
 import logging
 logger = logging.getLogger(f'fr.{__name__}')
@@ -49,8 +49,8 @@ flags.DEFINE_bool('chatty',False,'Print information on where the program is at n
 
 
 # ======================= test config ===============================
-_CONFIG = config_flags.DEFINE_config_file('cfg','config.py')
-_WANDB = config_flags.DEFINE_config_file('wandbcfg','config_wandb.py','path to wandb config file.')
+_CONFIG = config_flags.DEFINE_config_file('cfg','train_config/config.py')
+_WANDB = config_flags.DEFINE_config_file('wandbcfg','train_config/config_wandb.py','path to wandb config file.')
 
 
 
@@ -156,6 +156,7 @@ def save_config(config:config_dict.ConfigDict, tmp_dir:Path):
 
 def wandb_init(wandbcfg:config_dict.ConfigDict):
     cfg_dict = wandbcfg.to_dict()
+    logger.debug(f'Arguments passed to wandb.init {cfg_dict}.')
     run = wandb.init(**cfg_dict)
 
     if wandbcfg.config.weight_physics > 0.0:
@@ -231,6 +232,7 @@ def main(_):
         update_matching_keys(wandbcfg.config, datacfg)
         update_matching_keys(wandbcfg.config, mdlcfg)
         update_matching_keys(wandbcfg.config, traincfg)
+        update_matching_keys(wandbcfg.config, cfg.case)
         update_matching_keys(wandbcfg.config, {'percent_observed':percent_observed})
         run = wandb_init(wandbcfg)
         # wandb.config.update({'percent_observed':percent_observed})
@@ -326,13 +328,13 @@ def main(_):
                 artifact = wandb.Artifact(name=f'sweep_weights_{run.sweep_id}', type='model') 
                 artifact.add_dir(tmp_dir)
                 run.log_artifact(artifact)
-                run.finish_artifact(artifact)
+                # run.finish_artifact(artifact) # only necessary for distributed runs
         except KeyError as e: # probably the first run of the sweep
             logger.warning(e)
             artifact = wandb.Artifact(name=f'sweep_weights_{run.sweep_id}', type='model') 
             artifact.add_dir(tmp_dir)
             run.log_artifact(artifact)
-            run.finish_artifact(artifact)
+            # run.finish_artifact(artifact)
             
         for child in tmp_dir.iterdir(): 
             child.unlink()

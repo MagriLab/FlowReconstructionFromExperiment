@@ -1,7 +1,7 @@
 from ml_collections import config_dict
 from ml_collections.config_dict import placeholder
 import warnings
-import train_options
+import train_config.train_options as train_options
 
 def _undefined_function():
     pass
