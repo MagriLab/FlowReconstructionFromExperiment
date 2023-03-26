@@ -1,7 +1,7 @@
 from ml_collections import config_dict
 from ml_collections.config_dict import placeholder
 import warnings
-import train_options
+import train_config.train_options as train_options
 
 def _undefined_function():
     pass
@@ -18,6 +18,10 @@ def get_basic_config() -> config_dict.ConfigDict:
     cfg.case.observe = _undefined_function
     cfg.case.select_model = _undefined_function
     cfg.case.loss_fn = _undefined_function
+    cfg.case._case_dataloader = placeholder(str)
+    cfg.case._case_observe = placeholder(str)
+    cfg.case._case_select_model = placeholder(str)
+    cfg.case._case_loss_fn = placeholder(str)
 
 
     ## Data
@@ -28,7 +32,7 @@ def get_basic_config() -> config_dict.ConfigDict:
     cfg.data_config.randseed = placeholder(int)
     cfg.data_config.remove_mean = False
     cfg.data_config.train_test_split = [600,100,100]
-    cfg.data_config.re = 100
+    cfg.data_config.re = 100.0
     cfg.data_config.dt = 0.125
     cfg.data_config.dx = 12/512
     cfg.data_config.dy = 4/128
@@ -95,6 +99,10 @@ def get_config(cfgstr:str = None):
         'observe': getattr(train_options, f'observe_{_observe}'),
         'select_model': getattr(train_options, f'select_model_{_select_model}'),
         'loss_fn': getattr(train_options, f'loss_fn_{_loss_fn}'),
+        '_case_dataloader': _dataloader,
+        '_case_observe': _observe,
+        '_case_select_model': _select_model,
+        '_case_loss_fn': _loss_fn
     })
 
 

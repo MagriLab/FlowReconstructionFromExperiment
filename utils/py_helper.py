@@ -29,10 +29,11 @@ def slice_from_tuple(tu:Tuple) -> Tuple:
 
 def update_matching_keys(
         dict_to_update:Union[dict,ConfigDict], 
-        dict_with_values:Union[dict,ConfigDict]) -> dict:
+        dict_with_values:Union[dict,ConfigDict],
+        **kwargs) -> dict:
     '''Update a dictionary in place with values from another dictionary where there are matching keys.'''
 
     for key in dict_with_values.keys():
         if key in dict_to_update:
             logger.debug(f'{key} updated from {dict_to_update[key]} to {dict_with_values[key]}')
-            dict_to_update.update({key:dict_with_values[key]}) 
+            dict_to_update.update({key:dict_with_values[key]},**kwargs) 

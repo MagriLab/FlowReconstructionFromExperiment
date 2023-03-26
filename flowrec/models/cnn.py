@@ -41,8 +41,8 @@ class MLPWithCNN(hk.Module):
         self.act = activation
         self.dropout_rate = dropout_rate
 
-        if not isinstance(cnn_filters[0],tuple):
-            raise ValueError(f'cnn_filters must be given in a sequence of tuples. Currently received 1st filter is {cnn_filters[0]}')
+        if len(cnn_filters[0]) != 2:
+            raise ValueError(f'Filters must have length 2, currently received the first filter {cnn_filters[0]}.')
             
         if np.prod(output_shape) != mlp_layers[-1]:
             logger.error(f'Cannot reshape array with {mlp_layers[-1]} elements to shape {output_shape}.')

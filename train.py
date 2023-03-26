@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 from typing import Sequence, Callable
 import time
+import h5py
 
 import numpy as np
 import jax
@@ -16,6 +17,7 @@ from flowrec._typing import *
 from flowrec.training_and_states import save_trainingstate, TrainingState, generate_update_fn
 from utils.py_helper import update_matching_keys
 from utils.system import temporary_fix_absl_logging
+from train_config.sweep_process_config import sweep_preprocess_cfg
 
 import logging
 logger = logging.getLogger(f'fr.{__name__}')
@@ -47,12 +49,14 @@ flags.DEFINE_bool('chatty',False,'Print information on where the program is at n
 
 
 # ======================= test config ===============================
-_CONFIG = config_flags.DEFINE_config_file('cfg','config.py')
-_WANDB = config_flags.DEFINE_config_file('wandbcfg','config_wandb.py','path to wandb config file.')
+_CONFIG = config_flags.DEFINE_config_file('cfg','train_config/config.py')
+_WANDB = config_flags.DEFINE_config_file('wandbcfg','train_config/config_wandb.py','path to wandb config file.')
 
 
 
-def debugger(loggers):
+def debugger(loggers:Sequence[str]):
+    '''Set the logging level to DEBUG for the list of loggers. 
+    The input is a list of the names of the loggers.'''
     for l in loggers:
         logging.getLogger(f'fr.{l}').setLevel(logging.DEBUG)
 
@@ -69,6 +73,7 @@ def fit(
     n_batch:int,
     update:Callable,
     mdl_validation_loss:Callable,
+    tmp_dir:Path,
     wandb_run
 ):
     '''Train a network'''
@@ -123,7 +128,7 @@ def fit(
         if l_val < min_loss:
             best_state = state
             min_loss = l_val
-            save_trainingstate(Path(FLAGS.result_dir,FLAGS.result_folder_name),state,'state')
+            save_trainingstate(tmp_dir,state,'state')
 
         if i%200 == 0:
             print(f'Epoch: {i}, loss: {loss_train[-1]:.7f}, validation_loss: {l_val:.7f}', flush=True)
@@ -139,21 +144,20 @@ def batching(nb_batches:int, data:jax.Array):
 
 
 
-def save_config(config:config_dict.ConfigDict):
+def save_config(config:config_dict.ConfigDict, tmp_dir:Path):
     '''Save config to file config.yml. Load with yaml.unsafe_load(file)'''
-    fname = Path(FLAGS.result_dir,FLAGS.result_folder_name,'config.yml')
+    fname = Path(tmp_dir,'config.yml')
     with open(fname,'x') as f:
         config.to_yaml(stream=f, default_flow_style=False)
 
 
 
-def save_results(config:config_dict.ConfigDict):
-    pass
-
 
 
 def wandb_init(wandbcfg:config_dict.ConfigDict):
-    run = wandb.init(**wandbcfg)
+    cfg_dict = wandbcfg.to_dict()
+    logger.debug(f'Arguments passed to wandb.init {cfg_dict}.')
+    run = wandb.init(**cfg_dict)
 
     if wandbcfg.config.weight_physics > 0.0:
         run.tags = run.tags + ('PhysicsInformed',)
@@ -179,6 +183,8 @@ def main(_):
     os.environ["CUDA_VISIBLE_DEVICES"] = str(FLAGS.gpu_id)
     os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = str(FLAGS.gpu_mem)
 
+    tmp_dir = Path(FLAGS.result_dir,FLAGS.result_folder_name)
+
     if FLAGS.chatty:
         logger.setLevel(logging.INFO)
     
@@ -188,7 +194,6 @@ def main(_):
     
     if FLAGS.wandb_sweep:
         FLAGS.wandb = True
-        FLAGS.chatty = False
 
     # =================== pre-processing ================================
     
@@ -221,14 +226,26 @@ def main(_):
     prep_data, make_model = cfg.case.select_model(datacfg = datacfg, mdlcfg = mdlcfg, traincfg = traincfg)
     logger.info('Selected a model.')
     
+    ## Initialise wandb
     if FLAGS.wandb:
         logger.info('Updating wandb config with experiment config')
         update_matching_keys(wandbcfg.config, datacfg)
         update_matching_keys(wandbcfg.config, mdlcfg)
         update_matching_keys(wandbcfg.config, traincfg)
+        update_matching_keys(wandbcfg.config, cfg.case)
         update_matching_keys(wandbcfg.config, {'percent_observed':percent_observed})
         run = wandb_init(wandbcfg)
+        # wandb.config.update({'percent_observed':percent_observed})
         logger.info('Successfully initalised werights and biases.')
+
+        if FLAGS.wandb_sweep:
+            sweep_params = sweep_preprocess_cfg(wandb.config)
+            update_matching_keys(datacfg, sweep_params)
+            update_matching_keys(mdlcfg, sweep_params)
+            update_matching_keys(traincfg, sweep_params)
+            logger.info('Running in sweep mode, replace config parameters with sweep parameters.')
+            logger.debug(f'Running with {sweep_params}')
+
     else:
         run = None
 
@@ -280,17 +297,52 @@ def main(_):
         n_batch=traincfg.nb_batches,
         update=update,
         mdl_validation_loss=mdl_validation_loss,
+        tmp_dir=tmp_dir,
         wandb_run=run
     )
 
 
-    if FLAGS.wandb:
-        run.finish()
     logger.info('Finished training.')
 
+    # ===================== Save results
     logger.info(f'writing configuration and results to {FLAGS.result_folder_name}')
-    save_config(cfg)
-    save_results(cfg)
+    save_config(cfg,tmp_dir)
+
+    with h5py.File(Path(tmp_dir,'results.h5'),'w') as hf:
+        hf.create_dataset("loss_train",data=np.array(loss_train))
+        hf.create_dataset("loss_val",data=np.array(loss_val))
+        hf.create_dataset("loss_div",data=np.array(loss_div))
+        hf.create_dataset("loss_momentum",data=np.array(loss_momentum))
+        hf.create_dataset("loss_sensors",data=np.array(loss_sensors))
+    
+
+    # ============= Save only best model if doing sweep ==========
+    if FLAGS.wandb_sweep:
+        api = wandb.Api()
+
+        best_run = api.sweep(f'{run.entity}/{run.project}/{run.sweep_id}').best_run()
+        
+        try: 
+            if loss_train[-1] < best_run.summary['loss']:
+                logger.info('Best model so far, saving weights and configurations.')
+                artifact = wandb.Artifact(name=f'sweep_weights_{run.sweep_id}', type='model') 
+                artifact.add_dir(tmp_dir)
+                run.log_artifact(artifact)
+                # run.finish_artifact(artifact) # only necessary for distributed runs
+        except KeyError as e: # probably the first run of the sweep
+            logger.warning(e)
+            artifact = wandb.Artifact(name=f'sweep_weights_{run.sweep_id}', type='model') 
+            artifact.add_dir(tmp_dir)
+            run.log_artifact(artifact)
+            # run.finish_artifact(artifact)
+            
+        for child in tmp_dir.iterdir(): 
+            child.unlink()
+        tmp_dir.rmdir()
+    
+    
+    if FLAGS.wandb:
+        run.finish()
 
 
 
