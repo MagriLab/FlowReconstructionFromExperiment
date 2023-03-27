@@ -251,6 +251,7 @@ def main(_):
         run = None
 
 
+    data = prep_data(data)
     mdl = make_model(mdlcfg)
     logger.info('Made a model.')
 
@@ -279,7 +280,6 @@ def main(_):
 
     # ==================== start training ===========================
 
-    data = prep_data(data)
     x_batched = batching(traincfg.nb_batches, data['inn_train'])
     y_batched = batching(traincfg.nb_batches, data['y_train'])
     logger.info('Prepared data as required by the model selected and batched the data.')
