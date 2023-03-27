@@ -139,6 +139,11 @@ def get_config(cfgstr:str = None):
             'weight_physics': 1.0,
             'weight_sensors': 0.0
         })
+    elif _loss_fn == 'physicsnoreplace':
+        cfg.train_config.update({
+            'weight_physics': 0.1,
+            'weight_sensors': 0.9
+        })
     else:
         raise ValueError('Invalid loss_fn option.')
 

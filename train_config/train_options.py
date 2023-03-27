@@ -132,6 +132,8 @@ def select_model_ffcnn(**kwargs):
 # ======================= Loss Function ===================
 
 def loss_fn_physicswithdata(cfg,**kwargs):
+    '''Insert observations into prediction, then train on physics loss (or physics+sensor loss).'''
+
     take_observation: Callable = kwargs['take_observation']
     insert_observation: Callable = kwargs['insert_observation']
     
@@ -160,6 +162,31 @@ def loss_fn_physicswithdata(cfg,**kwargs):
     return loss_fn
 
 
+def loss_fn_physicsnoreplace(cfg,**kwargs):
+    '''Train on physics loss + sensor loss.'''
+
+    take_observation:Callable = kwargs['take_observation']
+    datainfo = kwargs['datainfo']
+
+    wp = cfg.train_config.weight_physics
+    ws = cfg.train_config.weight_sensors
+
+    def loss_fn(apply_fn:Callable ,params:Params, rng:jax.random.PRNGKey, x:Sequence[jax.Array], y:Sequence[jax.Array],**kwargs):
+        pred = apply_fn(params, rng, x, **kwargs)
+        pred_observed = take_observation(pred)
+        loss_sensor = losses.mse(pred_observed, y)
+
+        loss_div = losses.divergence(pred[...,0], pred[...,1], datainfo)
+        mom_field = derivatives.momentum_residue_field(
+                            ux=pred[...,0],
+                            uy=pred[...,1],
+                            p=pred[...,2],
+                            datainfo=datainfo) # [i,t,x,y]
+        loss_mom = jnp.mean(mom_field**2)*mom_field.shape[0]
+        
+        return wp*(loss_div+loss_mom)+ws*loss_sensor, (loss_div,loss_mom,loss_sensor)
+    
+    return loss_fn    
 
 
 def _dummy():

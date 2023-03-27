@@ -41,7 +41,7 @@ def get_config(cfgstr:str = 'ffcnn,physicswithdata'):
     else:
         raise ValueError('Invalid model option for wandb configuration.')
 
-    if _loss_fn == 'physicswithdata':
+    if _loss_fn == 'physicswithdata' or 'physicsnoreplace':
         cfg.config.weight_physics = placeholder(float)
         cfg.config.weight_sensors = placeholder(float)
     else:
