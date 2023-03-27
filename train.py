@@ -41,7 +41,7 @@ time_stamp = time.strftime("%y%m%d%H%M%S",time.localtime(time.time()))
 flags.DEFINE_bool('wandb',False,'Use --wandb to log the experiment to wandb.')
 flags.DEFINE_bool('wandb_sweep',False,'Run script in wandb sweep mode.')
 flags.DEFINE_multi_string('debug',None,'Run these scripts in debug mode.')
-flags.DEFINE_integer('gpu_id',0,'Which gpu use.')
+flags.DEFINE_integer('gpu_id',None,'Which gpu use.')
 flags.DEFINE_float('gpu_mem',0.3,'Fraction of gpu memory to use.')
 flags.DEFINE_string('result_dir','./local_results/','Path to a directory where the result will be saved.')
 flags.DEFINE_string('result_folder_name',str(time_stamp),'Name of the folder where all files from this run will save to. Default the time stamp.')
@@ -180,7 +180,8 @@ def main(_):
     logger.info(f'List of options selected from optional functions: \n      {cfg.case.values()}')
 
     # ===================== setting up system ==========================
-    os.environ["CUDA_VISIBLE_DEVICES"] = str(FLAGS.gpu_id)
+    if FLAGS.gpu_id:
+        os.environ["CUDA_VISIBLE_DEVICES"] = str(FLAGS.gpu_id)
     os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = str(FLAGS.gpu_mem)
 
     tmp_dir = Path(FLAGS.result_dir,FLAGS.result_folder_name)
