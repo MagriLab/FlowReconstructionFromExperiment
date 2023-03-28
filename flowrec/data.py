@@ -10,8 +10,9 @@ def data_partition(data:np.ndarray,
                     partition:List,
                     SHUFFLE:bool=True,
                     REMOVE_MEAN:bool=False,
+                    NORMALISE:bool=False,
                     data_type:dtype=np.float32,
-                    randseed:Optional[int]=None) -> List[np.ndarray]: 
+                    randseed:Optional[int]=None,) -> List[np.ndarray]: 
     '''Split the data into sets.
     
     Arguments:\n
@@ -41,6 +42,7 @@ def data_partition(data:np.ndarray,
     # split into sets
     datasets = []
     means = []
+    data_range = []
     parts = [0]
     parts.extend(partition) 
     for i in range(1,len(partition)+1):
