@@ -280,7 +280,7 @@ def main(_):
             loss_fn,
             mdl.apply,
             apply_kwargs={'TRAINING':False},
-            kwargs_loss={'y_minmax':data['val_minmax']}
+            y_minmax=data['val_minmax']
         )
     )
     update = generate_update_fn(
