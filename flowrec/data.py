@@ -1,9 +1,11 @@
 import numpy as np
 from typing import Optional, Union, List, Sequence, NamedTuple
+import jax
 from dataclasses import dataclass, field
 
 dtype = Union[str,np.dtype]
 Scalar = Union[int, float]
+Array = Union[np.ndarray, jax.Array]
 
 def data_partition(data:np.ndarray,
                     axis:int,
@@ -78,6 +80,34 @@ def shuffle_with_idx(length:int,rng:np.random.Generator):
     rng.shuffle(idx_shuffle)
     idx_unshuffle = np.argsort(idx_shuffle)
     return idx_shuffle, idx_unshuffle
+
+
+def normalise(*args:Array) -> tuple(Array, list):
+    '''Normalise array/arrays to between -1 and 1.
+    Returns the normalised arrays and range for those arrays.\n
+    '''
+
+    ran = []
+    data_new = []
+
+    for data in args:
+        r = [np.min(data), np.max(data)]
+        d = 2 * ( (data - r[0]) / (r[1] - r[0]) ) - 1
+        ran.append(r)
+        data_new.append(d)
+
+    return data_new, ran
+
+
+def unnormalise(data:Array, data_range:Sequence) -> Array:
+    '''Un-normalise data.'''
+
+    if (len(data_range) != 2) or (data_range[1] <= data_range[0]):
+        raise ValueError(f'data_range must be given as [min, max], currently received {data_range}.')
+
+    data_new = ((data_range[1] - data_range[0]) * (data + 1) / 2.) + data_range[0]
+
+    return data_new        
 
 
 
