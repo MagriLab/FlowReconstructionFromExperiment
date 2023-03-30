@@ -274,8 +274,22 @@ def main(_):
         insert_observation = insert_observation
     )
     logger.info('Created loss function.')
-    mdl_validation_loss = jax.jit(jax.tree_util.Partial(loss_fn,mdl.apply,TRAINING=False))
-    update = generate_update_fn(mdl.apply,optimizer,loss_fn,kwargs_value_and_grad={'has_aux':True}) # this update weights once.
+
+    mdl_validation_loss = jax.jit(
+        jax.tree_util.Partial(
+            loss_fn,
+            mdl.apply,
+            apply_kwargs={'TRAINING':False},
+            kwargs_loss={'y_minmax':data['val_minmax']}
+        )
+    )
+    update = generate_update_fn(
+        mdl.apply,
+        optimizer,
+        loss_fn,
+        kwargs_value_and_grad={'has_aux':True}, 
+        kwargs_loss={'y_minmax':data['train_minmax']}
+    ) # this update weights once.
 
 
     # ==================== start training ===========================

@@ -22,16 +22,23 @@ def get_config(cfgstr:str = 'ffcnn,physicswithdata'):
     ## config to pass to wandbinit.config
     cfg.config = config_dict.ConfigDict()
 
+    # training
     cfg.config.nb_batches = placeholder(int)
-    cfg.config.re = placeholder(float)
     cfg.config.dropout_rate = placeholder(float)
     cfg.config.regularisation_trength = placeholder(float)
     cfg.config.learning_rate = placeholder(float)
 
+    # cases
     cfg.config._case_dataloader = placeholder(str)
     cfg.config._case_observe = placeholder(str)
     cfg.config._case_select_model = placeholder(str)
     cfg.config._case_loss_fn = placeholder(str)
+
+    # data
+    cfg.config.shuffle = placeholder(bool)
+    cfg.config.remove_mean = placeholder(bool)
+    cfg.config.normalise = placeholder(bool)
+    cfg.config.re = placeholder(float)
 
 
     if _mdl == 'ffcnn':
