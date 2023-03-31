@@ -3,13 +3,14 @@ from ml_collections.config_dict import ConfigDict
 
 from utils import simulation2d
 from utils.py_helper import slice_from_tuple
-from flowrec.data import data_partition
+from flowrec.data import data_partition, unnormalise_group, normalise
 from flowrec import losses
 from flowrec.models import cnn, feedforward
 from flowrec import physics_and_derivatives as derivatives
 
 import jax
 import jax.numpy as jnp
+from jax.tree_util import Partial
 
 from typing import Callable, Sequence
 from haiku import Params
@@ -38,7 +39,10 @@ def _dataloader_opt(data_config:ConfigDict) -> dict:
 def dataloader_2dtriangle(cfg:ConfigDict) -> dict:
     '''Load data base on data_config.'''
     # u_train (tensor), u_val (tensor), inn_train (vector), inn_val (vector)
+    # if normalise, data dict also has train_range and val_range [3,range], range is [min,max]
     # datainfo
+    data = {}
+
     x_base = 132
     triangle_base_coords = [49,80]
 
@@ -60,6 +64,19 @@ def dataloader_2dtriangle(cfg:ConfigDict) -> dict:
     [ux_train,uy_train,pp_train] = np.squeeze(np.split(x_train,3,axis=0))
     [ux_val,uy_val,pp_val] = np.squeeze(np.split(x_val,3,axis=0))
     
+    # Normalise
+    if cfg.normalise:
+        [ux_train,uy_train,pp_train], train_minmax = normalise(ux_train,uy_train,pp_train)
+        [ux_val,uy_val,pp_val], val_minmax = normalise(ux_val,uy_val,pp_val)
+    else:
+        train_minmax = []
+        val_minmax = []
+    data.update({
+        'train_minmax': jnp.asarray(train_minmax),
+        'val_minmax': jnp.asarray(val_minmax),
+    })
+
+    
     pb_train = simulation2d.take_measurement_base(pp_train,ly=triangle_base_coords,centrex=0)
     pb_val = simulation2d.take_measurement_base(pp_val,ly=triangle_base_coords,centrex=0)
 
@@ -78,12 +95,12 @@ def dataloader_2dtriangle(cfg:ConfigDict) -> dict:
     u_val = np.stack((ux_val,uy_val,pp_val),axis=-1)
 
 
-    data = {
+    data.update({
         'u_train': u_train, # [t,x,y,3]
         'u_val': u_val, # [t,x,y,3]
         'inn_train': pb_train, # [t,len]
         'inn_val': pb_val # [t,len]
-    }
+    })
 
     return data, datainfo
 
@@ -142,12 +159,26 @@ def loss_fn_physicswithdata(cfg,**kwargs):
     wp = cfg.train_config.weight_physics
     ws = cfg.train_config.weight_sensors
 
-    def loss_fn(apply_fn:Callable ,params:Params, rng:jax.random.PRNGKey, x:Sequence[jax.Array], y:Sequence[jax.Array],**kwargs):
-        pred = apply_fn(params, rng, x, **kwargs)
+
+    def loss_fn(apply_fn:Callable,
+                params:Params, 
+                rng:jax.random.PRNGKey, 
+                x:Sequence[jax.Array], 
+                y:Sequence[jax.Array], 
+                normalise:bool, 
+                y_minmax:jax.Array = jnp.array([]),
+                apply_kwargs:dict = {}, 
+                **kwargs):
+        pred = apply_fn(params, rng, x, **apply_kwargs)
         pred_observed = take_observation(pred)
         loss_sensor = losses.mse(pred_observed, y)
 
         pred_new = insert_observation(pred,y)
+
+        # normalise
+        if normalise:
+            pred_new = unnormalise_group(pred_new, y_minmax, axis_data=-1, axis_range=0)
+
         loss_div = losses.divergence(pred_new[...,0], pred_new[...,1], datainfo)
         mom_field = derivatives.momentum_residue_field(
                             ux=pred_new[...,0],
@@ -159,7 +190,7 @@ def loss_fn_physicswithdata(cfg,**kwargs):
         
         return wp*(loss_div+loss_mom)+ws*loss_sensor, (loss_div,loss_mom,loss_sensor)
     
-    return loss_fn
+    return Partial(loss_fn, normalise=cfg.data_config.normalise)
 
 
 def loss_fn_physicsnoreplace(cfg,**kwargs):
@@ -171,10 +202,22 @@ def loss_fn_physicsnoreplace(cfg,**kwargs):
     wp = cfg.train_config.weight_physics
     ws = cfg.train_config.weight_sensors
 
-    def loss_fn(apply_fn:Callable ,params:Params, rng:jax.random.PRNGKey, x:Sequence[jax.Array], y:Sequence[jax.Array],**kwargs):
-        pred = apply_fn(params, rng, x, **kwargs)
+    def loss_fn(apply_fn:Callable,
+                params:Params, 
+                rng:jax.random.PRNGKey, 
+                x:Sequence[jax.Array], 
+                y:Sequence[jax.Array],
+                normalise:bool, 
+                y_minmax:jax.Array = jnp.array([]),
+                apply_kwargs:dict = {}, 
+                **kwargs):
+        pred = apply_fn(params, rng, x, **apply_kwargs)
         pred_observed = take_observation(pred)
         loss_sensor = losses.mse(pred_observed, y)
+
+        # normalise
+        if normalise:
+            pred = unnormalise_group(pred, y_minmax, axis_data=-1, axis_range=0)
 
         loss_div = losses.divergence(pred[...,0], pred[...,1], datainfo)
         mom_field = derivatives.momentum_residue_field(
@@ -186,7 +229,7 @@ def loss_fn_physicsnoreplace(cfg,**kwargs):
         
         return wp*(loss_div+loss_mom)+ws*loss_sensor, (loss_div,loss_mom,loss_sensor)
     
-    return loss_fn    
+    return Partial(loss_fn, normalise=cfg.data_config.normalise)
 
 
 def _dummy():

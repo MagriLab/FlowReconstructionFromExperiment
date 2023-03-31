@@ -22,6 +22,7 @@ def loss_mse(apply_fn:Callable,
             rng:jax.random.PRNGKey, 
             x:Array, 
             y:Array,
+            apply_kwargs:dict,
             **kwargs) -> float:
     '''Mean squared error for use as loss in training.
     
@@ -36,7 +37,7 @@ def loss_mse(apply_fn:Callable,
     Returns:\n
         loss: the mean squared error between y and predicted y (from x).
     '''
-    pred = apply_fn(params, rng, x, **kwargs)
+    pred = apply_fn(params, rng, x, **apply_kwargs)
     loss = mse(pred,y)
     return loss
 

@@ -1,17 +1,22 @@
 import numpy as np
 from typing import Optional, Union, List, Sequence, NamedTuple
+import jax
+import jax.numpy as jnp
 from dataclasses import dataclass, field
+import chex
 
 dtype = Union[str,np.dtype]
 Scalar = Union[int, float]
+Array = Union[np.ndarray, jax.Array]
 
 def data_partition(data:np.ndarray,
                     axis:int,
                     partition:List,
                     SHUFFLE:bool=True,
                     REMOVE_MEAN:bool=False,
+                    NORMALISE:bool=False,
                     data_type:dtype=np.float32,
-                    randseed:Optional[int]=None) -> List[np.ndarray]: 
+                    randseed:Optional[int]=None,) -> List[np.ndarray]: 
     '''Split the data into sets.
     
     Arguments:\n
@@ -41,6 +46,7 @@ def data_partition(data:np.ndarray,
     # split into sets
     datasets = []
     means = []
+    data_range = []
     parts = [0]
     parts.extend(partition) 
     for i in range(1,len(partition)+1):
@@ -76,6 +82,60 @@ def shuffle_with_idx(length:int,rng:np.random.Generator):
     rng.shuffle(idx_shuffle)
     idx_unshuffle = np.argsort(idx_shuffle)
     return idx_shuffle, idx_unshuffle
+
+
+def normalise(*args:Array) -> tuple[Array, list]:
+    '''Normalise array/arrays to between -1 and 1.
+    Returns the normalised arrays and range for those arrays.\n
+    '''
+
+    ran = []
+    data_new = []
+
+    for data in args:
+        r = [np.min(data), np.max(data)]
+        d = 2 * ( (data - r[0]) / (r[1] - r[0]) ) - 1
+        ran.append(np.array(r).astype('float32'))
+        data_new.append(d)
+
+    return data_new, ran
+
+
+def unnormalise(data:Array, data_range:Sequence) -> Array:
+    '''Un-normalise data.'''
+
+    chex.assert_axis_dimension(data_range,0,2)
+
+    data_new = ((data_range[1] - data_range[0]) * (data + 1) / 2.) + data_range[0]
+
+    return data_new        
+
+
+@jax.tree_util.Partial(jax.jit,static_argnames=('axis_data','axis_range'))
+def unnormalise_group(
+        data:Array, 
+        data_range:Array, 
+        axis_data:int = 0, 
+        axis_range:int = 0) -> Array:
+    '''Un-normalise stacked data implemented in jax and is jitable. Equivalent to stacking output of `unnormalise(data[i], data_range[j])`\n
+    
+    Arguments:\n
+        data: an array of data.\n
+        data_range: an array of data_range.\n
+        axis_data: which axis has the data been stacked.\n
+        axis_range: which axis has the range been stacked.\n
+
+    Returns:\n
+        unnormalised data with the same shape as input data.
+    '''
+    
+    data = jnp.asarray(data)
+    data_range = jnp.asarray(data_range)
+
+    _unnomalise_map = jax.vmap(unnormalise, (axis_data,axis_range), axis_data)
+
+    return _unnomalise_map(data,data_range)
+
 
 
 
