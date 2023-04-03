@@ -44,7 +44,7 @@ def get_config(cfgstr:str = 'ffcnn,physicswithdata'):
     if _mdl == 'ffcnn':
         cfg.config.mlp_layers = placeholder(tuple)
         cfg.config.cnn_channels = placeholder(tuple)
-        cfg.config.cnn_filter = placeholder(tuple)
+        cfg.config.cnn_filters = placeholder(tuple)
     else:
         raise ValueError('Invalid model option for wandb configuration.')
 
