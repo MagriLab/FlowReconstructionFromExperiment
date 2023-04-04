@@ -18,6 +18,7 @@ from flowrec.training_and_states import save_trainingstate, TrainingState, gener
 from utils.py_helper import update_matching_keys
 from utils.system import temporary_fix_absl_logging
 from train_config.sweep_process_config import sweep_preprocess_cfg
+from train_config.option_codes import code
 
 import logging
 logger = logging.getLogger(f'fr.{__name__}')
@@ -44,7 +45,7 @@ flags.DEFINE_multi_string('debug',None,'Run these scripts in debug mode.')
 flags.DEFINE_integer('gpu_id',None,'Which gpu use.')
 flags.DEFINE_float('gpu_mem',0.3,'Fraction of gpu memory to use.')
 flags.DEFINE_string('result_dir','./local_results/','Path to a directory where the result will be saved.')
-flags.DEFINE_string('result_folder_name',str(time_stamp),'Name of the folder where all files from this run will save to. Default the time stamp.')
+flags.DEFINE_string('result_folder_name',None,'Name of the folder where all files from this run will save to. Default the time stamp.')
 flags.DEFINE_bool('chatty',False,'Print information on where the program is at now.')
 
 
@@ -155,8 +156,13 @@ def save_config(config:config_dict.ConfigDict, tmp_dir:Path):
 
 
 def wandb_init(wandbcfg:config_dict.ConfigDict):
+
+    if not wandbcfg.name:
+        wandbcfg.update({'name':FLAGS.result_folder_name})
+
     cfg_dict = wandbcfg.to_dict()
     logger.debug(f'Arguments passed to wandb.init {cfg_dict}.')
+
     run = wandb.init(**cfg_dict)
 
     if wandbcfg.config.weight_physics > 0.0:
@@ -183,6 +189,11 @@ def main(_):
     if FLAGS.gpu_id:
         os.environ["CUDA_VISIBLE_DEVICES"] = str(FLAGS.gpu_id)
     os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = str(FLAGS.gpu_mem)
+    
+    if not FLAGS.result_folder_name:
+        _folder = code(cfg.case)
+        _folder = _folder + str(time_stamp)
+        FLAGS.result_folder_name = _folder
 
     tmp_dir = Path(FLAGS.result_dir,FLAGS.result_folder_name)
 
