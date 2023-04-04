@@ -237,7 +237,7 @@ def main(_):
         update_matching_keys(wandbcfg.config, {'percent_observed':percent_observed})
         run = wandb_init(wandbcfg)
         # wandb.config.update({'percent_observed':percent_observed})
-        logger.info('Successfully initalised werights and biases.')
+        logger.info('Successfully initialised weights and biases.')
 
         if FLAGS.wandb_sweep:
             sweep_params = sweep_preprocess_cfg(wandb.config)
