@@ -53,8 +53,11 @@ def dataloader_2dtriangle(cfg:ConfigDict) -> dict:
     x = x[s]
 
     if cfg.shuffle:
-        randseed = np.random.randint(1,10000)
-        cfg.update({'randseed':randseed})
+        if not cfg.randseed:
+            randseed = np.random.randint(1,10000)
+            cfg.update({'randseed':randseed})
+        else:
+            randseed = cfg.randseed
     else:
         randseed = None
 
