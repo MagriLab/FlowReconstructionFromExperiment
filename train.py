@@ -165,10 +165,10 @@ def wandb_init(wandbcfg:config_dict.ConfigDict):
 
     run = wandb.init(**cfg_dict)
 
-    if wandbcfg.config.weight_physics > 0.0:
-        run.tags = run.tags + ('PhysicsInformed',)
-    if wandbcfg.config.weight_sensors == 0:
-        run.tags = run.tags + ('PhysicsOnly',)
+    # if wandbcfg.config.weight_physics > 0.0:
+    #     run.tags = run.tags + ('PhysicsInformed',)
+    # if wandbcfg.config.weight_sensors == 0:
+    #     run.tags = run.tags + ('PhysicsOnly',)
     
     return run
 
