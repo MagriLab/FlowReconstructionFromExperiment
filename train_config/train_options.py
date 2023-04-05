@@ -15,6 +15,8 @@ from jax.tree_util import Partial
 from typing import Callable, Sequence
 from haiku import Params
 
+import logging
+logger = logging.getLogger(f'fr.{__name__}')
 
 def _dataloader_opt(data_config:ConfigDict) -> dict:
     '''Example dataloader function.\n
@@ -133,6 +135,7 @@ def observe_grid_pin(data_config:ConfigDict,
     inn_loc = slice_from_tuple(data_config.pressure_inlet_index)
     s_pressure = (np.s_[:],) + inn_loc + (np.s_[-1],)
     observed_p_shape = (-1,) + example_pred_snapshot[inn_loc+(np.s_[-1],)].shape
+    logger.debug(f'Input pressure will be reshaped to {observed_p_shape}')
     
 
     def take_observation(u:jax.Array,**kwargs) -> jax.Array:
