@@ -84,9 +84,9 @@ def shuffle_with_idx(length:int,rng:np.random.Generator):
     return idx_shuffle, idx_unshuffle
 
 
-def normalise(*args:Array) -> tuple[Array, list]:
+def normalise(*args:Array) -> tuple[list[Array], list]:
     '''Normalise array/arrays to between -1 and 1.
-    Returns the normalised arrays and range for those arrays.\n
+    Returns a list of the normalised arrays and a list of range for those arrays.\n
     '''
 
     ran = []

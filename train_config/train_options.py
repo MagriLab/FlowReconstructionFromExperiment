@@ -74,6 +74,7 @@ def dataloader_2dtriangle(cfg:ConfigDict) -> dict:
     else:
         train_minmax = []
         val_minmax = []
+    
     data.update({
         'train_minmax': jnp.asarray(train_minmax),
         'val_minmax': jnp.asarray(val_minmax),
