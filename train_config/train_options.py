@@ -111,7 +111,7 @@ def dataloader_2dtriangle(cfg:ConfigDict) -> dict:
 
 # ======================= Sensor placement ========================
 
-def observe_grid(data_config:ConfigDict):
+def observe_grid(data_config:ConfigDict, **kwargs):
     s_space = slice_from_tuple(data_config.slice_grid_sensors)
     s = (np.s_[:],) + s_space + (np.s_[:],)
 
@@ -121,6 +121,28 @@ def observe_grid(data_config:ConfigDict):
 
     def insert_observation(pred:jax.Array, observed:jax.Array, **kwargs) -> jax.Array:
         return pred.at[s].set(observed)
+    
+    return take_observation, insert_observation
+
+
+def observe_grid_pin(data_config:ConfigDict, 
+                    example_pred_snapshot:jax.Array, 
+                    **kwargs):
+    s_space = slice_from_tuple(data_config.slice_grid_sensors)
+    s = (np.s_[:],) + s_space + (np.s_[:],)
+    inn_loc = slice_from_tuple(data_config.pressure_inlet_index)
+    s_pressure = (np.s_[:],) + inn_loc + (np.s_[-1],)
+    observed_p_shape = (-1,) + example_pred_snapshot[inn_loc+(np.s_[-1],)].shape
+    
+
+    def take_observation(u:jax.Array,**kwargs) -> jax.Array:
+        return u[s]
+
+
+    def insert_observation(pred:jax.Array, observed:jax.Array, inlet_pressure:jax.Array, **kwargs) -> jax.Array:
+        pred_new = pred.at[s].set(observed)
+        pred_new = pred_new.at[s_pressure].set(inlet_pressure.reshape(observed_p_shape))
+        return pred_new
     
     return take_observation, insert_observation
 
@@ -177,7 +199,7 @@ def loss_fn_physicswithdata(cfg,**kwargs):
         pred_observed = take_observation(pred)
         loss_sensor = losses.mse(pred_observed, y)
 
-        pred_new = insert_observation(pred,y)
+        pred_new = insert_observation(pred,y,inlet_pressure=x)
 
         # normalise
         if normalise:

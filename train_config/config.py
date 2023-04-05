@@ -120,6 +120,11 @@ def get_config(cfgstr:str = None):
         cfg.data_config.update({
             'slice_grid_sensors': ((None,None,15), (None,None,5))
         }) # spatial slicing, the default is equivalent to np.s_[::15,::5] in x and y direction
+    elif _observe == 'grid_pin':
+        cfg.data_config.update({
+            'slice_grid_sensors': ((None,None,15), (None,None,5)),
+            'pressure_inlet_index': ((0,1,None),(49,80,None))
+        })
     else:
         raise ValueError('Invalid observe option.')
     
