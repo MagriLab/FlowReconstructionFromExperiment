@@ -218,7 +218,8 @@ def main(_):
     logger.info('Taking observations.')
     take_observation, insert_observation = cfg.case.observe(
         datacfg,
-        example_pred_snapshot = data['u_train'][0,...]
+        example_pred_snapshot = data['u_train'][0,...],
+        example_pin_snapshot = data['inn_train'][0,...]
     )
     observed_train = take_observation(data['u_train'])
     observed_val = take_observation(data['u_val'])

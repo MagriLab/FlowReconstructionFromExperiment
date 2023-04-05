@@ -1,5 +1,5 @@
 from ml_collections import config_dict
-from ml_collections.config_dict import placeholder
+from ml_collections.config_dict import placeholder, required_placeholder
 import warnings
 import train_config.train_options as train_options
 
@@ -123,8 +123,17 @@ def get_config(cfgstr:str = None):
     elif _observe == 'grid_pin':
         cfg.data_config.update({
             'slice_grid_sensors': ((None,None,15), (None,None,5)),
-            'pressure_inlet_index': ((0,1,None),(49,80,None))
         })
+
+        if _dataloader == '2dtriangle':
+            cfg.data_config.update({
+                'pressure_inlet_index': ((0,1,None),(49,80,None))
+            })
+        else:
+            cfg.data_config.update({
+                'pressure_inlet_index': required_placeholder(tuple)
+            })
+
     else:
         raise ValueError('Invalid observe option.')
     
