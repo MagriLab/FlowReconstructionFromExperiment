@@ -172,6 +172,20 @@ def observe_grid_pin(data_config:ConfigDict,
     return take_observation, insert_observation
 
 
+
+def observe_sparse(data_config:ConfigDict, **kwargs):
+
+    def take_observation(u:jax.Array, **kwargs) -> jax.Array:
+
+        pass
+
+    def insert_observation(pred:jax.Array, observed:jax.Array, **kwargs) -> jax.Array:
+
+        pass
+
+    return take_observation, insert_observation
+
+
 # ======================= Model =============================
 
 def select_model_ffcnn(**kwargs):
