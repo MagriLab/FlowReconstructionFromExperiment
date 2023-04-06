@@ -2,6 +2,7 @@ from ml_collections import config_flags, config_dict
 from absl import app, flags
 import sys
 import os
+import re
 from pathlib import Path
 from typing import Sequence, Callable
 import time
@@ -165,10 +166,11 @@ def wandb_init(wandbcfg:config_dict.ConfigDict):
 
     run = wandb.init(**cfg_dict)
 
-    # if wandbcfg.config.weight_physics > 0.0:
-    #     run.tags = run.tags + ('PhysicsInformed',)
-    # if wandbcfg.config.weight_sensors == 0:
-    #     run.tags = run.tags + ('PhysicsOnly',)
+    _pattern = re.compile(".*/FlowReconstructionFromExperiment/local")
+    def _ignore_files(path):
+        return _pattern.match(path)
+    
+    run.log_code('.', exclude_fn=_ignore_files)
     
     return run
 
