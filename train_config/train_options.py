@@ -15,6 +15,9 @@ from jax.tree_util import Partial
 from typing import Callable, Sequence
 from haiku import Params
 
+import warnings
+import logging
+logger = logging.getLogger(f'fr.{__name__}')
 
 def _dataloader_opt(data_config:ConfigDict) -> dict:
     '''Example dataloader function.\n
@@ -111,7 +114,7 @@ def dataloader_2dtriangle(cfg:ConfigDict) -> dict:
 
 # ======================= Sensor placement ========================
 
-def observe_grid(data_config:ConfigDict):
+def observe_grid(data_config:ConfigDict, **kwargs):
     s_space = slice_from_tuple(data_config.slice_grid_sensors)
     s = (np.s_[:],) + s_space + (np.s_[:],)
 
@@ -122,6 +125,64 @@ def observe_grid(data_config:ConfigDict):
     def insert_observation(pred:jax.Array, observed:jax.Array, **kwargs) -> jax.Array:
         return pred.at[s].set(observed)
     
+    return take_observation, insert_observation
+
+
+def observe_grid_pin(data_config:ConfigDict, 
+                    example_pred_snapshot:jax.Array, 
+                    example_pin_snapshot:jax.Array,
+                    **kwargs):
+    s_space = slice_from_tuple(data_config.slice_grid_sensors)
+    s = (np.s_[:],) + s_space + (np.s_[:],)
+    inn_loc = slice_from_tuple(data_config.pressure_inlet_index)
+    s_pressure = (np.s_[:],) + inn_loc + (np.s_[-1],)
+    
+
+    num_sensors = example_pred_snapshot[s_space + (np.s_[:],)].size
+    num_pressure = example_pred_snapshot[inn_loc + (np.s_[-1],)].size
+
+    if num_pressure != example_pin_snapshot.size:
+        warnings.warn(f'Expect {num_pressure} pressure measurement at inlet, received {example_pin_snapshot.size}. Is this intentional?')
+    
+
+    observed_all_shape = (-1,) + example_pred_snapshot[s_space + (np.s_[:],)].shape
+    observed_p_shape = (-1,) + example_pred_snapshot[inn_loc+(np.s_[-1],)].shape
+    logger.debug(f'Input pressure will be reshaped to {observed_p_shape}')
+    
+
+    def take_observation(u:jax.Array,**kwargs) -> jax.Array:
+        us = u[s].reshape((-1,num_sensors))
+        ps = u[s_pressure].reshape((-1,num_pressure))
+        observed = jnp.concatenate((us,ps), axis=1)
+        return observed # observed has shape [t,number_of_all_observed]
+
+
+    def insert_observation(pred:jax.Array, observed:jax.Array, **kwargs) -> jax.Array:
+        
+        us_observed, ps_observed = jnp.array_split(observed,[num_sensors],axis=1)
+
+        us_observed = us_observed.reshape(observed_all_shape)
+        ps_observed = ps_observed.reshape(observed_p_shape)
+
+        pred_new = pred.at[s].set(us_observed)
+        pred_new = pred_new.at[s_pressure].set(ps_observed)
+
+        return pred_new
+    
+    return take_observation, insert_observation
+
+
+
+def observe_sparse(data_config:ConfigDict, **kwargs):
+
+    def take_observation(u:jax.Array, **kwargs) -> jax.Array:
+
+        pass
+
+    def insert_observation(pred:jax.Array, observed:jax.Array, **kwargs) -> jax.Array:
+
+        pass
+
     return take_observation, insert_observation
 
 

@@ -216,7 +216,11 @@ def main(_):
     logger.debug(f'Datainfo is {datainfo}')
 
     logger.info('Taking observations.')
-    take_observation, insert_observation = cfg.case.observe(datacfg)
+    take_observation, insert_observation = cfg.case.observe(
+        datacfg,
+        example_pred_snapshot = data['u_train'][0,...],
+        example_pin_snapshot = data['inn_train'][0,...]
+    )
     observed_train = take_observation(data['u_train'])
     observed_val = take_observation(data['u_val'])
     
@@ -226,7 +230,7 @@ def main(_):
     })
     logger.debug(f'Data dict now has {data.keys()}')
 
-    percent_observed = 100*(observed_train[0,...,0].size/data['u_train'][0,...,0].size)
+    percent_observed = 100*(observed_train.size/data['u_train'].size)
 
     # ==================== set up model ==============================
     rng = jax.random.PRNGKey(int(time_stamp))
