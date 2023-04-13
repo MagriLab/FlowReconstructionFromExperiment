@@ -195,6 +195,53 @@ def observe_sparse(data_config:ConfigDict, **kwargs):
     return take_observation, insert_observation
 
 
+def observe_sparse_pin(data_config:ConfigDict,
+                        *, 
+                        example_pred_snapshot:jax.Array, 
+                        example_pin_snapshot:jax.Array,
+                        **kwargs):
+
+    # velocity and pressure sensors
+    sensor_idx = data_config.sensor_index
+    # num_sensors = len(sensor_idx[0])
+    num_sensors = example_pred_snapshot[*sensor_idx].size
+    logger.debug(f'Sensor indices are provided for a {len(sensor_idx)}D flow, with {num_sensors} measurements.')
+    observed_all_shape = (-1,) + example_pred_snapshot[*sensor_idx].shape
+    logger.debug(f'Observed will have shape {observed_all_shape}.')
+    
+    chex.assert_rank(example_pred_snapshot[*sensor_idx],2)
+    
+    inn_loc = slice_from_tuple(data_config.pressure_inlet_index)
+    s_pressure = (np.s_[:],) + inn_loc + (np.s_[-1],)
+    num_pressure = example_pred_snapshot[inn_loc + (np.s_[-1],)].size
+    logger.debug(f'Number of pressure sensors at the inlet is {num_pressure}.')
+    observed_p_shape = (-1,) + example_pred_snapshot[inn_loc + (np.s_[-1],)].shape
+    
+    if num_pressure != example_pin_snapshot.size:
+        warnings.warn(f'Expect {num_pressure} pressure measurement at inlet, received {example_pin_snapshot.size}. Is this intentional?')
+    
+
+    def take_observation(u:jax.Array, **kwargs) -> jax.Array:
+        us = u[:,*sensor_idx].reshape((-1,num_sensors))
+        ps = u[s_pressure].reshape((-1,num_pressure))
+        observed = jnp.concatenate((us,ps), axis=1)
+        logger.debug(f'The observed has shape {observed.shape}')
+        return observed # observed has shape [t,number_of_all_observed]
+
+    def insert_observation(pred:jax.Array, observed:jax.Array, **kwargs) -> jax.Array:
+        us_observed, ps_observed = jnp.array_split(observed,[num_sensors],axis=1)
+
+        us_observed = us_observed.reshape(observed_all_shape)
+        ps_observed = ps_observed.reshape(observed_p_shape)
+
+        pred_new = pred.at[s_pressure].set(ps_observed)
+        pred_new = pred_new.at[:,*sensor_idx].set(us_observed)
+
+        return pred_new
+
+    return take_observation, insert_observation
+
+
 # ======================= Model =============================
 
 def select_model_ffcnn(**kwargs):

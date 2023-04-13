@@ -131,12 +131,24 @@ def get_config(cfgstr:str = None):
             })
         else:
             cfg.data_config.update({
-                'pressure_inlet_index': required_placeholder(tuple)
+                'pressure_inlet_index': placeholder(tuple)
             })
     elif _observe == 'sparse':
         cfg.data_config.update({
-            'sensor_index': required_placeholder(tuple)
+            'sensor_index': placeholder(tuple)
         })
+    elif _observe == 'sparse_pin':
+        cfg.data_config.update({
+            'sensor_index': placeholder(tuple)
+        })
+        if _dataloader == '2dtriangle':
+            cfg.data_config.update({
+                'pressure_inlet_index': ((0,1,None),(49,80,None))
+            })
+        else:
+            cfg.data_config.update({
+                'pressure_inlet_index': placeholder(tuple)
+            })
     else:
         raise ValueError('Invalid observe option.')
     
