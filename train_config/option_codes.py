@@ -11,6 +11,10 @@ def code(cfgcase: ConfigDict):
         sob = 'gd'
     elif cfgcase._case_observe == 'grid_pin':
         sob = 'gp'
+    elif cfgcase._case_observe == 'sparse':
+        sob = 'sa'
+    elif cfgcase._case_observe == 'sparse_pin':
+        sob = 'sp'
     else:
         sob = 'zz'
     
