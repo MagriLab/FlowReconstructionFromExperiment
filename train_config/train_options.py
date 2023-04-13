@@ -18,6 +18,7 @@ from haiku import Params
 import warnings
 import logging
 logger = logging.getLogger(f'fr.{__name__}')
+import chex
 
 def _dataloader_opt(data_config:ConfigDict) -> dict:
     '''Example dataloader function.\n
@@ -128,7 +129,8 @@ def observe_grid(data_config:ConfigDict, **kwargs):
     return take_observation, insert_observation
 
 
-def observe_grid_pin(data_config:ConfigDict, 
+def observe_grid_pin(data_config:ConfigDict,
+                    *, 
                     example_pred_snapshot:jax.Array, 
                     example_pin_snapshot:jax.Array,
                     **kwargs):
@@ -175,13 +177,20 @@ def observe_grid_pin(data_config:ConfigDict,
 
 def observe_sparse(data_config:ConfigDict, **kwargs):
 
-    def take_observation(u:jax.Array, **kwargs) -> jax.Array:
+    sensor_idx = data_config.sensor_index
 
-        pass
+    logger.debug(f'Sensor indices are provided for a {len(sensor_idx)}D flow.')
+    if 'example_pred_snapshot' in kwargs.keys():
+        chex.assert_rank(kwargs['example_pred_snapshot'][*sensor_idx],2)
+
+
+    def take_observation(u:jax.Array, **kwargs) -> jax.Array:
+        us = u[:,*sensor_idx]
+        return us # [snapshot, num_sensors, velocities]
 
     def insert_observation(pred:jax.Array, observed:jax.Array, **kwargs) -> jax.Array:
-
-        pass
+        pred_new = pred.at[:,*sensor_idx].set(observed)
+        return pred_new
 
     return take_observation, insert_observation
 

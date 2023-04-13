@@ -133,7 +133,10 @@ def get_config(cfgstr:str = None):
             cfg.data_config.update({
                 'pressure_inlet_index': required_placeholder(tuple)
             })
-
+    elif _observe == 'sparse':
+        cfg.data_config.update({
+            'sensor_index': required_placeholder(tuple)
+        })
     else:
         raise ValueError('Invalid observe option.')
     
