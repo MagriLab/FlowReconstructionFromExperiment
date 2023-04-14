@@ -1,7 +1,10 @@
 from ml_collections import config_dict
-from ml_collections.config_dict import placeholder, required_placeholder
+from ml_collections.config_dict import placeholder
 import warnings
-import train_config.train_options as train_options
+import train_config.train_options.dataloader as dataloaderoptions
+import train_config.train_options.observe as observeoptions
+import train_config.train_options.select_model as modeloptions
+import train_config.train_options.loss_fn as lossfnoptions
 
 def _undefined_function():
     pass
@@ -96,10 +99,10 @@ def get_config(cfgstr:str = None):
         _loss_fn = user['loss_fn']
 
     cfg.case.update({
-        'dataloader': getattr(train_options, f'dataloader_{_dataloader}'),
-        'observe': getattr(train_options, f'observe_{_observe}'),
-        'select_model': getattr(train_options, f'select_model_{_select_model}'),
-        'loss_fn': getattr(train_options, f'loss_fn_{_loss_fn}'),
+        'dataloader': getattr(dataloaderoptions, f'dataloader_{_dataloader}'),
+        'observe': getattr(observeoptions, f'observe_{_observe}'),
+        'select_model': getattr(modeloptions, f'select_model_{_select_model}'),
+        'loss_fn': getattr(lossfnoptions, f'loss_fn_{_loss_fn}'),
         '_case_dataloader': _dataloader,
         '_case_observe': _observe,
         '_case_select_model': _select_model,
@@ -127,11 +130,11 @@ def get_config(cfgstr:str = None):
 
         if _dataloader == '2dtriangle':
             cfg.data_config.update({
-                'pressure_inlet_index': ((0,1,None),(49,80,None))
+                'pressure_inlet_slice': ((0,1,None),(49,80,None))
             })
         else:
             cfg.data_config.update({
-                'pressure_inlet_index': placeholder(tuple)
+                'pressure_inlet_slice': placeholder(tuple)
             })
     elif _observe == 'sparse':
         cfg.data_config.update({
@@ -143,11 +146,11 @@ def get_config(cfgstr:str = None):
         })
         if _dataloader == '2dtriangle':
             cfg.data_config.update({
-                'pressure_inlet_index': ((0,1,None),(49,80,None))
+                'pressure_inlet_slice': ((0,1,None),(49,80,None))
             })
         else:
             cfg.data_config.update({
-                'pressure_inlet_index': placeholder(tuple)
+                'pressure_inlet_slice': placeholder(tuple)
             })
     else:
         raise ValueError('Invalid observe option.')

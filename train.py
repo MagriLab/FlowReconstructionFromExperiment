@@ -268,6 +268,7 @@ def main(_):
         run = None
 
 
+    logger.debug(f'The finalised data dictionary has items {data.keys()}')
     data = prep_data(data)
     mdl = make_model(mdlcfg)
     logger.info('Made a model.')
