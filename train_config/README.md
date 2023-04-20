@@ -223,7 +223,7 @@ For details of the network and the arguments it takes, see [here](../flowrec/mod
 
 ### **Loss_fn**
 
-### physciswithdata
+### physicswithdata
 Insert observation into the prediction before taking physics loss.
 
 The full dataset is $\boldsymbol{u}$, which contains $u,v$ and $p$ (and $w$ if 3D).
@@ -235,17 +235,16 @@ If a flow field, $\hat{\boldsymbol{u}}$, is a solution to the NS equations, $R(\
 Steps to calculate the loss is 
 
 1. predict $\boldsymbol{y} = F(\boldsymbol{u})$,
-1. set<br>
-    $\tilde{\boldsymbol{y}}_{\boldsymbol{x}_o} = \boldsymbol{u}_{\boldsymbol{x}_o}$,<br>
-    $\tilde{\boldsymbol{y}}_{\boldsymbol{x}_h} = \boldsymbol{y}_{\boldsymbol{x}_h}$
-1. $Loss = \lambda_p R(\tilde{\boldsymbol{y}}) + \lambda_s MSE(\boldsymbol{y}_{\boldsymbol{x}_o},\boldsymbol{u}_{\boldsymbol{x}_o})$.
+1. set $\boldsymbol{y}\_{\boldsymbol{x}\_o} = \boldsymbol{u}\_{\boldsymbol{x}\_o}$,
+    $\tilde{\boldsymbol{y}}\_{\boldsymbol{x}\_h} = \boldsymbol{y}\_{\boldsymbol{x}\_h}$
+1. $Loss = \lambda\_p R(\tilde{\boldsymbol{y}}) + \lambda\_s MSE(\boldsymbol{y}\_{\boldsymbol{x}\_o},\boldsymbol{u}\_{\boldsymbol{x}\_o})$.
 
 **train_config**
 
 - `weight_physics` (float:1.0)<br>
-    $\lambda_p$.
+    $\lambda\_p$.
 - `weight_sensors` (float:0.0)<br>
-    $\lambda_s$.
+    $\lambda\_s$.
 
 
 ### physicsnoreplace 
@@ -257,11 +256,11 @@ The network is represented by $F$.
 Residual of the Navier-Stokes equations is calculated with operator $R$.
 If a flow field, $\hat{\boldsymbol{u}}$, is a solution to the NS equations, $R(\hat{\boldsymbol{u}}) = 0$.
 
-$Loss = \lambda_p R(\boldsymbol{y}) + \lambda_s MSE(\boldsymbol{y}_{\boldsymbol{x}_o},\boldsymbol{u}_{\boldsymbol{x}_o})$.
+$Loss = \lambda\_p R(\boldsymbol{y}) + \lambda_s MSE(\boldsymbol{y}\_{\boldsymbol{x}\_o},\boldsymbol{u}\_{\boldsymbol{x}\_o})$.
 
 **train_config**
 
 - `weight_physics` (float:0.1)<br>
-    $\lambda_p$.
+    $\lambda\_p$.
 - `weight_sensors` (float:0.9)<br>
-    $\lambda_s$.
+    $\lambda\_s$.
