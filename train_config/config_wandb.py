@@ -39,6 +39,7 @@ def get_config(cfgstr:str = 'ffcnn,physicswithdata'):
     cfg.config.remove_mean = placeholder(bool)
     cfg.config.normalise = placeholder(bool)
     cfg.config.re = placeholder(float)
+    cfg.config.snr = placeholder(float)
     cfg.config.percent_observed = placeholder(float)
 
 

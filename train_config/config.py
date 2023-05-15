@@ -41,6 +41,7 @@ def get_basic_config() -> config_dict.ConfigDict:
     cfg.data_config.dx = 12/512
     cfg.data_config.dy = 4/128
     cfg.data_config.dz = placeholder(float)
+    cfg.data_config.snr = 0.0
 
 
     ## Model
