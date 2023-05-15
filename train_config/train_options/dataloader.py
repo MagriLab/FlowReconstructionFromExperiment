@@ -34,7 +34,7 @@ def dataloader_example(data_config:ConfigDict):
             1. train_minmax is the shape of [(min, max of u), (min, max of v), ..., (min, max of pressure)]. \n
             2. val_minmax with the same shape as train_minmax. \n
 
-    The second return variable, datainfo, should be a MetadataTree.\n
+    The second returned variable, datainfo, should be a MetadataTree.\n
     '''
     pass
 
@@ -79,6 +79,18 @@ def dataloader_2dtriangle(cfg:ConfigDict) -> dict:
             logger.info('Shuffling data with the randon key provided in data_config.')
     else:
         randseed = None
+
+    # Add white noise
+    if cfg.snr > 0.0:
+        logger.info('Adding white noise to data.')
+        std_data = np.std(x,axis=(1,2,3),ddof=1)
+        snr_l = 10.**(cfg.snr/10.)
+        std_n = np.sqrt(std_data**2/snr_l)
+        noise_ux = np.random.normal(scale=std_n[0],size=x[0,...].shape)
+        noise_uy = np.random.normal(scale=std_n[1],size=x[1,...].shape)
+        noise_pp = np.random.normal(scale=std_n[2],size=x[2,...].shape)
+        noise = np.stack([noise_ux,noise_uy,noise_pp],axis=0)
+        x = x + noise
 
     
     [x_train,x_val,_], _ = data_partition(x,1,cfg.train_test_split,REMOVE_MEAN=cfg.remove_mean,randseed=randseed,SHUFFLE=cfg.shuffle) # Do not shuffle, do not remove mean for training with physics informed loss
