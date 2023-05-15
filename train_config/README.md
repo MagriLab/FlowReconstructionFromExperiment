@@ -112,6 +112,8 @@ For example, data_dir in data_config is set by `--cfg.data_config.data_dir=path`
     Distance between grids in y direction.
 - `dz` (float:None)<br>
     Distance between grids in z direction.
+- `snr` (float:0.0)<br>
+    Signal-to-noise ratio in dB. This adds white noise to the measurement after the data is cropped and shuffled, but before other pre-processing.
 
 
 #### **model_config**
