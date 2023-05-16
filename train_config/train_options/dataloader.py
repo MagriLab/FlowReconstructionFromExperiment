@@ -81,7 +81,7 @@ def dataloader_2dtriangle(cfg:ConfigDict) -> dict:
         randseed = None
 
     # Add white noise
-    if cfg.snr > 0.0:
+    if cfg.snr:
         logger.info('Adding white noise to data.')
         std_data = np.std(x,axis=(1,2,3),ddof=1)
         snr_l = 10.**(cfg.snr/10.)
