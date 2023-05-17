@@ -192,7 +192,7 @@ def main(_):
         os.environ["CUDA_VISIBLE_DEVICES"] = str(FLAGS.gpu_id)
     os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = str(FLAGS.gpu_mem)
     
-    if not FLAGS.result_folder_name:
+    if not FLAGS.result_folder_name and not FLAGS.wandb_sweep:
         _folder = code(cfg.case)
         _folder = _folder + str(time_stamp)
         FLAGS.result_folder_name = _folder
