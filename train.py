@@ -158,7 +158,7 @@ def save_config(config:config_dict.ConfigDict, tmp_dir:Path):
 
 def wandb_init(wandbcfg:config_dict.ConfigDict):
 
-    if not wandbcfg.name:
+    if not wandbcfg.name and not FLAGS.wandb_sweep:
         wandbcfg.update({'name':FLAGS.result_folder_name})
 
     cfg_dict = wandbcfg.to_dict()
@@ -192,7 +192,7 @@ def main(_):
         os.environ["CUDA_VISIBLE_DEVICES"] = str(FLAGS.gpu_id)
     os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = str(FLAGS.gpu_mem)
     
-    if not FLAGS.result_folder_name and not FLAGS.wandb_sweep:
+    if not FLAGS.result_folder_name:
         _folder = code(cfg.case)
         _folder = _folder + str(time_stamp)
         FLAGS.result_folder_name = _folder
