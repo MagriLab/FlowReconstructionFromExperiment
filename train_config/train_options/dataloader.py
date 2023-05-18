@@ -96,6 +96,12 @@ def dataloader_2dtriangle(cfg:ConfigDict) -> dict:
             'u_train_clean': u_train,
             'u_val_clean': u_val
         })
+    else:
+        data.update({
+            'u_train_clean': None,
+            'u_val_clean': None
+        })
+
         
 
         logger.info('Adding white noise to data.')
