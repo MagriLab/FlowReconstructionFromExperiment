@@ -6,6 +6,9 @@ from flowrec.models import cnn, feedforward
 import logging
 logger = logging.getLogger(f'fr.{__name__}')
 
+from absl import flags
+FLAGS = flags.FLAGS
+
 
 def select_model_example(**kwargs):
     '''# Example model selection function.\n

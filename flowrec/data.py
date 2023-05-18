@@ -138,6 +138,20 @@ def unnormalise_group(
 
 
 
+def get_whitenoise_std(snr:Scalar,std_signal:Union[Array,Scalar]) -> Union[Array,Scalar]:
+    '''Calculate the standard deviation of Gaussian noise based on the signal-to-noise ratio (dB) and the standard deviation of the signal.\n
+    
+    Arguments:\n
+        snr: Scalar, signal-to-noise ratio in dB.\n
+        std_data: A scalar or array of the standard deviation of data.\n
+    
+    Returns;\n
+        Standard deviation of noise in the same shape as the input std_signal.
+    '''
+    snr_l = 10.**(snr/10.)
+    std_n = np.sqrt(std_signal**2/snr_l)
+    return std_n
+
 
 class _Metadata2d(NamedTuple):
     re: Scalar

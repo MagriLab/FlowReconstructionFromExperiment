@@ -50,6 +50,10 @@ flags.DEFINE_string('result_folder_name',None,'Name of the folder where all file
 flags.DEFINE_bool('chatty',False,'Print information on where the program is at now.')
 
 
+## Define interal global variables
+flags.DEFINE_bool('_noisy',False,'DO NOT CHANGE! True loss will be calculated with clean data if the data is noisy.')
+
+
 # ======================= test config ===============================
 _CONFIG = config_flags.DEFINE_config_file('cfg','train_config/config.py')
 _WANDB = config_flags.DEFINE_config_file('wandbcfg','train_config/config_wandb.py','path to wandb config file.')
