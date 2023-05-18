@@ -356,12 +356,15 @@ def main(_):
         best_run = api.sweep(f'{run.entity}/{run.project}/{run.sweep_id}').best_run()
         
         try: 
-            if loss_train[-1] < best_run.summary['loss']:
+            logger.debug('Trying to save model as an artifact.')
+            if loss_train[-1] < best_run.summary['loss_val']:
                 logger.info('Best model so far, saving weights and configurations.')
                 artifact = wandb.Artifact(name=f'sweep_weights_{run.sweep_id}', type='model') 
                 artifact.add_dir(tmp_dir)
                 run.log_artifact(artifact)
                 # run.finish_artifact(artifact) # only necessary for distributed runs
+            else:
+                logger.info('Not the best model, skip saving weights.')
         except KeyError as e: # probably the first run of the sweep
             logger.warning(e)
             artifact = wandb.Artifact(name=f'sweep_weights_{run.sweep_id}', type='model') 
