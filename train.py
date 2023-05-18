@@ -16,6 +16,7 @@ import optax
 import wandb
 from flowrec._typing import *
 from flowrec.training_and_states import save_trainingstate, TrainingState, generate_update_fn
+from flowrec.losses import loss_mse
 from utils.py_helper import update_matching_keys
 from utils.system import temporary_fix_absl_logging
 from train_config.sweep_process_config import sweep_preprocess_cfg
@@ -80,7 +81,10 @@ def fit(
     update:Callable,
     mdl_validation_loss:Callable,
     tmp_dir:Path,
-    wandb_run
+    wandb_run,
+    eval_true_mse,
+    y_train_batched_clean:Sequence[jax.Array],
+    y_val_clean:jax.Array,
 ):
     '''Train a network'''
 
@@ -89,6 +93,7 @@ def fit(
     loss_div = []
     loss_momentum = []
     loss_sensors = []
+    loss_true = []
 
     best_state = state
     min_loss = np.inf
@@ -100,6 +105,7 @@ def fit(
         loss_epoch_div = []
         loss_epoch_mom = []
         loss_epoch_s = []
+        loss_epoch_true = []
         for b in range(n_batch):
             (l, (l_div, l_mom, l_s)), state = update(state, rng, x_train_batched[b], y_train_batched[b])
             if FLAGS.cfg.model_config.dropout_rate is None:
@@ -113,6 +119,13 @@ def fit(
                 loss_epoch_div.append(l_div)
                 loss_epoch_mom.append(l_mom)
                 loss_epoch_s.append(l_s)
+
+            ## Calculate loss_true = loss_mse_of_all_clean_data+loss_physics
+            if FLAGS._noisy:
+                l_mse = eval_true_mse(state.params,None,x_train_batched[b],y_train_batched_clean[b])
+            else:
+                l_mse = eval_true_mse(state.params,None,x_train_batched[b],y_train_batched[b])
+            loss_epoch_true.append(l_mse+l_div+l_mom)
             
             if b == 0 or b == n_batch-1:
                 logger.debug(f'batch {b} has size {x_train_batched[b].shape[0]}, loss: {l:.7f}.')
@@ -121,6 +134,7 @@ def fit(
         loss_div.append(np.mean(loss_epoch_div))
         loss_momentum.append(np.mean(loss_epoch_mom))
         loss_sensors.append(np.mean(loss_epoch_s))
+        loss_true.append(np.mean(loss_epoch_true))
 
         
         l_val, _ = mdl_validation_loss(state.params,None,x_val,y_val)
