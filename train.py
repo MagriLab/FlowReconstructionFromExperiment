@@ -4,7 +4,7 @@ import sys
 import os
 import re
 from pathlib import Path
-from typing import Sequence, Callable
+from typing import Sequence, Callable, Optional
 import time
 import h5py
 
@@ -82,14 +82,15 @@ def fit(
     mdl_validation_loss:Callable,
     tmp_dir:Path,
     wandb_run,
-    eval_true_mse,
-    y_train_batched_clean:Sequence[jax.Array],
-    y_val_clean:jax.Array,
+    eval_true_mse:Callable,
+    y_train_batched_clean:Optional[Sequence[jax.Array]],
+    y_val_clean:Optional[jax.Array],
 ):
     '''Train a network'''
 
     loss_train = []
     loss_val = []
+    loss_val_true = []
     loss_div = []
     loss_momentum = []
     loss_sensors = []
@@ -122,8 +123,10 @@ def fit(
 
             ## Calculate loss_true = loss_mse_of_all_clean_data+loss_physics
             if FLAGS._noisy:
+                logger.debug('Calculating true loss using clean data (training data is noisy).')
                 l_mse = eval_true_mse(state.params,None,x_train_batched[b],y_train_batched_clean[b])
             else:
+                logger.debug('Calculating true loss using training data.')
                 l_mse = eval_true_mse(state.params,None,x_train_batched[b],y_train_batched[b])
             loss_epoch_true.append(l_mse+l_div+l_mom)
             
@@ -137,13 +140,31 @@ def fit(
         loss_true.append(np.mean(loss_epoch_true))
 
         
-        l_val, _ = mdl_validation_loss(state.params,None,x_val,y_val)
+        ## Validating
+        l_val, (l_val_div, l_val_mom, _) = mdl_validation_loss(state.params,None,x_val,y_val)
         loss_val.append(l_val)
+
+        if FLAGS._noisy:
+            logger.debug('Calculating true validation loss using clean data (training data is noisy).')
+            l_val_mse = eval_true_mse(state.params,None,x_val,y_val_clean)
+        else:
+            logger.debug('Calculating true validation loss using training data.')
+            l_val_mse = eval_true_mse(state.params,None,x_val,y_val)
+        l_val_true = np.sum([l_val_div, l_val_mom, l_val_mse])
+        loss_val_true.append(l_val_true)
 
 
         if FLAGS.wandb:
             logger.debug('Logging with wandb.')
-            wandb_run.log({'loss':loss_train[-1], 'loss_val':float(l_val), 'loss_div':loss_div[-1], 'loss_momentum':loss_momentum[-1], 'loss_sensors':loss_sensors[-1]})
+            wandb_run.log({
+                'loss':loss_train[-1],
+                'loss_true':loss_true[-1],
+                'loss_val':float(l_val),
+                'loss_val_true': l_val_true,
+                'loss_div':loss_div[-1], 
+                'loss_momentum':loss_momentum[-1], 
+                'loss_sensors':loss_sensors[-1]
+            })
 
         if l_val < min_loss:
             best_state = state
@@ -152,10 +173,11 @@ def fit(
 
         if i%200 == 0:
             print(f'Epoch: {i}, loss: {loss_train[-1]:.7f}, validation_loss: {l_val:.7f}', flush=True)
-            print(f'For training, loss_div: {loss_div[-1]:.7f}, loss_momentum: {loss_momentum[-1]:.7f}, loss_sensors: {loss_sensors[-1]:.7f}')
+            print(f'    For training, loss_div: {loss_div[-1]:.7f}, loss_momentum: {loss_momentum[-1]:.7f}, loss_sensors: {loss_sensors[-1]:.7f}')
+            print(f'    True loss of training: {loss_true[-1]:.7f}, validation: {l_val_true:.7f}')
     state = best_state
 
-    return state, loss_train, loss_val, (loss_div, loss_momentum, loss_sensors)
+    return state, loss_train, loss_val, (loss_div, loss_momentum, loss_sensors), (loss_true, loss_val_true)
 
 
 def batching(nb_batches:int, data:jax.Array):
@@ -328,6 +350,16 @@ def main(_):
     ) # this update weights once.
 
 
+    logger.info('MSE of the entire field is used to calculate true loss so we can have an idea of the true performance of the model. It is not used in training.')
+    eval_mse = jax.jit(
+        jax.tree_util.Partial(
+            loss_mse,
+            mdl.apply,
+            apply_kwargs={'TRAINING':False}
+        )
+    )
+
+
     # ==================== start training ===========================
 
     x_batched = batching(traincfg.nb_batches, data['inn_train'])
@@ -335,9 +367,15 @@ def main(_):
     logger.info('Prepared data as required by the model selected and batched the data.')
     logger.debug(f'First batch of input data has shape {x_batched[0].shape}.')
 
+    if FLAGS._noisy:
+        logger.debug('Batching clean data because training data is noisy.')
+        y_batched_clean = batching(traincfg.nb_batches, data['u_train_clean'])
+    else:
+        y_batched_clean = None
+
 
     logger.info('Starting training now...')
-    state, loss_train, loss_val, (loss_div, loss_momentum, loss_sensors) = fit(
+    state, loss_train, loss_val, (loss_div, loss_momentum, loss_sensors), (loss_train_true, loss_val_true) = fit(
         x_train_batched=x_batched,
         y_train_batched=y_batched,
         x_val=data['inn_val'],
@@ -349,7 +387,10 @@ def main(_):
         update=update,
         mdl_validation_loss=mdl_validation_loss,
         tmp_dir=tmp_dir,
-        wandb_run=run
+        wandb_run=run,
+        eval_true_mse=eval_mse,
+        y_train_batched_clean=y_batched_clean,
+        y_val_clean=data['u_val_clean']
     )
 
 
@@ -365,6 +406,8 @@ def main(_):
         hf.create_dataset("loss_div",data=np.array(loss_div))
         hf.create_dataset("loss_momentum",data=np.array(loss_momentum))
         hf.create_dataset("loss_sensors",data=np.array(loss_sensors))
+        hf.create_dataset("loss_train_true",data=np.array(loss_train_true))
+        hf.create_dataset("loss_val_true",data=np.array(loss_val_true))
     
 
     # ============= Save only best model if doing sweep ==========
