@@ -90,25 +90,23 @@ def dataloader_2dtriangle(cfg:ConfigDict) -> dict:
         [x_train,x_val,_], _ = data_partition(x,1,cfg.train_test_split,REMOVE_MEAN=cfg.remove_mean,randseed=randseed,SHUFFLE=cfg.shuffle) # Do not shuffle, do not remove mean for training with physics informed loss
         [ux_train,uy_train,pp_train] = np.squeeze(np.split(x_train,3,axis=0))
         [ux_val,uy_val,pp_val] = np.squeeze(np.split(x_val,3,axis=0))
+        
+        if cfg.normalise:
+            logger.info('Normalising the clean input.')
+            [ux_train,uy_train,pp_train], _ = normalise(ux_train,uy_train,pp_train)
+            [ux_val,uy_val,pp_val], _ = normalise(ux_val,uy_val,pp_val)
+
         u_train = np.stack((ux_train,uy_train,pp_train),axis=-1)
         u_val = np.stack((ux_val,uy_val,pp_val),axis=-1)
+
         data.update({
             'u_train_clean': u_train,
             'u_val_clean': u_val
         })
-    else:
-        data.update({
-            'u_train_clean': None,
-            'u_val_clean': None
-        })
-
-        
 
         logger.info('Adding white noise to data.')
         FLAGS._noisy = True
         std_data = np.std(x,axis=(1,2,3),ddof=1)
-        # snr_l = 10.**(cfg.snr/10.)
-        # std_n = np.sqrt(std_data**2/snr_l)
         std_n = get_whitenoise_std(cfg.snr,std_data)
         noise_ux = np.random.normal(scale=std_n[0],size=x[0,...].shape)
         noise_uy = np.random.normal(scale=std_n[1],size=x[1,...].shape)
@@ -116,7 +114,15 @@ def dataloader_2dtriangle(cfg:ConfigDict) -> dict:
         noise = np.stack([noise_ux,noise_uy,noise_pp],axis=0)
         x = x + noise
 
-    
+    else:
+        data.update({
+            'u_train_clean': None,
+            'u_val_clean': None
+        })
+
+
+    ## Pre-process data that will be used for training
+    logger.info("Pre-process data that will be used for training")   
     [x_train,x_val,_], _ = data_partition(x,1,cfg.train_test_split,REMOVE_MEAN=cfg.remove_mean,randseed=randseed,SHUFFLE=cfg.shuffle) # Do not shuffle, do not remove mean for training with physics informed loss
     logger.info(f'Remove mean is {cfg.remove_mean}')
 
