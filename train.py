@@ -418,7 +418,7 @@ def main(_):
         
         try: 
             logger.debug('Trying to save model as an artifact.')
-            if loss_train[-1] < best_run.summary['loss_val']:
+            if loss_val[-1] < best_run.summary['loss_val']:
                 logger.info('Best model so far, saving weights and configurations.')
                 artifact = wandb.Artifact(name=f'sweep_weights_{run.sweep_id}', type='model') 
                 artifact.add_dir(tmp_dir)
