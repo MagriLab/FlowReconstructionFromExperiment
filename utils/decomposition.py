@@ -1,4 +1,6 @@
 import numpy as np
+from jax import jit
+import jax.numpy as jnp
 from _typing import *
 from typing import Sequence, Union, Optional
 import logging
@@ -18,8 +20,8 @@ class POD:
         get_time_coefficient: returns the time coefficients
     '''
 
-    def __init__(self) -> None:
-        pass
+    def __init__(self, dtype:str='float32') -> None:
+        self.dtype = dtype
 
 
     def pod(
@@ -34,21 +36,25 @@ class POD:
             raise ValueError('Input q must be of shape [nx,nt]')
         
         (nx,nt) = q.shape
+        q = jnp.asarray(q).astype(self.dtype)
 
         # set weights
         w = self._set_weight(weight,nx)
-        
+        w = jnp.asarray(w).astype(self.dtype)
+
         # perform pod
         if method == 'classic':
-            modes, lam, a, phi = self.classic_pod(q,w,nt)
+            modes, lam, a, phi = self.classic_pod(q,w)
         elif method == 'snapshot':
-            modes, lam, a, phi = self.snapshot_pod(q,w,nt)
+            modes, lam, a, phi = self.snapshot_pod(q,w)
         else:
             raise ValueError("Please choose a method between 'classic' and 'snapshot'.")
         
         if restore_shape:
-            original_shape = grid_shape.extend([-1])
-            modes = modes.reshape(original_shape)
+            original_shape = grid_shape.copy()
+            original_shape.extend([-1])
+            modes = np.reshape(modes,original_shape)
+            logger.debug('Reshpaing')
         
         return modes, lam, a, phi # modes, eigenvalues, coeff, eigenvectors
 
@@ -98,10 +104,23 @@ class POD:
         if len(q.shape) != 2:
             raise ValueError('Input is the wrong shape.')
 
+        logger.debug(f'input as dtype {q.dtype}.')
+        logger.debug(f'weights as dtype {w.dtype}.')
         nt = q.shape[-1]
-        c = q @ ((q.T)*(w.T))/(nt-1) # 2-point spatial correlation tesnsor: Q*Q'
+
+        @jit
+        def _eigenvec_and_lam():
+            qt = q.T
+            qt_weighted = jnp.multiply(qt, w.T)
+            c = jnp.matmul(q, qt_weighted)
+            c = c / (nt-1)
+            lam,phi = jnp.linalg.eigh(c) # right eigenvectors and eigenvalues
+            return lam, phi
+        
+        lam, phi = _eigenvec_and_lam()
+
+        # c = q @ ((q.T)*(w.T))/(nt-1) # 2-point spatial correlation tesnsor: Q*Q'
         # print('C is Hermitian?',np.allclose(C,np.conj(C.T)))
-        lam,phi = np.linalg.eigh(c) # right eigenvectors and eigenvalues
         idx = np.argsort(lam) # sort
         idx = np.flip(idx)
         modes = phi[:,idx]
@@ -122,12 +141,24 @@ class POD:
         
         Suitable for when number of snapshots is smaller than the number of data points.''' 
 
+        logger.debug(f'input as dtype {q.dtype}.')
         if len(q.shape) != 2:
             raise ValueError('Input is the wrong shape.')
 
         nt = q.shape[-1]
-        C = (q.T) @ (q*w)/(nt-1) # 2-point temporal correlation tesnsor: q'*q 
-        lam,phi = np.linalg.eigh(C)
+        
+
+        @jit
+        def _eigenvec_and_lam():
+            qweighted = jnp.multiply(q, w)
+            qt = q.T
+            c = jnp.matmul(qt, qweighted)
+            c = c/(nt-1)
+            lam,phi = jnp.linalg.eigh(c)
+            return lam,phi
+
+        lam,phi = _eigenvec_and_lam()
+        # c = (q.T) @ (q*w)/(nt-1) # 2-point temporal correlation tesnsor: q'*q 
         idx = np.argsort(np.abs(lam)) # sort
         idx = np.flip(idx)
         phi = phi[:,idx]
@@ -149,8 +180,14 @@ class POD:
         modes = np.reshape(modes,original_shape)
         return modes
     
-
-    def reconstruct(method:str, which_modes:Union[int,list], phi:np.array, a:np.array):
+    @staticmethod
+    def reconstruct(method:str, 
+                    which_modes:Union[int,list], 
+                    phi:np.array, 
+                    a:np.array,
+                    q_mean:Optional[np.array] = None,
+                    grid_shape:Optional[list] = None
+                    ):
 
         if len(phi.shape) != 2:
             raise ValueError()
@@ -172,4 +209,18 @@ class POD:
             q_add = phi[idx] @ a[idx].T
         elif method == 'snapshot':
             q_add = a[idx] @ phi[idx].T
-        rebuildv = np.reshape(Q_mean,(-1,1)) + q_add
+
+        if q_mean:
+            rebuildv = np.reshape(q_mean,(-1,1)) + q_add
+        else:
+            rebuildv = q_add
+        
+        if grid_shape:
+            if np.prod(grid_shape) < rebuildv.size:
+                new_shape = grid_shape.copy()
+                new_shape.extend([-1])
+                rebuildv = rebuildv.reshape(tuple(new_shape))
+            elif np.prod(grid_shape) == rebuildv.size:
+                rebuildv = rebuildv.reshape(tuple(grid_shape))
+            else:
+                raise ValueError(f'The provided grid shape implies the reconstructed field has {np.prod(grid_shape)} elements, but the reconstructed field has {rebuildv.size} elements.')
