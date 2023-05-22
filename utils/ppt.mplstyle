@@ -1,1 +1,3 @@
 image.cmap: jet
+figure.constrained_layout.use: True
+# figure.autolayout: False
