@@ -33,7 +33,7 @@ class POD:
             restore_shape:bool = False
     ):
         if len(q.shape) != 2:
-            raise ValueError('Input q must be of shape [nx,nt]')
+            raise ValueError(f'Input q must be of shape [nx,nt], recieved shape {q.shape}')
         
         (nx,nt) = q.shape
         q = jnp.asarray(q).astype(self.dtype)
@@ -77,12 +77,11 @@ class POD:
         q = np.moveaxis(x,t_axis,-1)
         grid_shape = list(q.shape[:-1])
         nt = q.shape[-1]
-        q = np.reshape(x,(-1,nt))
+        q = np.reshape(q,(-1,nt))
 
         # remove mean
         q_mean = np.mean(q,axis=1)
-        for ti in range(0,nt):
-            q[:,ti] = q[:,ti] - q_mean;  
+        q = q - q_mean
 
         return q, q_mean, grid_shape
 
