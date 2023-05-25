@@ -80,7 +80,7 @@ class POD:
         q = np.reshape(q,(-1,nt))
 
         # remove mean
-        q_mean = np.mean(q,axis=1)
+        q_mean = np.mean(q,axis=1,keepdims=True)
         q = q - q_mean
 
         return q, q_mean, grid_shape
