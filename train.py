@@ -83,8 +83,8 @@ def fit(
     tmp_dir:Path,
     wandb_run,
     eval_true_mse:Callable,
-    y_train_batched_clean:Optional[Sequence[jax.Array]],
-    y_val_clean:Optional[jax.Array],
+    yfull_train_batched_clean:Optional[Sequence[jax.Array]],
+    yfull_val_clean:Optional[jax.Array],
 ):
     '''Train a network'''
 
@@ -122,12 +122,9 @@ def fit(
                 loss_epoch_s.append(l_s)
 
             ## Calculate loss_true = loss_mse_of_all_clean_data+loss_physics
-            if FLAGS._noisy:
-                logger.debug('Calculating true loss using clean data (training data is noisy).')
-                l_mse = eval_true_mse(state.params,None,x_train_batched[b],y_train_batched_clean[b])
-            else:
-                logger.debug('Calculating true loss using training data.')
-                l_mse = eval_true_mse(state.params,None,x_train_batched[b],y_train_batched[b])
+            logger.debug('Calculating true loss using clean data.')
+            l_mse = eval_true_mse(state.params,None,x_train_batched[b],yfull_train_batched_clean[b])
+
             loss_epoch_true.append(l_mse+l_div+l_mom)
             
             if b == 0 or b == n_batch-1:
@@ -144,12 +141,9 @@ def fit(
         l_val, (l_val_div, l_val_mom, _) = mdl_validation_loss(state.params,None,x_val,y_val)
         loss_val.append(l_val)
 
-        if FLAGS._noisy:
-            logger.debug('Calculating true validation loss using clean data (training data is noisy).')
-            l_val_mse = eval_true_mse(state.params,None,x_val,y_val_clean)
-        else:
-            logger.debug('Calculating true validation loss using training data.')
-            l_val_mse = eval_true_mse(state.params,None,x_val,y_val)
+        logger.debug('Calculating true validation loss using clean data.')
+        l_val_mse = eval_true_mse(state.params,None,x_val,yfull_val_clean)
+
         l_val_true = np.sum([l_val_div, l_val_mom, l_val_mse])
         loss_val_true.append(l_val_true)
 
@@ -369,9 +363,11 @@ def main(_):
 
     if FLAGS._noisy:
         logger.debug('Batching clean data because training data is noisy.')
-        y_batched_clean = batching(traincfg.nb_batches, data['u_train_clean'])
+        yfull_batched_clean = batching(traincfg.nb_batches, data['u_train_clean'])
+        yfull_val_clean = data['u_val_clean']
     else:
-        y_batched_clean = None
+        yfull_batched_clean = batching(traincfg.nb_batches, data['u_train'])
+        yfull_val_clean = data['u_val']
 
 
     logger.info('Starting training now...')
@@ -389,8 +385,8 @@ def main(_):
         tmp_dir=tmp_dir,
         wandb_run=run,
         eval_true_mse=eval_mse,
-        y_train_batched_clean=y_batched_clean,
-        y_val_clean=data['u_val_clean']
+        yfull_train_batched_clean=yfull_batched_clean,
+        yfull_val_clean=yfull_val_clean
     )
 
 
