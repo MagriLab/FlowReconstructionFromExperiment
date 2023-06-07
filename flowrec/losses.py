@@ -49,7 +49,7 @@ def loss_mse(apply_fn:Callable,
 
 # ====================== regular calculations ========================
 
-def mse(pred:Array,true:Array) -> float:
+def mse(pred:Array,true:Optional[Array] = None) -> float:
     '''Mean squared error
     
     Argument:\n
