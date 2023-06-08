@@ -234,6 +234,6 @@ def momentum_residue_field(
     d2ui_dxj2 = _didj(v_derivative2,u)
     d2udx2_i = jnp.einsum('ji... - > i...', d2ui_dxj2) # [i,t,x,y,z]
 
-    residue = dui_dt + ududx_i + dpdx_i - (d2udx2_i/datainfo.re)
+    residual = dui_dt + ududx_i + dpdx_i - (d2udx2_i/datainfo.re)
     
-    return residue
+    return residual
