@@ -183,11 +183,11 @@ def momentum_residual_field(
     # function that applies a function to inn, and x,y,z in order
     def _didj(de_fun,inn):
         didj_T = de_fun(inn,datainfo.dx,datainfo.axx).reshape((-1,)+inn.shape)
-        for i in range (1,u.shape[0]):
+        for j in range (1,u.shape[0]):
             didj_T = jnp.concatenate(
                 (
                 didj_T,
-                de_fun(inn,step_space[i],axis_space[i]).reshape((-1,)+inn.shape)
+                de_fun(inn,step_space[j],axis_space[j]).reshape((-1,)+inn.shape)
                 ),
                 axis=0
             )
