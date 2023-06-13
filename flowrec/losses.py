@@ -4,7 +4,7 @@ import jax.numpy as jnp
 import numpy as np
 
 from .models._general import BaseModel
-from .physics_and_derivatives import div_field, momentum_residue_field
+from .physics_and_derivatives import div_field, momentum_residual_field
 from .data import DataMetadata
 
 import chex
@@ -82,25 +82,21 @@ def sum_squared_element(tree):
 
 
 def divergence(
-    ux:Array,
-    uy:Array,
-    datainfo:ClassDataMetadata,
-    uz:Optional[Array]=None) -> float:
+    u:Array,
+    datainfo:ClassDataMetadata) -> float:
 
     '''Calculate the diveregence loss.
     The diveregence loss the the squared mean of the divergence field.
     
     Arguments:\n
-        ux: an array of velocity in x direction.\n
-        uy: an array of velocity in x direction.\n
+        u: an array of velocities with shape [t,x,y,...,i], i=2 if 2D flow, 3 if 3D flow. \n
         datainfo: an instance of DataMetadata.\n
-        uz: an array of velocity in z direction, None if the 2D flow.\n
 
     Return:\n
         A non-negative scalar, square of the mean of the divergence field.
     '''
 
-    div = div_field(ux,uy,datainfo,uz)
+    div = div_field(u,datainfo)
     div_loss = jnp.mean(div**2) # div_loss >= 0
 
     return div_loss

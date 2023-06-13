@@ -99,10 +99,8 @@ def loss_fn_physicswithdata(cfg,**kwargs):
             logger.debug('Un-normalise before calculating loss.')
 
         loss_div = losses.divergence(pred_new[...,0], pred_new[...,1], datainfo)
-        mom_field = derivatives.momentum_residue_field(
-                            ux=pred_new[...,0],
-                            uy=pred_new[...,1],
-                            p=pred_new[...,2],
+        mom_field = derivatives.momentum_residual_field(
+                            u_p=pred_new,
                             datainfo=datainfo) # [i,t,x,y]
         loss_mom = jnp.mean(mom_field**2)*mom_field.shape[0]
         
@@ -140,10 +138,8 @@ def loss_fn_physicsnoreplace(cfg,**kwargs):
             logger.debug('Un-normalise before calculating loss.')
 
         loss_div = losses.divergence(pred[...,0], pred[...,1], datainfo)
-        mom_field = derivatives.momentum_residue_field(
-                            ux=pred[...,0],
-                            uy=pred[...,1],
-                            p=pred[...,2],
+        mom_field = derivatives.momentum_residual_field(
+                            u_p=pred,
                             datainfo=datainfo) # [i,t,x,y]
         loss_mom = jnp.mean(mom_field**2)*mom_field.shape[0]
         
