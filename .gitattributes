@@ -1,5 +1,6 @@
 # https://github.com/github/linguist/blob/master/docs/overrides.md
 
-visualisation_notebook/*.ipynb linguist-documentation
+visualisation_notebook/* linguist-documentation
+visualisation_notebook/sweep_compare_loss_fn.ipynb linguist-documentation
 
 admin/* linguist-documentation
