@@ -146,3 +146,30 @@ def loss_fn_physicsnoreplace(cfg,**kwargs):
         return wp*(loss_div+loss_mom)+ws*loss_sensor, (loss_div,loss_mom,loss_sensor)
     
     return Partial(loss_fn, normalise=cfg.data_config.normalise)
+
+
+
+def loss_fn_physicsreplacemean(cfg,**kwargs):
+    '''Train on physics loss calculated from pred_new, where \n
+    pred_new = pred at hidden locations and \n
+    pred_new = pred - mean(pred) + mean(observed), mean() is averaging in time.
+    '''
+
+    def loss_fn():
+        pass
+
+
+    return Partial(loss_fn, normalise=cfg.data_config.normalise)
+
+
+
+def loss_fn_physicsandmean(cfg, **kwargs):
+    '''Train on physics loss + sensor loss, \n
+    where the sensor loss is the mse(mean(pred), mean(observed)) at observed locations.\n
+    mean() is time averaging'''
+
+    def loss_fn():
+        pass
+
+
+    return Partial(loss_fn, normalise(cfg.data_config.normalise))
