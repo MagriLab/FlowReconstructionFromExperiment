@@ -27,6 +27,10 @@ def code(cfgcase: ConfigDict):
         sloss = 'pi3'
     elif cfgcase._case_loss_fn == 'physicsnoreplace':
         sloss = 'pi1'
+    elif cfgcase._case_loss_fn == 'physicsreplacemean':
+        sloss = 'pm3'
+    elif cfgcase._case_loss_fn == 'physicsandmean':
+        sloss = 'pm1'
     else:
         sloss = 'zz'
 

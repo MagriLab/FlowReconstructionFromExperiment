@@ -1,9 +1,22 @@
 from ml_collections import config_dict
 from ml_collections.config_dict import placeholder
+import warnings
 
-def get_config(cfgstr:str = 'ffcnn,physicswithdata'):
+def get_config(cfgstr:str = 'loss_fn@physicswithdata,model@ffcnn'):
+    
+    if cfgstr:
+        user = dict([x.split('@') for x in cfgstr.split(',')])
+    else:
+        user = {}
+        warnings.warn('No training case is selected, proceeds with the basic configuration.\n Are you sure this is not a mistake?')
 
-    _mdl, _loss_fn = cfgstr.split(',')
+    # Set up default options
+    _mdl = 'ffcnn'
+    _loss_fn = 'physicswithdata'
+    if 'select_model' in user:
+        _mdl = user['model']
+    if 'loss_fn' in user:
+        _loss_fn = user['loss_fn']
 
     cfg = config_dict.ConfigDict()
 
@@ -50,7 +63,7 @@ def get_config(cfgstr:str = 'ffcnn,physicswithdata'):
     else:
         raise ValueError('Invalid model option for wandb configuration.')
 
-    if _loss_fn == 'physicswithdata' or 'physicsnoreplace':
+    if _loss_fn == 'physicswithdata' or 'physicsnoreplace' or 'physicsreplacemean' or 'physicsandmean':
         cfg.config.weight_physics = placeholder(float)
         cfg.config.weight_sensors = placeholder(float)
     else:
