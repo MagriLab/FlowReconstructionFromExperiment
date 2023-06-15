@@ -98,6 +98,9 @@ def fit(
 
     best_state = state
     min_loss = np.inf
+            
+    # compile first
+    _ = update(state, rng, x_train_batched[0], y_train_batched[0])
 
     for i in range(epochs+1):
         [rng] = jax.random.split(rng,1)
