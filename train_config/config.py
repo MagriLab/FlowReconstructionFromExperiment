@@ -170,13 +170,15 @@ def get_config(cfgstr:str = None):
 
     if _loss_fn == 'physicswithdata' or 'physicsreplacemean':
         cfg.train_config.update({
-            'weight_physics': 1.0,
+            'weight_momentum': 1.0,
+            'weight_continuity': 10.0,
             'weight_sensors': 0.0
         })
     elif _loss_fn == 'physicsnoreplace' or 'physicsandmean':
         cfg.train_config.update({
-            'weight_physics': 0.1,
-            'weight_sensors': 0.9
+            'weight_momentum': 1.0,
+            'weight_continuity': 1.0,
+            'weight_sensors': 10.0
         })
     else:
         raise ValueError('Invalid loss_fn option.')
