@@ -68,6 +68,42 @@ def debugger(loggers:Sequence[str]):
         logging.getLogger(f'fr.{l}').setLevel(logging.DEBUG)
 
 
+def batching(nb_batches:int, data:jax.Array):
+    '''Split data into nb_batches number of batches along axis 0.'''
+    return jnp.array_split(data,nb_batches,axis=0)
+
+
+
+def save_config(config:config_dict.ConfigDict, tmp_dir:Path):
+    '''Save config to file config.yml. Load with yaml.unsafe_load(file)'''
+    fname = Path(tmp_dir,'config.yml')
+    with open(fname,'x') as f:
+        config.to_yaml(stream=f, default_flow_style=False)
+
+
+
+
+
+def wandb_init(wandbcfg:config_dict.ConfigDict):
+
+    if not wandbcfg.name and not FLAGS.wandb_sweep:
+        wandbcfg.update({'name':FLAGS.result_folder_name})
+
+    cfg_dict = wandbcfg.to_dict()
+    logger.debug(f'Arguments passed to wandb.init {cfg_dict}.')
+
+    run = wandb.init(**cfg_dict)
+
+    _pattern = re.compile(".*/FlowReconstructionFromExperiment/local")
+    def _ignore_files(path):
+        return _pattern.match(path)
+    
+    run.log_code('.', exclude_fn=_ignore_files)
+    
+    return run
+
+
+
 
 def fit(
     x_train_batched:Sequence[jax.Array],
@@ -112,13 +148,13 @@ def fit(
         loss_epoch_true = []
         for b in range(n_batch):
             (l, (l_div, l_mom, l_s)), state = update(state, rng, x_train_batched[b], y_train_batched[b])
-            if FLAGS.cfg.model_config.dropout_rate is None:
+            if FLAGS.cfg.model_config.dropout_rate > 0.0:
+                l, (l_div, l_mom, l_s) = mdl_validation_loss(state.params,None,x_train_batched[b],y_train_batched[b])
                 loss_epoch.append(l)
                 loss_epoch_div.append(l_div)
                 loss_epoch_mom.append(l_mom)
                 loss_epoch_s.append(l_s)
             else:
-                l, (l_div, l_mom, l_s) = mdl_validation_loss(state.params,None,x_train_batched[b],y_train_batched[b])
                 loss_epoch.append(l)
                 loss_epoch_div.append(l_div)
                 loss_epoch_mom.append(l_mom)
@@ -175,41 +211,6 @@ def fit(
     state = best_state
 
     return state, loss_train, loss_val, (loss_div, loss_momentum, loss_sensors), (loss_true, loss_val_true)
-
-
-def batching(nb_batches:int, data:jax.Array):
-    '''Split data into nb_batches number of batches along axis 0.'''
-    return jnp.array_split(data,nb_batches,axis=0)
-
-
-
-def save_config(config:config_dict.ConfigDict, tmp_dir:Path):
-    '''Save config to file config.yml. Load with yaml.unsafe_load(file)'''
-    fname = Path(tmp_dir,'config.yml')
-    with open(fname,'x') as f:
-        config.to_yaml(stream=f, default_flow_style=False)
-
-
-
-
-
-def wandb_init(wandbcfg:config_dict.ConfigDict):
-
-    if not wandbcfg.name and not FLAGS.wandb_sweep:
-        wandbcfg.update({'name':FLAGS.result_folder_name})
-
-    cfg_dict = wandbcfg.to_dict()
-    logger.debug(f'Arguments passed to wandb.init {cfg_dict}.')
-
-    run = wandb.init(**cfg_dict)
-
-    _pattern = re.compile(".*/FlowReconstructionFromExperiment/local")
-    def _ignore_files(path):
-        return _pattern.match(path)
-    
-    run.log_code('.', exclude_fn=_ignore_files)
-    
-    return run
 
 
 

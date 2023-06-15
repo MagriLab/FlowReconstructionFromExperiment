@@ -2,7 +2,7 @@ from ml_collections import config_dict
 from ml_collections.config_dict import placeholder
 import warnings
 
-def get_config(cfgstr:str = 'loss_fn@physicswithdata,model@ffcnn'):
+def get_config(cfgstr:str = None):
     
     if cfgstr:
         user = dict([x.split('@') for x in cfgstr.split(',')])
