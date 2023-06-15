@@ -127,76 +127,53 @@ def derivative1(f:Array, h:Scalar, axis:int=0) -> Array:
 
 
 def div_field(
-    ux:Array,
-    uy:Array,
-    datainfo:ClassDataMetadata,
-    uz:Optional[Array]=None) -> Array:
+    u:Array,
+    datainfo:ClassDataMetadata) -> Array:
     '''Calculate the diveregence of the flow given some snapshots.\n
     
     Arguments:\n
-        ux: an array of velocity in x direction.\n
-        uy: an array of velocity in x direction.\n
+        u: an array of velocities with shape [t,x,y,...,i], i=2 if 2D flow, 3 if 3D flow. \n
         datainfo: an instance of DataMetadata.\n
-        uz: an array of velocity in z direction, None if the 2D flow.\n
 
     Return:\n
-        An array of divergence of the flow with the same as ux, uy and uz.
+        An array of divergence of the flow with shape [t,x,y].
     '''
-    if uz is not None:
-        chex.assert_equal_shape((ux,uy,uz))
-    else:
-        chex.assert_equal_shape((ux,uy))
+    step_space = datainfo.discretisation[1:]
+    axis_space = datainfo.axis_index[1:]
     
-    dudx = derivative1(ux,datainfo.dx,axis=datainfo.axx)
-    dvdy = derivative1(uy,datainfo.dy,axis=datainfo.axy)
-    div = dudx + dvdy
-    if uz is not None:
-        dwdz = derivative1(uz,datainfo.dz,axis=datainfo.axz)
-        div = div + dwdz
-        logger.info('Divergence calculated for 3D flow.')
+    chex.assert_axis_dimension(u,-1,len(step_space))
+
+    div = derivative1(u[...,0],step_space[0],axis_space[0])
+    for i in range(1,u.shape[-1]):
+        div = div + derivative1(u[...,i],step_space[i],axis_space[i])
+
     return div
 
 
-def momentum_residue_field(
-    ux:Array,
-    uy:Array,
-    p:Array,
+def momentum_residual_field(
+    u_p:Array,
     datainfo:ClassDataMetadata,
-    uz:Optional[Array] = None,
     **kwargs) -> Array:
     
     '''Calculate the momentum residue of the nondimensional Navier Stokes equation for selected velocity.
     Either 2D or 3D.\n
     
     Arguments:\n
-        ux: array of velocity in x direction.\n
-        uy: array of velocity in y direction.\n
-        p: array of pressure.\n
+        u_p: array of velocitie and pressure with shape [t,x,y,...,i], u_p[...,-1] is the pressure field. \n
         datainfo: an instance of DataMetadata.\n
-        uz: array of velocity in z direction.\n
 
     return:\n
-        Momentum residue field, has shape [i,...], where i is the number of velocity and ... is the shape of the input velocity field (e.g. ux.shape).
+        Momentum residue field, has shape [i,...], where i is the number of velocity and ... is the shape of the input velocity field.
     '''
-
-    try:
-        chex.assert_equal_shape([ux,uy,p])
-        u = jnp.stack((ux,uy),axis=0)
-        if uz is not None:
-            chex.assert_equal_shape([ux,uz])
-            u = jnp.concatenate((u,uz[jnp.newaxis,...]),axis=0)
-    except AssertionError as err:
-        logger.error('Cannot calculate momentum residue, input shape mismatch.')
-        raise err
-    try:
-        chex.assert_rank(u,[2+u.shape[0]])
-    except AssertionError as err:
-        logger.error(f'Cannot calculate momentum, number of velocities does not match the number of dimensions.')
-        raise err
 
     
     step_space = datainfo.discretisation[1:]
     axis_space = datainfo.axis_index[1:]
+
+    chex.assert_axis_dimension(u_p,-1,len(step_space)+1)
+
+    u = jnp.moveaxis(u_p[...,:-1],-1,0)
+    p = u_p[...,-1]
     
 
     ## Define internal functions
@@ -206,11 +183,11 @@ def momentum_residue_field(
     # function that applies a function to inn, and x,y,z in order
     def _didj(de_fun,inn):
         didj_T = de_fun(inn,datainfo.dx,datainfo.axx).reshape((-1,)+inn.shape)
-        for i in range (1,u.shape[0]):
+        for j in range (1,u.shape[0]):
             didj_T = jnp.concatenate(
                 (
                 didj_T,
-                de_fun(inn,step_space[i],axis_space[i]).reshape((-1,)+inn.shape)
+                de_fun(inn,step_space[j],axis_space[j]).reshape((-1,)+inn.shape)
                 ),
                 axis=0
             )

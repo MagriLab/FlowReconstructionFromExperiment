@@ -98,11 +98,9 @@ def loss_fn_physicswithdata(cfg,**kwargs):
             pred_new = unnormalise_group(pred_new, y_minmax, axis_data=-1, axis_range=0)
             logger.debug('Un-normalise before calculating loss.')
 
-        loss_div = losses.divergence(pred_new[...,0], pred_new[...,1], datainfo)
-        mom_field = derivatives.momentum_residue_field(
-                            ux=pred_new[...,0],
-                            uy=pred_new[...,1],
-                            p=pred_new[...,2],
+        loss_div = losses.divergence(pred_new[...,:-1], datainfo)
+        mom_field = derivatives.momentum_residual_field(
+                            u_p=pred_new,
                             datainfo=datainfo) # [i,t,x,y]
         loss_mom = jnp.mean(mom_field**2)*mom_field.shape[0]
         
@@ -139,14 +137,107 @@ def loss_fn_physicsnoreplace(cfg,**kwargs):
             pred = unnormalise_group(pred, y_minmax, axis_data=-1, axis_range=0)
             logger.debug('Un-normalise before calculating loss.')
 
-        loss_div = losses.divergence(pred[...,0], pred[...,1], datainfo)
-        mom_field = derivatives.momentum_residue_field(
-                            ux=pred[...,0],
-                            uy=pred[...,1],
-                            p=pred[...,2],
+        loss_div = losses.divergence(pred[...,:-1], datainfo)
+        mom_field = derivatives.momentum_residual_field(
+                            u_p=pred,
                             datainfo=datainfo) # [i,t,x,y]
         loss_mom = jnp.mean(mom_field**2)*mom_field.shape[0]
         
         return wp*(loss_div+loss_mom)+ws*loss_sensor, (loss_div,loss_mom,loss_sensor)
     
+    return Partial(loss_fn, normalise=cfg.data_config.normalise)
+
+
+
+def loss_fn_physicsreplacemean(cfg,**kwargs):
+    '''Train on physics loss calculated from pred_new, where \n
+    pred_new = pred at hidden locations and \n
+    pred_new = pred - mean(pred) + mean(observed), mean() is averaging in time.
+    '''
+
+    take_observation: Callable = kwargs['take_observation']
+    insert_observation: Callable = kwargs['insert_observation']
+    
+    datainfo = kwargs['datainfo']
+
+    wp = cfg.train_config.weight_physics
+    ws = cfg.train_config.weight_sensors
+
+    if wp > 0.0:
+        logger.info('Training with both physics and sensor loss even though sensor measurements have already been inserted into the prediction.')
+
+    def loss_fn(apply_fn:Callable,
+                params:Params, 
+                rng:jax.random.PRNGKey, 
+                x:Sequence[jax.Array], 
+                y:Sequence[jax.Array],
+                normalise:bool, 
+                y_minmax:jax.Array = jnp.array([]),
+                apply_kwargs:dict = {}, 
+                **kwargs):
+        pred = apply_fn(params, rng, x, **apply_kwargs)
+        pred_observed = take_observation(pred)
+        loss_sensor = losses.mse(pred_observed, y)
+        
+        pred_replaced = insert_observation(pred,y)
+        pred_f = pred - jnp.mean(pred,axis=0,keepdims=True)
+        pred_new = pred_f + jnp.mean(pred_replaced,axis=0,keepdims=True)
+        
+        # normalise
+        if normalise:
+            pred_new = unnormalise_group(pred_new, y_minmax, axis_data=-1, axis_range=0)
+            logger.debug('Un-normalise before calculating loss.')
+        
+        loss_div = losses.divergence(pred_new[...,:-1], datainfo)
+        mom_field = derivatives.momentum_residual_field(
+                            u_p=pred_new,
+                            datainfo=datainfo) # [i,t,x,y]
+        loss_mom = jnp.mean(mom_field**2)*mom_field.shape[0]
+        
+        return wp*(loss_div+loss_mom)+ws*loss_sensor, (loss_div,loss_mom,loss_sensor)
+
+
+    return Partial(loss_fn, normalise=cfg.data_config.normalise)
+
+
+
+def loss_fn_physicsandmean(cfg, **kwargs):
+    '''Train on physics loss + sensor loss, \n
+    where the sensor loss is the mse(mean(pred), mean(observed)) at observed locations.\n
+    mean() is time averaging'''
+
+    take_observation:Callable = kwargs['take_observation']
+    datainfo = kwargs['datainfo']
+
+    wp = cfg.train_config.weight_physics
+    ws = cfg.train_config.weight_sensors
+
+    def loss_fn(apply_fn:Callable,
+                params:Params, 
+                rng:jax.random.PRNGKey, 
+                x:Sequence[jax.Array], 
+                y:Sequence[jax.Array],
+                normalise:bool, 
+                y_minmax:jax.Array = jnp.array([]),
+                apply_kwargs:dict = {}, 
+                **kwargs):
+        pred = apply_fn(params, rng, x, **apply_kwargs)
+        pred_observed = take_observation(pred)
+        
+        ## mean loss
+        loss_sensor = losses.mse(jnp.mean(pred_observed,axis=0), jnp.mean(y,axis=0))
+
+        # normalise
+        if normalise:
+            pred = unnormalise_group(pred, y_minmax, axis_data=-1, axis_range=0)
+            logger.debug('Un-normalise before calculating loss.')
+
+        loss_div = losses.divergence(pred[...,:-1], datainfo)
+        mom_field = derivatives.momentum_residual_field(
+                            u_p=pred,
+                            datainfo=datainfo) # [i,t,x,y]
+        loss_mom = jnp.mean(mom_field**2)*mom_field.shape[0]
+        
+        return wp*(loss_div+loss_mom)+ws*loss_sensor, (loss_div,loss_mom,loss_sensor)
+
     return Partial(loss_fn, normalise=cfg.data_config.normalise)

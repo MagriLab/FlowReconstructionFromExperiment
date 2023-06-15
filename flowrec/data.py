@@ -5,6 +5,9 @@ import jax.numpy as jnp
 from dataclasses import dataclass, field
 import chex
 
+import logging
+logger = logging.getLogger(f'fr.{__name__}')
+
 dtype = Union[str,np.dtype]
 Scalar = Union[int, float]
 Array = Union[np.ndarray, jax.Array]
@@ -93,6 +96,7 @@ def normalise(*args:Array) -> tuple[list[Array], list]:
     data_new = []
 
     for data in args:
+        logging.debug(f'data has type {type(data)} and shape {data.shape}')
         r = [np.min(data), np.max(data)]
         d = 2 * ( (data - r[0]) / (r[1] - r[0]) ) - 1
         ran.append(np.array(r).astype('float32'))

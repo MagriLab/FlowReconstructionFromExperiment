@@ -95,7 +95,7 @@ def get_config(cfgstr:str = None):
     if 'observe' in user:
         _observe = user['observe']
     if 'select_model' in user:
-        _select_model = user['select_model']
+        _select_model = user['model']
     if 'loss_fn' in user:
         _loss_fn = user['loss_fn']
 
@@ -168,12 +168,12 @@ def get_config(cfgstr:str = None):
         raise ValueError('Invalid select_model option.')
 
 
-    if _loss_fn == 'physicswithdata':
+    if _loss_fn == 'physicswithdata' or 'physicsreplacemean':
         cfg.train_config.update({
             'weight_physics': 1.0,
             'weight_sensors': 0.0
         })
-    elif _loss_fn == 'physicsnoreplace':
+    elif _loss_fn == 'physicsnoreplace' or 'physicsandmean':
         cfg.train_config.update({
             'weight_physics': 0.1,
             'weight_sensors': 0.9

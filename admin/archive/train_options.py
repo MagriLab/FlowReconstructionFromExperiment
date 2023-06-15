@@ -301,7 +301,7 @@ def loss_fn_physicswithdata(cfg,**kwargs):
             pred_new = unnormalise_group(pred_new, y_minmax, axis_data=-1, axis_range=0)
 
         loss_div = losses.divergence(pred_new[...,0], pred_new[...,1], datainfo)
-        mom_field = derivatives.momentum_residue_field(
+        mom_field = derivatives.momentum_residual_field(
                             ux=pred_new[...,0],
                             uy=pred_new[...,1],
                             p=pred_new[...,2],
@@ -341,7 +341,7 @@ def loss_fn_physicsnoreplace(cfg,**kwargs):
             pred = unnormalise_group(pred, y_minmax, axis_data=-1, axis_range=0)
 
         loss_div = losses.divergence(pred[...,0], pred[...,1], datainfo)
-        mom_field = derivatives.momentum_residue_field(
+        mom_field = derivatives.momentum_residual_field(
                             ux=pred[...,0],
                             uy=pred[...,1],
                             p=pred[...,2],
