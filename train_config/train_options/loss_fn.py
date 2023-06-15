@@ -71,10 +71,11 @@ def loss_fn_physicswithdata(cfg,**kwargs):
     
     datainfo = kwargs['datainfo']
 
-    wp = cfg.train_config.weight_physics
+    wdiv= cfg.train_config.weight_continuity
+    wmom = cfg.train_config.weight_momentum
     ws = cfg.train_config.weight_sensors
 
-    if wp > 0.0:
+    if ws > 0.0:
         logger.info('Training with both physics and sensor loss even though sensor measurements have already been inserted into the prediction.')
 
 
@@ -105,7 +106,7 @@ def loss_fn_physicswithdata(cfg,**kwargs):
         loss_mom = jnp.mean(mom_field**2)*mom_field.shape[0]
         
         
-        return wp*(loss_div+loss_mom)+ws*loss_sensor, (loss_div,loss_mom,loss_sensor)
+        return wdiv*loss_div+wmom*loss_mom+ws*loss_sensor, (loss_div,loss_mom,loss_sensor)
     
     return Partial(loss_fn, normalise=cfg.data_config.normalise)
 
@@ -116,7 +117,8 @@ def loss_fn_physicsnoreplace(cfg,**kwargs):
     take_observation:Callable = kwargs['take_observation']
     datainfo = kwargs['datainfo']
 
-    wp = cfg.train_config.weight_physics
+    wdiv= cfg.train_config.weight_continuity
+    wmom = cfg.train_config.weight_momentum
     ws = cfg.train_config.weight_sensors
 
     def loss_fn(apply_fn:Callable,
@@ -143,7 +145,7 @@ def loss_fn_physicsnoreplace(cfg,**kwargs):
                             datainfo=datainfo) # [i,t,x,y]
         loss_mom = jnp.mean(mom_field**2)*mom_field.shape[0]
         
-        return wp*(loss_div+loss_mom)+ws*loss_sensor, (loss_div,loss_mom,loss_sensor)
+        return wdiv*loss_div+wmom*loss_mom+ws*loss_sensor, (loss_div,loss_mom,loss_sensor)
     
     return Partial(loss_fn, normalise=cfg.data_config.normalise)
 
@@ -160,10 +162,11 @@ def loss_fn_physicsreplacemean(cfg,**kwargs):
     
     datainfo = kwargs['datainfo']
 
-    wp = cfg.train_config.weight_physics
+    wdiv= cfg.train_config.weight_continuity
+    wmom = cfg.train_config.weight_momentum
     ws = cfg.train_config.weight_sensors
 
-    if wp > 0.0:
+    if ws > 0.0:
         logger.info('Training with both physics and sensor loss even though sensor measurements have already been inserted into the prediction.')
 
     def loss_fn(apply_fn:Callable,
@@ -195,7 +198,7 @@ def loss_fn_physicsreplacemean(cfg,**kwargs):
                             datainfo=datainfo) # [i,t,x,y]
         loss_mom = jnp.mean(mom_field**2)*mom_field.shape[0]
         
-        return wp*(loss_div+loss_mom)+ws*loss_sensor, (loss_div,loss_mom,loss_sensor)
+        return wdiv*loss_div+wmom*loss_mom+ws*loss_sensor, (loss_div,loss_mom,loss_sensor)
 
 
     return Partial(loss_fn, normalise=cfg.data_config.normalise)
@@ -210,7 +213,8 @@ def loss_fn_physicsandmean(cfg, **kwargs):
     take_observation:Callable = kwargs['take_observation']
     datainfo = kwargs['datainfo']
 
-    wp = cfg.train_config.weight_physics
+    wdiv= cfg.train_config.weight_continuity
+    wmom = cfg.train_config.weight_momentum
     ws = cfg.train_config.weight_sensors
 
     def loss_fn(apply_fn:Callable,
@@ -240,6 +244,6 @@ def loss_fn_physicsandmean(cfg, **kwargs):
                             datainfo=datainfo) # [i,t,x,y]
         loss_mom = jnp.mean(mom_field**2)*mom_field.shape[0]
         
-        return wp*(loss_div+loss_mom)+ws*loss_sensor, (loss_div,loss_mom,loss_sensor)
+        return wdiv*loss_div+wmom*loss_mom+ws*loss_sensor, (loss_div,loss_mom,loss_sensor)
 
     return Partial(loss_fn, normalise=cfg.data_config.normalise)
