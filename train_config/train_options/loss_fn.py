@@ -240,4 +240,4 @@ def loss_fn_physicsandmean(cfg, **kwargs):
         
         return wp*(loss_div+loss_mom)+ws*loss_sensor, (loss_div,loss_mom,loss_sensor)
 
-    return Partial(loss_fn, normalise(cfg.data_config.normalise))
+    return Partial(loss_fn, normalise=cfg.data_config.normalise)
