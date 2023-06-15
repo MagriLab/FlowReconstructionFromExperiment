@@ -185,6 +185,7 @@ def loss_fn_physicsreplacemean(cfg,**kwargs):
         
         # normalise
         if normalise:
+            logging.error('THERE IS A BUG in unormalising when using this loss function, are you expecting this bug?')
             pred_new = unnormalise_group(pred_new, y_minmax, axis_data=-1, axis_range=0)
             logger.debug('Un-normalise before calculating loss.')
         
@@ -229,6 +230,7 @@ def loss_fn_physicsandmean(cfg, **kwargs):
 
         # normalise
         if normalise:
+            logging.error('THERE IS A BUG in unormalising when using this loss function, are you expecting this bug?')
             pred = unnormalise_group(pred, y_minmax, axis_data=-1, axis_range=0)
             logger.debug('Un-normalise before calculating loss.')
 
