@@ -246,6 +246,30 @@ def main(_):
     
     if FLAGS.wandb_sweep:
         FLAGS.wandb = True
+ 
+    ## Initialise wandb
+    if FLAGS.wandb:
+        logger.info('Updating wandb config with experiment config')
+        update_matching_keys(wandbcfg.config, datacfg)
+        update_matching_keys(wandbcfg.config, mdlcfg)
+        update_matching_keys(wandbcfg.config, traincfg)
+        update_matching_keys(wandbcfg.config, cfg.case)
+        # update_matching_keys(wandbcfg.config, {'percent_observed':percent_observed})
+        run = wandb_init(wandbcfg)
+        # wandb.config.update({'percent_observed':percent_observed})
+        logger.info('Successfully initialised weights and biases.')
+
+        if FLAGS.wandb_sweep:
+            sweep_params = sweep_preprocess_cfg(wandb.config)
+            update_matching_keys(datacfg, sweep_params)
+            update_matching_keys(mdlcfg, sweep_params)
+            update_matching_keys(traincfg, sweep_params)
+            logger.info('Running in sweep mode, replace config parameters with sweep parameters.')
+            logger.debug(f'Running with {sweep_params}')
+
+    else:
+        run = None
+
 
     # =================== pre-processing ================================
     
@@ -271,6 +295,8 @@ def main(_):
     logger.debug(f'Data dict now has {data.keys()}')
 
     percent_observed = 100*(observed_train.size/data['u_train'].size)
+    if run:
+        run.config.update({'percent_observed':percent_observed},allow_val_change=True)
 
     # ==================== set up model ==============================
     rng = jax.random.PRNGKey(int(time_stamp))
@@ -282,30 +308,7 @@ def main(_):
     prep_data, make_model = cfg.case.select_model(datacfg = datacfg, mdlcfg = mdlcfg, traincfg = traincfg)
     logger.info('Selected a model.')
     
-    ## Initialise wandb
-    if FLAGS.wandb:
-        logger.info('Updating wandb config with experiment config')
-        update_matching_keys(wandbcfg.config, datacfg)
-        update_matching_keys(wandbcfg.config, mdlcfg)
-        update_matching_keys(wandbcfg.config, traincfg)
-        update_matching_keys(wandbcfg.config, cfg.case)
-        update_matching_keys(wandbcfg.config, {'percent_observed':percent_observed})
-        run = wandb_init(wandbcfg)
-        # wandb.config.update({'percent_observed':percent_observed})
-        logger.info('Successfully initialised weights and biases.')
-
-        if FLAGS.wandb_sweep:
-            sweep_params = sweep_preprocess_cfg(wandb.config)
-            update_matching_keys(datacfg, sweep_params)
-            update_matching_keys(mdlcfg, sweep_params)
-            update_matching_keys(traincfg, sweep_params)
-            logger.info('Running in sweep mode, replace config parameters with sweep parameters.')
-            logger.debug(f'Running with {sweep_params}')
-
-    else:
-        run = None
-
-
+   
     logger.debug(f'The finalised data dictionary has items {data.keys()}')
     data = prep_data(data)
     mdl = make_model(mdlcfg)
