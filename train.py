@@ -429,16 +429,16 @@ def main(_):
                 # run.finish_artifact(artifact) # only necessary for distributed runs
             else:
                 logger.info('Not the best model, skip saving weights.')
+            
+                for child in tmp_dir.iterdir(): 
+                    child.unlink()
+                tmp_dir.rmdir()
         except KeyError as e: # probably the first run of the sweep
             logger.warning(e)
             artifact = wandb.Artifact(name=f'sweep_weights_{run.sweep_id}', type='model') 
             artifact.add_dir(tmp_dir)
             run.log_artifact(artifact)
             # run.finish_artifact(artifact)
-            
-        for child in tmp_dir.iterdir(): 
-            child.unlink()
-        tmp_dir.rmdir()
     
     
     if FLAGS.wandb:
