@@ -171,7 +171,7 @@ def get_config(cfgstr:str = None):
     if _loss_fn == 'physicswithdata' or 'physicsreplacemean':
         cfg.train_config.update({
             'weight_momentum': 1.0,
-            'weight_continuity': 10.0,
+            'weight_continuity': 1.0,
             'weight_sensors': 0.0
         })
     elif _loss_fn == 'physicsnoreplace' or 'physicsandmean':
