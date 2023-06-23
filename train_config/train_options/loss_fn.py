@@ -180,7 +180,7 @@ def loss_fn_physicsreplacemean(cfg,**kwargs):
                 **kwargs):
         pred = apply_fn(params, rng, x, **apply_kwargs)
         pred_observed = take_observation(pred)
-        loss_sensor = losses.mse(jnp.mean(pred_observed,axis=0), jnp.mean(y,axis=0))
+        loss_sensor = losses.mse(pred_observed, y)
         
         pred_replaced = insert_observation(pred,y)
         pred_f = pred - jnp.mean(pred,axis=0,keepdims=True)
