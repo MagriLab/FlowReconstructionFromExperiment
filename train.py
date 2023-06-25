@@ -21,6 +21,7 @@ from utils.py_helper import update_matching_keys
 from utils.system import temporary_fix_absl_logging
 from train_config.sweep_process_config import sweep_preprocess_cfg
 from train_config.option_codes import code
+from train_config.train_options.optimizer import get_optimizer
 
 import logging
 logger = logging.getLogger(f'fr.{__name__}')
@@ -235,8 +236,6 @@ def main(_):
         _folder = _folder + str(time_stamp)
         FLAGS.result_folder_name = _folder
 
-    tmp_dir = Path(FLAGS.result_dir,FLAGS.result_folder_name)
-
     if FLAGS.chatty:
         logger.setLevel(logging.INFO)
     
@@ -264,12 +263,14 @@ def main(_):
             update_matching_keys(datacfg, sweep_params)
             update_matching_keys(mdlcfg, sweep_params)
             update_matching_keys(traincfg, sweep_params)
+            FLAGS.result_folder_name = run.name
             logger.info('Running in sweep mode, replace config parameters with sweep parameters.')
             logger.debug(f'Running with {sweep_params}')
 
     else:
         run = None
 
+    tmp_dir = Path(FLAGS.result_dir,FLAGS.result_folder_name)
 
     # =================== pre-processing ================================
     
@@ -300,10 +301,10 @@ def main(_):
 
     # ==================== set up model ==============================
     rng = jax.random.PRNGKey(int(time_stamp))
-    optimizer = optax.adamw(
-        learning_rate=traincfg.learning_rate,
-        weight_decay=traincfg.regularisation_strength
-    )
+
+
+    optimizer = get_optimizer(traincfg)
+
 
     prep_data, make_model = cfg.case.select_model(datacfg = datacfg, mdlcfg = mdlcfg, traincfg = traincfg)
     logger.info('Selected a model.')
