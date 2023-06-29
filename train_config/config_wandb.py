@@ -30,6 +30,8 @@ def get_config(cfgstr:str = None):
     cfg.save_code = placeholder(bool)
     cfg.reinit = placeholder(bool)
     cfg.notes = placeholder(str)
+    cfg.resume = placeholder(str)
+    cfg.id = placeholder(str)
     cfg.config_exclude_keys = placeholder(tuple)
 
     ## config to pass to wandbinit.config
