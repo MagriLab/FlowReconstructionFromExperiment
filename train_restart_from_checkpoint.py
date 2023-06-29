@@ -397,7 +397,7 @@ def main(_):
     logger.info('Finished training.')
 
     # ===================== Save results
-    logger.info(f'writing configuration and results to {FLAGS.tmp_dir}')
+    logger.info(f'writing configuration and results to {str(tmp_dir)}')
     save_config(cfg,tmp_dir)
 
     with h5py.File(Path(tmp_dir,'results.h5'),'w') as hf:
