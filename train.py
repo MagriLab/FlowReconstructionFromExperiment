@@ -178,7 +178,7 @@ def fit(
 
         
         ## Validating
-        l_val, (l_val_div, l_val_mom, _) = mdl_validation_loss(state.params,None,x_val,y_val)
+        l_val, (l_val_div, l_val_mom, l_val_s) = mdl_validation_loss(state.params,None,x_val,y_val)
         loss_val.append(l_val)
 
         logger.debug('Calculating true validation loss using clean data.')
@@ -193,11 +193,14 @@ def fit(
             wandb_run.log({
                 'loss':loss_train[-1],
                 'loss_true':loss_true[-1],
-                'loss_val':float(l_val),
-                'loss_val_true': l_val_true,
                 'loss_div':loss_div[-1], 
                 'loss_momentum':loss_momentum[-1], 
-                'loss_sensors':loss_sensors[-1]
+                'loss_sensors':loss_sensors[-1],
+                'loss_val':float(l_val),
+                'loss_val_true': l_val_true,
+                'loss_val_div':l_val_div, 
+                'loss_val_momentum':l_val_mom, 
+                'loss_val_sensors':l_val_s,
             })
 
         if l_val < min_loss:
