@@ -264,6 +264,7 @@ def main(_):
 
     
     tmp_dir = Path(FLAGS.run_path,'restart')
+    save_config(cfg,tmp_dir)
 
 
     # =================== pre-processing ================================
@@ -295,7 +296,12 @@ def main(_):
 
 
     # ==================== set up model ==============================
-    rng = jax.random.PRNGKey(int(time_stamp))
+    if traincfg.randseed:
+        rng = jax.random.PRNGKey(traincfg.randseed)
+        logger.info('Using user assigned random key')
+    else:
+        rng = jax.random.PRNGKey(int(time_stamp))
+        traincfg.update({'randseed':int(time_stamp)})
 
 
     optimizer = get_optimizer(traincfg)
@@ -398,7 +404,6 @@ def main(_):
 
     # ===================== Save results
     logger.info(f'writing configuration and results to {str(tmp_dir)}')
-    save_config(cfg,tmp_dir)
 
     with h5py.File(Path(tmp_dir,'results.h5'),'w') as hf:
         hf.create_dataset("loss_train",data=np.array(loss_train))

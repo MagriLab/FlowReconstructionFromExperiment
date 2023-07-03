@@ -73,16 +73,13 @@ def dataloader_2dtriangle(cfg:ConfigDict) -> dict:
     x = x[s]
     logger.debug(f'Out of the entire simulated wake, the useful domain has shape {x.shape}, determined by data_config.slice_to_keep.')
 
-    if cfg.shuffle:
-        if not cfg.randseed:
-            randseed = np.random.randint(1,10000)
-            cfg.update({'randseed':randseed})
-            logger.info('Shuffling data with a newly generated random key.')
-        else:
-            randseed = cfg.randseed
-            logger.info('Shuffling data with the randon key provided in data_config.')
+    if not cfg.randseed:
+        randseed = np.random.randint(1,10000)
+        cfg.update({'randseed':randseed})
+        logger.info('Make a new random key for loading data.')
     else:
-        randseed = None
+        randseed = cfg.randseed
+    rng = np.random.default_rng(randseed)
 
     # Add white noise
     if cfg.snr:
@@ -108,9 +105,9 @@ def dataloader_2dtriangle(cfg:ConfigDict) -> dict:
         FLAGS._noisy = True
         std_data = np.std(x,axis=(1,2,3),ddof=1)
         std_n = get_whitenoise_std(cfg.snr,std_data)
-        noise_ux = np.random.normal(scale=std_n[0],size=x[0,...].shape)
-        noise_uy = np.random.normal(scale=std_n[1],size=x[1,...].shape)
-        noise_pp = np.random.normal(scale=std_n[2],size=x[2,...].shape)
+        noise_ux = rng.normal(scale=std_n[0],size=x[0,...].shape)
+        noise_uy = rng.normal(scale=std_n[1],size=x[1,...].shape)
+        noise_pp = rng.normal(scale=std_n[2],size=x[2,...].shape)
         noise = np.stack([noise_ux,noise_uy,noise_pp],axis=0)
         x = x + noise
 

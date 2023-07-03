@@ -46,7 +46,7 @@ def get_basic_config() -> config_dict.ConfigDict:
 
     ## Model
     cfg.model_config = config_dict.ConfigDict()
-
+    
     cfg.model_config.dropout_rate = 0.0
     
 
@@ -57,6 +57,8 @@ def get_basic_config() -> config_dict.ConfigDict:
     cfg.train_config.learning_rate = 3e-4
     cfg.train_config.regularisation_strength = 0.0
     cfg.train_config.epochs = 20000
+
+    cfg.train_config.randseed = placeholder(int)
 
 
 
