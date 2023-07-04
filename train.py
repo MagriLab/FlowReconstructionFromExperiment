@@ -274,6 +274,9 @@ def main(_):
         run = None
 
     tmp_dir = Path(FLAGS.result_dir,FLAGS.result_folder_name)
+    if not tmp_dir.is_dir():
+        logger.warning('Target directory for saving results does not exist yet. Creating new directory.')
+        tmp_dir.mkdir(parents=True)
     save_config(cfg,tmp_dir)
 
     # =================== pre-processing ================================
