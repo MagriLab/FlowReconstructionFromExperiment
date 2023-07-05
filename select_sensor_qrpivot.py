@@ -7,6 +7,9 @@ from ml_collections import config_flags
 
 from flowrec.decomposition import POD
 from flowrec.data import sensor_placement_qrpivot
+from utils.system import temporary_fix_absl_logging
+
+temporary_fix_absl_logging()
 
 
 FLAGS = flags.FLAGS
@@ -34,32 +37,33 @@ def basis_pod(data,t_axis):
     return phi[:FLAGS.basis_rank],grid_shape
 
 
+def get_sensor_index(args):
+    (i,x,t_axis,return_dict) = args
+    print(f'Performing QR pivoting on component {i}.')
+
+    print(f'Calculating basis ({i})')
+    if FLAGS.basis == 'pod':
+        basis_r, grid_shape = basis_pod(x[...,i],t_axis)
+    else: 
+        raise NotImplementedError
+    
+    print(f'Finding sensor locations ({i})')
+    p = sensor_placement_qrpivot(basis_r,FLAGS.n_sensors,FLAGS.basis_rank)
+    idx = np.array(np.unravel_index(p,grid_shape)) # [:,0] is the first sensor
+
+    return_dict[i] = idx
+
+
 
 def main(_):
 
-    print(f'Taking {FLAGS.n_sensors} using the frist {FLAGS.basis_rank} vector of {FLAGS.basis} basis.')
+    print(f'Taking {FLAGS.n_sensors} sensors using the frist {FLAGS.basis_rank} vectors of {FLAGS.basis} basis.')
 
     datacfg = FLAGS.cfg.data_config
     dataloader = FLAGS.cfg.case.dataloader
 
     x,t_axis = load_data(dataloader,datacfg)
-
-    def get_sensor_index(args):
-        (i,return_dict) = args
-        print(f'Performing QR pivoting on component {i}.')
-
-        print(f'Calculating basis ({i})')
-        if FLAGS.basis == 'pod':
-            basis_r, grid_shape = basis_pod(x[...,i],t_axis)
-        else: 
-            raise NotImplementedError
-        
-        print(f'Finding sensor locations ({i})')
-        p = sensor_placement_qrpivot(basis_r,FLAGS.n_sensors,FLAGS.basis_rank)
-        idx = np.array(np.unravel_index(p,grid_shape)) # [:,0] is the first sensor
-
-        return_dict[i] = idx
-    
+   
     ndim = x.shape[-1]
     
 
@@ -68,7 +72,7 @@ def main(_):
     pool = mp.Pool(ndim)
     pool.map(
         get_sensor_index,
-        zip(range(ndim), repeat(return_dict))
+        zip(range(ndim), repeat(x), repeat(t_axis), repeat(return_dict))
     )
     pool.close()
     pool.join()
