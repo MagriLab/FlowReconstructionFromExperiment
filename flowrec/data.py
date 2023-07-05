@@ -182,8 +182,8 @@ def sensor_placement_qrpivot(basis:Array, n_sensors:int, basis_rank:int, **kwarg
     if n_sensors > basis_rank:
         b = basis @ (basis.T)
     
-    q, r, p = linalg(b,pivoting=True,**kwargs) 
-    return q,r,p
+    _, _, p = linalg.qr(b,pivoting=True,**kwargs) 
+    return p[:n_sensors]
 
 
 
