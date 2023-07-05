@@ -1,9 +1,11 @@
 import numpy as np
-from typing import Optional, Union, List, Sequence, NamedTuple
 import jax
 import jax.numpy as jnp
-from dataclasses import dataclass, field
 import chex
+
+from scipy import linalg
+from typing import Optional, Union, List, Sequence, NamedTuple
+from dataclasses import dataclass, field
 
 import logging
 logger = logging.getLogger(f'fr.{__name__}')
@@ -155,6 +157,34 @@ def get_whitenoise_std(snr:Scalar,std_signal:Union[Array,Scalar]) -> Union[Array
     snr_l = 10.**(snr/10.)
     std_n = np.sqrt(std_signal**2/snr_l)
     return std_n
+
+
+def sensor_placement_qrpivot(basis:Array, n_sensors:int, basis_rank:int, **kwargs):
+    '''Use the QR pivoting method by Manohar et al. to obtain locations of sensors from a set of tailored basis.\n
+    
+
+    Arguments:\n
+        basis: the tailored basis for the data, with shape n-by-r, where n is the dimension of the data and r is the rank of the basis.\n
+        n_sensors: how many sensors in the domain.\n
+        basis_rank: rank r of the basis. \n
+    
+    Returns:\n
+        Q: an unitary matrix.\n
+        R: an upper-triangular matrix.\n
+        P: the permutation matrix.\n
+
+
+    Manohar, K., Brunton, B.W., Kutz, J.N., Brunton, S.L., 2018. Data-driven sparse sensor placement for reconstruction: Demonstrating the benefits of exploiting known patterns. IEEE Control Systems Magazine 38, 63–86. https://doi.org/10.1109/MCS.2018.2810460
+    '''
+
+    if n_sensors == basis_rank:
+        b = basis
+    if n_sensors > basis_rank:
+        b = basis @ (basis.T)
+    
+    q, r, p = linalg(b,pivoting=True,**kwargs) 
+    return q,r,p
+
 
 
 class _Metadata2d(NamedTuple):
