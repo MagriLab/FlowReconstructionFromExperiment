@@ -74,13 +74,13 @@ class POD:
         q_mean: mean velocity with length [nx]
         '''
 
-        q = np.moveaxis(x,t_axis,-1)
+        q = jnp.moveaxis(x,t_axis,-1)
         grid_shape = list(q.shape[:-1])
         nt = q.shape[-1]
-        q = np.reshape(q,(-1,nt))
+        q = jnp.reshape(q,(-1,nt))
 
         # remove mean
-        q_mean = np.mean(q,axis=1,keepdims=True)
+        q_mean = jnp.mean(q,axis=1,keepdims=True)
         q = q - q_mean
 
         return q, q_mean, grid_shape
@@ -124,11 +124,11 @@ class POD:
         idx = np.flip(idx)
         modes = phi[:,idx]
         lam = lam[idx]
-        phi = np.copy(modes) # keep the original eigenvectors
+        phi = jnp.copy(modes) # keep the original eigenvectors
         
         # normalise energy in the weighted inner product
         normQ = (modes.T @ modes*w).real**0.5
-        modes = modes@np.diag(1/np.diag(normQ))
+        modes = modes@jnp.diag(1/jnp.diag(normQ))
 
         # calculate time coefficients
         a = q.T @ phi
