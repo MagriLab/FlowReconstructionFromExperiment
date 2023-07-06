@@ -99,7 +99,7 @@ def main(_):
 
     print('Optimal sensor locations found, writing to sensor_index.txt')
 
-    np.savetxt('sensor_index.txt',idx)
+    np.savetxt('sensor_index.txt', idx.astype('int'), fmt='%i', delimiter=",")
 
 
 if __name__ == '__main__':
