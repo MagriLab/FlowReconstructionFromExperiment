@@ -165,6 +165,8 @@ class POD:
 
         # get spatial POD modes: PSI = Q*Phi
         modes = (q@phi)*(1/(lam**0.5).T)
+        norms = jnp.einsum('m n -> n',modes**2)**0.5
+        modes = modes/norms.reshape((1,-1))
 
         # calculate time coefficients
         a = q.T @ modes
@@ -209,12 +211,12 @@ class POD:
         elif method == 'snapshot':
             q_add = a[idx] @ phi[idx].T
 
-        if q_mean:
+        if q_mean is not None:
             rebuildv = np.reshape(q_mean,(-1,1)) + q_add
         else:
             rebuildv = q_add
         
-        if grid_shape:
+        if grid_shape is not None:
             if np.prod(grid_shape) < rebuildv.size:
                 new_shape = grid_shape.copy()
                 new_shape.extend([-1])
@@ -223,3 +225,5 @@ class POD:
                 rebuildv = rebuildv.reshape(tuple(grid_shape))
             else:
                 raise ValueError(f'The provided grid shape implies the reconstructed field has {np.prod(grid_shape)} elements, but the reconstructed field has {rebuildv.size} elements.')
+    
+        return rebuildv
