@@ -2,9 +2,12 @@ local*
 tmp*
 .*
 *.h5
+*.png
 
 
 __pycache__/
 wandb/
 
 system_config.yml
+err
+log

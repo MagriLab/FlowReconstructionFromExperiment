@@ -158,7 +158,7 @@ class POD:
 
         lam,phi = _eigenvec_and_lam()
         # c = (q.T) @ (q*w)/(nt-1) # 2-point temporal correlation tesnsor: q'*q 
-        idx = np.argsort(np.abs(lam)) # sort
+        idx = np.argsort(jnp.abs(lam)) # sort
         idx = np.flip(idx)
         phi = phi[:,idx]
         lam = lam[idx]
@@ -167,7 +167,7 @@ class POD:
         modes = (q@phi)*(1/(lam**0.5).T)
 
         # calculate time coefficients
-        a = q @ phi
+        a = q.T @ modes
         return modes, lam, a, phi
     
 
