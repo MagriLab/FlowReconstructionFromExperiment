@@ -9,3 +9,5 @@ __pycache__/
 wandb/
 
 system_config.yml
+err
+log

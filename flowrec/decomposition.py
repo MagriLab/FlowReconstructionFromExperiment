@@ -167,7 +167,7 @@ class POD:
         modes = (q@phi)*(1/(lam**0.5).T)
 
         # calculate time coefficients
-        a = q @ phi
+        a = q.T @ modes
         return modes, lam, a, phi
     
 
