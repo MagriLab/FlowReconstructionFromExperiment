@@ -12,7 +12,7 @@ from ml_collections import config_flags
 from jax.tree_util import Partial
 
 from flowrec.decomposition import POD
-from flowrec.data import sensor_placement_qrpivot
+from flowrec.sensors import sensor_placement_qrpivot
 from utils.system import temporary_fix_absl_logging
 
 temporary_fix_absl_logging()
