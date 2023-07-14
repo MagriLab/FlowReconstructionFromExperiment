@@ -11,7 +11,6 @@ import h5py
 import numpy as np
 import jax
 import jax.numpy as jnp
-import optax
 
 import wandb
 from flowrec._typing import *
@@ -132,6 +131,9 @@ def fit(
     loss_momentum = []
     loss_sensors = []
     loss_true = []
+    loss_val_div = []
+    loss_val_momentum = []
+    loss_val_sensors = []
 
     best_state = state
     min_loss = np.inf
@@ -179,13 +181,17 @@ def fit(
         
         ## Validating
         l_val, (l_val_div, l_val_mom, l_val_s) = mdl_validation_loss(state.params,None,x_val,y_val)
-        loss_val.append(l_val)
 
         logger.debug('Calculating true validation loss using clean data.')
         l_val_mse = eval_true_mse(state.params,None,x_val,yfull_val_clean)
 
         l_val_true = np.sum([l_val_div, l_val_mom, l_val_mse])
+
+        loss_val.append(l_val)
         loss_val_true.append(l_val_true)
+        loss_val_div.append(l_val_div)
+        loss_val_momentum.append(l_val_mom)
+        loss_val_sensors.append(l_val_s)
 
 
         if FLAGS.wandb:
@@ -214,7 +220,21 @@ def fit(
             print(f'    True loss of training: {loss_true[-1]:.7f}, validation: {l_val_true:.7f}')
     state = best_state
 
-    return state, loss_train, loss_val, (loss_div, loss_momentum, loss_sensors), (loss_true, loss_val_true)
+
+    loss_dict = {
+        'loss_train': np.array(loss_train),
+        'loss_train_true': np.array(loss_true),
+        'loss_div': np.array(loss_div),
+        'loss_momentum': np.array(loss_momentum),
+        'loss_sensors': np.array(loss_sensors),
+        'loss_val': np.array(loss_val),
+        'loss_val_true': np.array(loss_val_true),
+        'loss_val_div': np.array(loss_val_div),
+        'loss_val_momentum': np.array(loss_val_momentum),
+        'loss_val_sensors': np.array(loss_val_sensors)
+    }
+
+    return state, loss_dict
 
 
 
@@ -391,7 +411,7 @@ def main(_):
 
 
     logger.info('Starting training now...')
-    state, loss_train, loss_val, (loss_div, loss_momentum, loss_sensors), (loss_train_true, loss_val_true) = fit(
+    state, loss_dict = fit(
         x_train_batched=x_batched,
         y_train_batched=y_batched,
         x_val=data['inn_val'],
@@ -416,13 +436,8 @@ def main(_):
     logger.info(f'writing results to {FLAGS.result_folder_name}')
 
     with h5py.File(Path(tmp_dir,'results.h5'),'w') as hf:
-        hf.create_dataset("loss_train",data=np.array(loss_train))
-        hf.create_dataset("loss_val",data=np.array(loss_val))
-        hf.create_dataset("loss_div",data=np.array(loss_div))
-        hf.create_dataset("loss_momentum",data=np.array(loss_momentum))
-        hf.create_dataset("loss_sensors",data=np.array(loss_sensors))
-        hf.create_dataset("loss_train_true",data=np.array(loss_train_true))
-        hf.create_dataset("loss_val_true",data=np.array(loss_val_true))
+        for key, value in data.items():
+            hf.create_dataset(key, data=value)
     
 
     # ============= Save only best model if doing sweep ==========
@@ -433,7 +448,7 @@ def main(_):
         
         try: 
             logger.debug('Trying to save model as an artifact.')
-            if np.min(loss_val) < best_run.summary['loss_val']:
+            if np.min(loss_dict['loss_val']) < best_run.summary['loss_val']:
                 logger.info('Best model so far, saving weights and configurations.')
                 artifact = wandb.Artifact(name=f'sweep_weights_{run.sweep_id}', type='model') 
                 artifact.add_dir(tmp_dir)
