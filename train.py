@@ -436,8 +436,8 @@ def main(_):
     logger.info(f'writing results to {FLAGS.result_folder_name}')
 
     with h5py.File(Path(tmp_dir,'results.h5'),'w') as hf:
-        for key, value in data.items():
-            hf.create_dataset(key, data=value)
+        for key, value in loss_dict.items():
+            hf.create_dataset(key, data=np.array(value))
     
 
     # ============= Save only best model if doing sweep ==========
