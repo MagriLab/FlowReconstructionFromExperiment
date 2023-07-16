@@ -297,7 +297,6 @@ def main(_):
     if not tmp_dir.is_dir():
         logger.warning('Target directory for saving results does not exist yet. Creating new directory.')
         tmp_dir.mkdir(parents=True)
-    save_config(cfg,tmp_dir)
 
     # =================== pre-processing ================================
     
@@ -393,6 +392,7 @@ def main(_):
         )
     )
 
+    save_config(cfg,tmp_dir)
 
     # ==================== start training ===========================
 
