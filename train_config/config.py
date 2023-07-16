@@ -59,6 +59,9 @@ def get_basic_config() -> config_dict.ConfigDict:
     cfg.train_config.epochs = 20000
 
     cfg.train_config.randseed = placeholder(int)
+    
+    cfg.train_config.gradient_clip = placeholder(float)
+    cfg.train_config.lr_scheduler = 'constant'
 
 
 
