@@ -1,0 +1,36 @@
+## This is for A4 paper
+
+font.size: 12
+
+figure.figsize: 7,4
+figure.titleweight: bold
+# figure.autolayout: True # uncomment for tight layout instead of constrained 
+figure.constrained_layout.use: True
+savefig.format: pdf
+
+
+xtick.labelsize: small
+ytick.labelsize: small
+xtick.direction : inout
+ytick.direction : inout
+xtick.major.size : 5
+ytick.major.size : 5
+xtick.minor.size : 2
+ytick.minor.size : 2
+
+
+legend.fontsize: medium
+grid.alpha: 0.8
+
+text.usetex : True
+# text.latex.preamble: \usepackage{amsmath} \usepackage{amssymb} \usepackage{amsfonts} \usepackage{nicefrac} 
+
+
+## plot specific
+
+errorbar.capsize: 3
+
+# image.cmap: gray
+
+
+# https://matplotlib.org/stable/api/matplotlib_configuration_api.html#matplotlib.rcParams

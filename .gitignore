@@ -3,6 +3,7 @@ tmp*
 .*
 *.h5
 *.png
+*.pdf
 
 
 __pycache__/
