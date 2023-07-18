@@ -3,12 +3,10 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 
-from .models._general import BaseModel
 from .physics_and_derivatives import div_field, momentum_residual_field
-from .data import DataMetadata
 
 import chex
-from typing import Union, Optional, Callable
+from typing import Optional, Callable
 from ._typing import Array, ClassDataMetadata
 import logging
 logger = logging.getLogger(f'fr.{__name__}')

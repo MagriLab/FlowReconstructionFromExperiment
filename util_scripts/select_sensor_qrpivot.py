@@ -13,7 +13,7 @@ from jax.tree_util import Partial
 
 from flowrec.decomposition import POD
 from flowrec.sensors import sensor_placement_qrpivot
-from utils.system import temporary_fix_absl_logging
+from flowrec.utils.system import temporary_fix_absl_logging
 
 temporary_fix_absl_logging()
 #mp.set_start_method('spawn')

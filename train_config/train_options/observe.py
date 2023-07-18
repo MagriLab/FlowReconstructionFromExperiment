@@ -1,7 +1,7 @@
 from flowrec._typing import *
 from ml_collections.config_dict import ConfigDict
 
-from utils.py_helper import slice_from_tuple
+from flowrec.utils.py_helper import slice_from_tuple
 
 import jax
 import jax.numpy as jnp

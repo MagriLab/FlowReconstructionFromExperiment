@@ -1,8 +1,8 @@
 from flowrec._typing import *
 from ml_collections.config_dict import ConfigDict
 
-from utils import simulation2d
-from utils.py_helper import slice_from_tuple
+from flowrec.utils import simulation2d
+from flowrec.utils.py_helper import slice_from_tuple
 from flowrec.data import data_partition, unnormalise_group, normalise,get_whitenoise_std
 
 import jax.numpy as jnp

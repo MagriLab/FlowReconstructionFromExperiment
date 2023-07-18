@@ -17,8 +17,8 @@ import wandb
 from flowrec._typing import *
 from flowrec.training_and_states import save_trainingstate, TrainingState, generate_update_fn, restore_trainingstate
 from flowrec.losses import loss_mse
-from utils.py_helper import update_matching_keys
-from utils.system import temporary_fix_absl_logging
+from flowrec.utils.py_helper import update_matching_keys
+from flowrec.utils.system import temporary_fix_absl_logging
 # from train_config.sweep_process_config import sweep_preprocess_cfg
 from train_config.option_codes import code
 from train_config.train_options.optimizer import get_optimizer
