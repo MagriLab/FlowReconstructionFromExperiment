@@ -15,7 +15,7 @@ def loss3(casestr:str):
             'nb_batches': 20,
             'regularisation_strength': 0.097
         }
-    if casestr == 'snr10':
+    elif casestr == 'snr10':
         mdlcfg_update = {'dropout_rate': 0.0078}
         datacfg_update = {'normalise': True}
         traincfg_update = {
@@ -68,7 +68,7 @@ def lossmean3(casestr:str):
             'lr_scheduler': 'exponential_decay'
         }
 
-    if casestr == 'snr10':
+    elif casestr == 'snr10':
         mdlcfg_update = {'dropout_rate': 0.038}
         datacfg_update = {'normalise': False}
         traincfg_update = {
