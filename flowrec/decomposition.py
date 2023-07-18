@@ -2,7 +2,7 @@ import numpy as np
 from jax import jit
 import jax.numpy as jnp
 from _typing import *
-from typing import Sequence, Union, Optional
+from typing import Union, Optional
 import logging
 logger = logging.getLogger(f'fr.{__name__}')
 

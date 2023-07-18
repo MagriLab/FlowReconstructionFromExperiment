@@ -12,10 +12,10 @@ from absl import app, flags
 from ml_collections import config_flags
 
 from flowrec.decomposition import POD
-from utils.system import temporary_fix_absl_logging
+from flowrec.utils.system import temporary_fix_absl_logging
 from utils import simulation2d
 from flowrec.data import data_partition
-from utils.py_helper import slice_from_tuple
+from flowrec.utils.py_helper import slice_from_tuple
 
 
 
