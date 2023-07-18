@@ -21,6 +21,7 @@ from utils.system import temporary_fix_absl_logging
 from train_config.sweep_process_config import sweep_preprocess_cfg
 from train_config.option_codes import code
 from train_config.train_options.optimizer import get_optimizer
+from train_config.config_wandb import get_config as get_wandb_config_experiment
 
 import logging
 logger = logging.getLogger(f'fr.{__name__}')
@@ -53,6 +54,7 @@ flags.DEFINE_bool('chatty',False,'Print information on where the program is at n
 
 ## Define interal global variables
 flags.DEFINE_bool('_noisy',False,'DO NOT CHANGE! True loss will be calculated with clean data if the data is noisy.')
+flags.DEFINE_string('_experimentcfgstr',None,'DO NOT CHANGE! For use with experiments only.')
 
 
 # ======================= test config ===============================
@@ -76,6 +78,7 @@ def batching(nb_batches:int, data:jax.Array):
 
 def save_config(config:config_dict.ConfigDict, tmp_dir:Path):
     '''Save config to file config.yml. Load with yaml.unsafe_load(file)'''
+    logger.info(f'save config to {tmp_dir}.')
     fname = Path(tmp_dir,'config.yml')
     with open(fname,'x') as f:
         config.to_yaml(stream=f, default_flow_style=False)
@@ -247,6 +250,10 @@ def main(_):
     mdlcfg = FLAGS.cfg.model_config
     traincfg = FLAGS.cfg.train_config
     wandbcfg = FLAGS.wandbcfg
+    if FLAGS._experimentcfgstr:
+        logger.warning('train.py is started with a pre-set experiment.')
+        wandb_updatecfg = get_wandb_config_experiment(FLAGS._experimentcfgstr).config
+        wandbcfg.config.update(wandb_updatecfg.to_dict())
     logger.info(f'List of options selected from optional functions: \n      {cfg.case.values()}')
 
     # ===================== setting up system ==========================
