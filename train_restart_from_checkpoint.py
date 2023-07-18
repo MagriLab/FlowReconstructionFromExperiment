@@ -261,7 +261,7 @@ def main(_):
 
     # ===================== setting up system ==========================
     if FLAGS.gpu_id:
-        os.environ["CUDA_VISIBLE_DEVICES"] = str(FLAGS.gpu_id)
+        jax.config.update("jax_default_device", jax.devices()[FLAGS.gpu_id])
     os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = str(FLAGS.gpu_mem)
     
 
@@ -330,6 +330,7 @@ def main(_):
     else:
         rng = jax.random.PRNGKey(int(time_stamp))
         traincfg.update({'randseed':int(time_stamp)})
+        cfg.train_config.update({'randseed':int(time_stamp)})
 
 
     optimizer = get_optimizer(traincfg)
