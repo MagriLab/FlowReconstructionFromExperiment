@@ -251,7 +251,7 @@ def main(_):
 
     # ===================== setting up system ==========================
     if FLAGS.gpu_id:
-        os.environ["CUDA_VISIBLE_DEVICES"] = str(FLAGS.gpu_id)
+        jax.config.update("jax_default_device", jax.devices()[FLAGS.gpu_id])
     os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = str(FLAGS.gpu_mem)
     
     if not FLAGS.result_folder_name:
@@ -302,7 +302,7 @@ def main(_):
     
     # data has u_train, u_val, inn_train, inn_val [t, space..., 3] or [t, len]
     logger.info('Loading data.')
-    data, datainfo = cfg.case.dataloader(datacfg)
+    data, datainfo = cfg.case.dataloader()
     logger.debug(f'Data dictionary has {data.keys()}')
     logger.debug(f'Datainfo is {datainfo}')
 
@@ -332,6 +332,7 @@ def main(_):
     else:
         rng = jax.random.PRNGKey(int(time_stamp))
         traincfg.update({'randseed':int(time_stamp)})
+        cfg.train_config.update({'randseed':int(time_stamp)})
 
 
     optimizer = get_optimizer(traincfg)

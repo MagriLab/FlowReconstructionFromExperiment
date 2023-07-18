@@ -44,7 +44,7 @@ def dataloader_example(data_config:ConfigDict):
 
 
 
-def dataloader_2dtriangle(cfg:ConfigDict) -> dict:
+def dataloader_2dtriangle() -> dict:
     '''# Load data base on data_config. 
     For use with the generated 2D wake behind the triangle, any Reynolds number.\n
     
@@ -59,6 +59,7 @@ def dataloader_2dtriangle(cfg:ConfigDict) -> dict:
     datainfo: of class _Metadata2d.
     
     '''
+    cfg = FLAGS.cfg.data_config
     data = {}
 
     x_base = 132
