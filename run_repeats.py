@@ -39,8 +39,6 @@ def job(randseed:int, experiment:str, save_to:str, epochs:int, prefix:str):
 
 def main(args):
 
-    if args.repeats != len(args.randseeds):
-        raise ValueError('Number of randomseeds does not match the number of jobs')
     randseeds = args.randseeds
     save_path = Path(args.save_to)
     if save_path.exists():
@@ -71,7 +69,6 @@ if __name__ == '__main__':
     parser.add_argument('--experiment', help="The config str to identify this experiment. This is passed to config_experiments.py", required=True)
     parser.add_argument('--save_to', help='path to the result folder', required=True)
     parser.add_argument('--randseeds', type=int, nargs='+',help='a list of random seeds for weight initialisation', required=True)
-    parser.add_argument('--repeats', type=int, help='Number of repeats to run.', required=True)
     parser.add_argument('--job_prefix', help='Prefix for each run', required=True)
     parser.add_argument('--epochs', type=int, default=20000, help='Number of epochs per run.')
     args = parser.parse_args()
