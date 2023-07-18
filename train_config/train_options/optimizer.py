@@ -25,4 +25,4 @@ def get_scheduler(scheduler,lr):
     if scheduler == 'constant':
         return optax.constant_schedule(lr)
     if scheduler == 'exponential_decay':
-        return optax.exponential_decay(lr,1000,0.95,1000)
+        return optax.exponential_decay(init_value=lr,transition_steps=1000,decay_rate=0.95,transition_begin=5000,end_value=0.5*lr)
