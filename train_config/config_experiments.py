@@ -43,7 +43,15 @@ def lossclassic(casestr:str):
             'regularisation_strength': 0.02,
             'weight_sensors': 2.0
         }
-
+    elif casestr == 'snr10':
+        mdlcfg_update = {'dropout_rate': 0.0078}
+        datacfg_update = {'normalise': True}
+        traincfg_update = {
+            'learning_rate': 0.000146,
+            'nb_batches': 20,
+            'regularisation_strength': 0.05,
+            'weight_sensors': 2.0
+        }
     else:
         raise NotImplementedError
 
