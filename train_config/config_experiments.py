@@ -23,6 +23,14 @@ def loss3(casestr:str):
             'nb_batches': 20,
             'regularisation_strength': 0.1
         }
+    elif casestr == 'snr5':
+        mdlcfg_update = {'dropout_rate': 0.02}
+        datacfg_update = {'normalise': True}
+        traincfg_update = {
+            'learning_rate': 0.0006,
+            'nb_batches': 20,
+            'regularisation_strength': 0.2
+        }
     else:
         raise NotImplementedError
 
@@ -51,6 +59,15 @@ def lossclassic(casestr:str):
             'nb_batches': 20,
             'regularisation_strength': 0.05,
             'weight_sensors': 2.0
+        }
+    elif casestr == 'snr5':
+        mdlcfg_update = {'dropout_rate': 0.006}
+        datacfg_update = {'normalise': True}
+        traincfg_update = {
+            'learning_rate': 0.000146,
+            'nb_batches': 20,
+            'regularisation_strength': 0.05,
+            'weight_sensors': 1.0
         }
     else:
         raise NotImplementedError
@@ -85,6 +102,17 @@ def lossmean3(casestr:str):
             'regularisation_strength': 0.01,
             'weight_continuity': 1.09,
             'weight_sensors': 10.0,
+            'lr_scheduler': 'exponential_decay'
+        }
+    elif casestr == 'snr5':
+        mdlcfg_update = {'dropout_rate': 0.03}
+        datacfg_update = {'normalise': False}
+        traincfg_update = {
+            'learning_rate': 0.002,
+            'nb_batches': 8,
+            'regularisation_strength': 0.015,
+            'weight_continuity': 1.09,
+            'weight_sensors': 5.0,
             'lr_scheduler': 'exponential_decay'
         }
     else:
