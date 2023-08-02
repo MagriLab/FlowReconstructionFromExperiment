@@ -1,5 +1,4 @@
 import multiprocessing as mp
-import jax
 import wandb
 import subprocess
 
@@ -48,12 +47,12 @@ def main(args):
     wandb.require("service") # set up wandb for multiprocessing
     wandb.setup()
 
-    for i in range(len(jax.devices())):
+    for i in range(args.numgpu):
         queue.put(i)
     
     run_job = partial(job, experiment=args.experiment, save_to=args.save_to, epochs=args.epochs, prefix=args.job_prefix)
 
-    pool = mp.Pool(len(jax.devices())) # one job per device
+    pool = mp.Pool(args.numgpu) # one job per device
     pool.map(run_job,randseeds)
 
     pool.close()
@@ -71,6 +70,7 @@ if __name__ == '__main__':
     parser.add_argument('--randseeds', type=int, nargs='+',help='a list of random seeds for weight initialisation', required=True)
     parser.add_argument('--job_prefix', help='Prefix for each run', required=True)
     parser.add_argument('--epochs', type=int, default=20000, help='Number of epochs per run.')
+    parser.add_argument('--numgpu', type=int, help='Number of gpus available.', required=True)
     args = parser.parse_args()
 
 
