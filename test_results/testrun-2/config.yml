@@ -1,0 +1,136 @@
+!!python/object:ml_collections.config_dict.config_dict.ConfigDict
+_convert_dict: true
+_fields:
+  case: !!python/object:ml_collections.config_dict.config_dict.ConfigDict
+    _convert_dict: true
+    _fields:
+      _case_dataloader: !!python/object:ml_collections.config_dict.config_dict.FieldReference
+        _field_type: &id001 !!python/name:builtins.str ''
+        _ops: []
+        _required: false
+        _value: 2dtriangle
+      _case_loss_fn: !!python/object:ml_collections.config_dict.config_dict.FieldReference
+        _field_type: *id001
+        _ops: []
+        _required: false
+        _value: physicswithdata
+      _case_observe: !!python/object:ml_collections.config_dict.config_dict.FieldReference
+        _field_type: *id001
+        _ops: []
+        _required: false
+        _value: grid_pin
+      _case_select_model: !!python/object:ml_collections.config_dict.config_dict.FieldReference
+        _field_type: *id001
+        _ops: []
+        _required: false
+        _value: ffcnn
+      dataloader: !!python/name:train_config.train_options.dataloader.dataloader_2dtriangle ''
+      loss_fn: !!python/name:train_config.train_options.loss_fn.loss_fn_physicswithdata ''
+      observe: !!python/name:train_config.train_options.observe.observe_grid_pin ''
+      select_model: !!python/name:train_config.train_options.select_model.select_model_ffcnn ''
+    _locked: true
+    _type_safe: true
+  data_config: !!python/object:ml_collections.config_dict.config_dict.ConfigDict
+    _convert_dict: true
+    _fields:
+      data_dir: ./local_data/re100/
+      dt: 0.125
+      dx: 0.0234375
+      dy: 0.03125
+      dz: !!python/object:ml_collections.config_dict.config_dict.FieldReference
+        _field_type: &id003 !!python/name:builtins.float ''
+        _ops: []
+        _required: false
+        _value: null
+      normalise: true
+      pressure_inlet_slice: !!python/tuple
+      - !!python/tuple
+        - 0
+        - 1
+        - null
+      - !!python/tuple
+        - 49
+        - 80
+        - null
+      randseed: !!python/object:ml_collections.config_dict.config_dict.FieldReference
+        _field_type: &id004 !!python/name:builtins.int ''
+        _ops: []
+        _required: false
+        _value: 19070949
+      re: 100.0
+      remove_mean: false
+      shuffle: false
+      slice_grid_sensors: !!python/tuple
+      - !!python/tuple
+        - null
+        - null
+        - 15
+      - !!python/tuple
+        - null
+        - null
+        - 10
+      slice_to_keep: !!python/tuple
+      - &id002 !!python/tuple
+        - null
+      - *id002
+      - !!python/tuple
+        - null
+        - 250
+        - null
+      - *id002
+      snr: !!python/object:ml_collections.config_dict.config_dict.FieldReference
+        _field_type: *id003
+        _ops: []
+        _required: false
+        _value: 20.0
+      train_test_split:
+      - 600
+      - 100
+      - 100
+    _locked: true
+    _type_safe: true
+  model_config: !!python/object:ml_collections.config_dict.config_dict.ConfigDict
+    _convert_dict: true
+    _fields:
+      cnn_channels: !!python/tuple
+      - 32
+      - 16
+      - 3
+      cnn_filters: !!python/tuple
+      - !!python/tuple
+        - 5
+        - 5
+      dropout_rate: 0.0078
+      mlp_layers: !!python/tuple
+      - 96750
+      output_shape: !!python/tuple
+      - 250
+      - 129
+      - 3
+    _locked: true
+    _type_safe: true
+  train_config: !!python/object:ml_collections.config_dict.config_dict.ConfigDict
+    _convert_dict: true
+    _fields:
+      epochs: 1
+      gradient_clip: !!python/object:ml_collections.config_dict.config_dict.FieldReference
+        _field_type: *id003
+        _ops: []
+        _required: false
+        _value: null
+      learning_rate: 0.0006
+      lr_scheduler: constant
+      nb_batches: 20
+      randseed: !!python/object:ml_collections.config_dict.config_dict.FieldReference
+        _field_type: *id004
+        _ops: []
+        _required: false
+        _value: 2
+      regularisation_strength: 0.097
+      weight_continuity: 1.0
+      weight_momentum: 1.0
+      weight_sensors: 0.0
+    _locked: true
+    _type_safe: true
+_locked: true
+_type_safe: true
