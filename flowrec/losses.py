@@ -102,7 +102,7 @@ def divergence(
 
 def relative_error(pred,true):
     err = np.sqrt(
-        np.einsum('t x y -> ', (pred-true)**2)
-        / np.einsum('t x y -> ', true**2)
+        np.sum((pred-true)**2)
+        / np.sum(true**2)
     )
     return err
