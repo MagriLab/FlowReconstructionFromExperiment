@@ -91,13 +91,35 @@ def divergence(
         datainfo: an instance of DataMetadata.\n
 
     Return:\n
-        A non-negative scalar, square of the mean of the divergence field.
+        A non-negative scalar.
     '''
 
     div = div_field(u,datainfo)
     div_loss = jnp.mean(div**2) # div_loss >= 0
 
     return div_loss
+
+
+def momemtum_loss(
+        u: Array,
+        datainfo:ClassDataMetadata) -> float:
+
+    ''' Calculate the momentum loss.
+    Squared mean of the momentum field, summed over each dimension.\n
+
+    Arguments:\n
+        u: array of velocitie and pressure with shape [t,x,y,...,i], u[...,-1] is the pressure field. \n
+        datainfo: an instance of DataMetadata.\n
+
+    Return:\n
+        A non-negative scalar.
+    '''
+    
+    mom_field = momentum_residual_field(u_p=u, datainfo=datainfo)
+    mom_loss = jnp.mean(mom_field**2)*mom_field.shape[0]
+
+    return mom_loss
+
 
 
 def relative_error(pred,true):

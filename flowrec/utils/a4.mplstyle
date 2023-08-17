@@ -11,8 +11,8 @@ savefig.format: pdf
 
 xtick.labelsize: small
 ytick.labelsize: small
-xtick.direction : inout
-ytick.direction : inout
+xtick.direction : out
+ytick.direction : out
 xtick.major.size : 5
 ytick.major.size : 5
 xtick.minor.size : 2
@@ -30,7 +30,7 @@ text.usetex : True
 
 errorbar.capsize: 3
 
-# image.cmap: gray
+image.cmap: jet
 
 
 # https://matplotlib.org/stable/api/matplotlib_configuration_api.html#matplotlib.rcParams
