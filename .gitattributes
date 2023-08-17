@@ -4,3 +4,5 @@ visualisation_notebook/* linguist-documentation
 visualisation_notebook/sweep_compare_loss_fn.ipynb linguist-documentation
 
 admin/* linguist-documentation
+
+figures_for_paper/* linguist-documentation
