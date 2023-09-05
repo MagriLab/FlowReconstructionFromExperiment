@@ -194,7 +194,7 @@ def get_config(cfgstr:str):
             '1': 'grid',
             '2': 'sparse'
         }
-        _cfgstr, datacfg_update = clean_minimum(testgroup['group'])
+        _cfgstr, datacfg_update = clean_minimum(testgroup[experiment['group']])
 
         mdlcfg_update = {
             'cnn_filters': ((5,5),)
