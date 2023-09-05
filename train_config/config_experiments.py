@@ -119,6 +119,30 @@ def lossmean3(casestr:str):
         raise NotImplementedError
 
     return cfgstr, mdlcfg_update, datacfg_update, traincfg_update
+
+
+
+def clean_minimum(group):
+
+    if group == 'grid':
+
+        cfgstr = 'observe@grid_pin'
+        datacfg_update = {
+            'slice_grid_sensors': ((None,None,30),(None,None,30)),
+            'normalise': True,
+        }
+
+    elif group == 'sparse':
+
+        cfgstr = 'observe@sparse_pin'
+        datacfg_update = {
+            'sensor_index': ((44, 44, 23, 23, 140, 68, 40, 103, 5, 5, 20, 20, 150, 175, 200, 225),(81, 47, 51, 77, 64, 64, 64, 64, 80, 48, 78, 50, 10, 119, 10, 119)),
+            'normalise': True,
+        }
+
+    else:
+        raise NotImplementedError
+    return cfgstr, datacfg_update
     
 
 
@@ -130,9 +154,11 @@ def get_config(cfgstr:str):
 
     objectives = {
         'noise': 'dataloader@2dtriangle,model@ffcnn,observe@grid_pin,',
+        'clean_minimum': 'dataloader@2dtriangle,model@ffcnn,loss_fn@physicswithdata,',
     }
 
     general_cfgstr = objectives[experiment['objective']]
+
     if experiment['objective'] == 'noise':
         print("running experiment 'noise'")
 
@@ -159,6 +185,36 @@ def get_config(cfgstr:str):
         cfg.model_config.update(mdlcfg_update)
         cfg.data_config.update(datacfg_update)
         cfg.train_config.update(traincfg_update)
+    
+
+    if experiment['objective'] == 'clean_minimum':
+        print("running experiment 'clean_repeat'")
+
+        testgroup = {
+            '1': 'grid',
+            '2': 'sparse'
+        }
+        _cfgstr, datacfg_update = clean_minimum(testgroup['group'])
+
+        mdlcfg_update = {
+            'cnn_filters': ((5,5),)
+        }
+        traincfg_update = {
+            'learning_rate': 0.001,
+            'nb_batches': 19,
+            'weight_continuity':1.0,
+        }
+
+        ## get config and update
+        general_cfgstr = general_cfgstr + _cfgstr
+        cfg = base_config.get_config(general_cfgstr)
+
+        cfg.model_config.update(mdlcfg_update)
+        cfg.data_config.update(datacfg_update)
+        cfg.train_config.update(traincfg_update)
+
+    else:
+        raise NotImplementedError
 
     FLAGS._experimentcfgstr = general_cfgstr
 
