@@ -8,6 +8,6 @@ _handler.setFormatter(logging.Formatter('%(name)s.%(funcName)s:%(lineno)d [%(lev
 if not _logger.handlers:
     _logger.addHandler(_handler)
 
-def get_models_logger():
-    '''Returns the logger used for the module "models".'''
+def get_flowrec_logger():
+    '''Returns the logger used for the module 'flowrec'.'''
     return _logger
