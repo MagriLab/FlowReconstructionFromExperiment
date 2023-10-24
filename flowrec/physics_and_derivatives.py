@@ -156,7 +156,7 @@ def momentum_residual_field(
     **kwargs) -> Array:
     
     '''Calculate the momentum residue of the nondimensional Navier Stokes equation for selected velocity.
-    Either 2D or 3D.\n
+    Either 2D or 3D, no forcing term or gravity\n
     
     Arguments:\n
         u_p: array of velocitie and pressure with shape [t,x,y,...,i], u_p[...,-1] is the pressure field. \n
