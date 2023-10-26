@@ -1,7 +1,7 @@
 from flowrec._typing import *
 from ml_collections.config_dict import ConfigDict
 
-from flowrec.utils import simulation2d
+from flowrec.utils import simulation
 from flowrec.utils.py_helper import slice_from_tuple
 from flowrec.data import data_partition, unnormalise_group, normalise,get_whitenoise_std
 
@@ -66,7 +66,7 @@ def dataloader_2dtriangle() -> dict:
     triangle_base_coords = [49,80]
     logger.debug(f'The base of the triangle is placed at x={x_base}, between y={triangle_base_coords[0]} and {triangle_base_coords[1]}.')
 
-    (ux,uy,pp) = simulation2d.read_data(cfg.data_dir,x_base)
+    (ux,uy,pp) = simulation.read_data_2dtriangle(cfg.data_dir,x_base)
     x = np.stack([ux,uy,pp],axis=0)
     logger.debug(f'Simulated wake has shape {x.shape}.')
     # remove parts where uz is not zero
@@ -142,8 +142,8 @@ def dataloader_2dtriangle() -> dict:
     })
 
     
-    pb_train = simulation2d.take_measurement_base(pp_train,ly=triangle_base_coords,centrex=0)
-    pb_val = simulation2d.take_measurement_base(pp_val,ly=triangle_base_coords,centrex=0)
+    pb_train = simulation.take_measurement_base(pp_train,ly=triangle_base_coords,centrex=0)
+    pb_val = simulation.take_measurement_base(pp_val,ly=triangle_base_coords,centrex=0)
 
     # information about the grid
     datainfo = DataMetadata(
