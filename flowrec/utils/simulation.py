@@ -91,4 +91,15 @@ def take_measurement_base(data:np.ndarray,
 # ===================== Kolmogorov flow =========================
 
 def read_data_kolsol(data_path: path):
-    raise NotImplementedError
+    ''' Read Kolmogorov flow data generated using KolSol.\n
+    Returns data with shape [t, x, y, ..., dim+1], the last dimension contains u1, u2, ..., p.
+    '''
+
+    data_path = Path(data_path)
+    if not data_path.exists():
+        raise ValueError('Data path does not exist.')
+
+    with h5py.File(data_path) as hf:
+        u_p = np.array(hf.get('state'))
+    
+    return u_p
