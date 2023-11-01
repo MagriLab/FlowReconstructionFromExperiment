@@ -205,7 +205,7 @@ _default_mdlcfg_ffcnn = {
     '2dkol': {
         'mlp_layers': (49152,),
         'output_shape': (128,128,3),
-        'cnn_channels': (16,16,3),
+        'cnn_channels': (8,8,8,3),
         'cnn_filters': ((3,3),),
     }
 }

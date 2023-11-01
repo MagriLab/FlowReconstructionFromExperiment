@@ -288,21 +288,22 @@ def _load_kolsol(dim:int) -> tuple[dict, ClassDataMetadata]:
     ## get inputs
     logger.info('Generating inputs')
 
-    if (cfg.random_sensors) and (not cfg.pressure_inlet_slice):
+    if (cfg.random_input) and (not cfg.pressure_inlet_slice):
         sensor_seed, num_inputs = cfg.random_input
+        logger.info(f'{num_inputs} random pressure inputs generated using random key specified by the user.')
         observation_rng  = np.random.default_rng(sensor_seed)
         _idx = []
         for i in range(dim):
             _idx.append(
                 observation_rng.choice(np.arange(0,x.shape[i+1]), size=num_inputs, replace=False)
             )
-        inn_idx = [l[:cfg.num_inputs] for l in _idx]
+        inn_idx = [l[:num_inputs] for l in _idx]
         slice_inn = np.s_[:,*inn_idx,-1]
         inn_train = u_train[slice_inn].reshape((-1,num_inputs))
         inn_val = u_val[slice_inn].reshape((-1,num_inputs))
         data.update({'_slice_inn': slice_inn})
 
-    elif (not cfg.random_sensors) and (cfg.pressure_inlet_slice):
+    elif (not cfg.random_input) and (cfg.pressure_inlet_slice):
         inn_loc = slice_from_tuple(cfg.pressure_inlet_slice)
         s_pressure = (np.s_[:],) + inn_loc + (np.s_[-1],)
         inn_train = u_train[s_pressure].reshape((cfg.train_test_split[0],-1))

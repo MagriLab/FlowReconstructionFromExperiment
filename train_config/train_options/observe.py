@@ -71,9 +71,8 @@ def observe_grid_pin(data_config:ConfigDict,
 
     s_space = slice_from_tuple(data_config.slice_grid_sensors)
     s = (np.s_[:],) + s_space + (np.s_[:],)
-    inn_loc = slice_from_tuple(data_config.pressure_inlet_slice)
-    s_pressure = (np.s_[:],) + inn_loc + (np.s_[-1],)
-    
+
+    inn_loc, s_pressure = _make_pressure_index(data_config, **kwargs)
 
     num_sensors = example_pred_snapshot[s_space + (np.s_[:],)].size
     num_pressure = example_pred_snapshot[inn_loc + (np.s_[-1],)].size
@@ -155,8 +154,8 @@ def observe_sparse_pin(data_config:ConfigDict,
     
     chex.assert_rank(example_pred_snapshot[*sensor_idx],2)
     
-    inn_loc = slice_from_tuple(data_config.pressure_inlet_slice)
-    s_pressure = (np.s_[:],) + inn_loc + (np.s_[-1],)
+    inn_loc, s_pressure = _make_pressure_index(data_config, **kwargs)
+
     num_pressure = example_pred_snapshot[inn_loc + (np.s_[-1],)].size
     logger.debug(f'Number of pressure sensors at the inlet is {num_pressure}.')
     observed_p_shape = (-1,) + example_pred_snapshot[inn_loc + (np.s_[-1],)].shape
@@ -184,3 +183,19 @@ def observe_sparse_pin(data_config:ConfigDict,
         return pred_new
 
     return take_observation, insert_observation
+
+
+
+def _make_pressure_index(data_config, **kwargs):
+
+    if data_config.pressure_inlet_slice:
+        inn_loc = slice_from_tuple(data_config.pressure_inlet_slice)
+        s_pressure = (np.s_[:],) + inn_loc + (np.s_[-1],)
+        logger.debug("Using 'pressure_inlet_slice' to locate pressure sensors.")
+    elif '_slice_inn' in kwargs:
+        s_pressure = kwargs['_slice_inn']
+        inn_loc = s_pressure[1:-1]
+        logger.debug("Using '_slice_inn' founc in data to locate pressure sensors.")
+
+    return inn_loc, s_pressure
+
