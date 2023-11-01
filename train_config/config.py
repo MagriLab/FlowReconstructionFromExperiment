@@ -1,5 +1,6 @@
 from ml_collections import config_dict
 from ml_collections.config_dict import placeholder
+import numpy as np
 import warnings
 import train_config.train_options.dataloader as dataloaderoptions
 import train_config.train_options.observe as observeoptions
@@ -30,16 +31,16 @@ def get_basic_config() -> config_dict.ConfigDict:
     ## Data
     cfg.data_config = config_dict.ConfigDict()
 
-    cfg.data_config.data_dir = './local_data/re100/'
+    cfg.data_config.data_dir = placeholder(str)
     cfg.data_config.shuffle = False
     cfg.data_config.randseed = placeholder(int)
-    cfg.data_config.remove_mean = False
+    cfg.data_config.remove_mean = False # Do NOT remove mean
     cfg.data_config.normalise = True
-    cfg.data_config.train_test_split = [600,100,100]
-    cfg.data_config.re = 100.0
-    cfg.data_config.dt = 0.125
-    cfg.data_config.dx = 12/512
-    cfg.data_config.dy = 4/128
+    cfg.data_config.train_test_split = placeholder(tuple)
+    cfg.data_config.re = placeholder(float)
+    cfg.data_config.dt = placeholder(float)
+    cfg.data_config.dx = placeholder(float)
+    cfg.data_config.dy = placeholder(float)
     cfg.data_config.dz = placeholder(float)
     cfg.data_config.snr = placeholder(float)
 
@@ -117,10 +118,8 @@ def get_config(cfgstr:str = None):
 
 
     ## update config dictionary
-    if _dataloader == '2dtriangle':
-        cfg.data_config.update({
-            'slice_to_keep': ((None,), (None,), (None,250,None), (None,)),
-        })
+    if _dataloader in _default_datacfg:
+        cfg.data_config.update(_default_datacfg[_dataloader])
     else:
         raise ValueError('Invalid dataloader option.')
 
@@ -133,15 +132,6 @@ def get_config(cfgstr:str = None):
         cfg.data_config.update({
             'slice_grid_sensors': ((None,None,15), (None,None,5)),
         })
-
-        if _dataloader == '2dtriangle':
-            cfg.data_config.update({
-                'pressure_inlet_slice': ((0,1,None),(49,80,None))
-            })
-        else:
-            cfg.data_config.update({
-                'pressure_inlet_slice': placeholder(tuple)
-            })
     elif _observe == 'sparse':
         cfg.data_config.update({
             'sensor_index': placeholder(tuple)
@@ -150,25 +140,12 @@ def get_config(cfgstr:str = None):
         cfg.data_config.update({
             'sensor_index': placeholder(tuple)
         })
-        if _dataloader == '2dtriangle':
-            cfg.data_config.update({
-                'pressure_inlet_slice': ((0,1,None),(49,80,None))
-            })
-        else:
-            cfg.data_config.update({
-                'pressure_inlet_slice': placeholder(tuple)
-            })
     else:
         raise ValueError('Invalid observe option.')
     
 
     if _select_model == 'ffcnn':
-        cfg.model_config.update({
-            'mlp_layers': (96750,),
-            'output_shape': (250,129,3),
-            'cnn_channels': (32,16,3),
-            'cnn_filters': ((3,3),),
-        })
+        cfg.model_config.update(_default_mdlcfg_ffcnn[_dataloader])
     else:
         raise ValueError('Invalid select_model option.')
 
@@ -191,3 +168,44 @@ def get_config(cfgstr:str = None):
 
 
     return cfg
+
+
+# =========================== Defaults =========================
+
+_default_datacfg = {
+    '2dtriangle': {
+        'slice_to_keep': ((None,), (None,), (None,250,None), (None,)),
+        'data_dir': './local_data/re100/',
+        're': 100.0,
+        'dt': 0.125,
+        'dx': 12/512,
+        'dy': 4/128,
+        'pressure_inlet_slice': ((0,1,None),(49,80,None)),
+        'train_test_split': (600,100,100)
+    },
+    '2dkol': {
+        'data_dir': './local_data/kolmogorov/dim2_re42_k32_f4_dt005_grid128.h5',
+        're': 42,
+        'dt': 0.005,
+        'dx': 2*np.pi/128,
+        'dy': 2*np.pi/128,
+        'pressure_inlet_slice': placeholder(tuple),
+        'random_input': placeholder(tuple)# (randseed, number of pressure sensors)
+    }
+}
+
+
+_default_mdlcfg_ffcnn = {
+    '2dtriangle': {
+        'mlp_layers': (96750,),
+        'output_shape': (250,129,3),
+        'cnn_channels': (32,16,3),
+        'cnn_filters': ((3,3),),
+    },
+    '2dkol': {
+        'mlp_layers': (49152,),
+        'output_shape': (128,128,3),
+        'cnn_channels': (8,8,8,3),
+        'cnn_filters': ((3,3),),
+    }
+}

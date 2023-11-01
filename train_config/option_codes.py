@@ -4,6 +4,8 @@ from ml_collections.config_dict import ConfigDict
 def code(cfgcase: ConfigDict):
     if cfgcase._case_dataloader == '2dtriangle':
         sdata = 't2'
+    elif cfgcase._case_dataloader == '2dkol':
+        sdata = 'k2'
     else:
         sdata = 'zz'
     

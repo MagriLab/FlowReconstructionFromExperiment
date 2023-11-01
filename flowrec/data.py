@@ -18,7 +18,6 @@ def data_partition(data:np.ndarray,
                     partition:List,
                     SHUFFLE:bool=True,
                     REMOVE_MEAN:bool=False,
-                    NORMALISE:bool=False,
                     data_type:dtype=np.float32,
                     randseed:Optional[int]=None,) -> List[np.ndarray]: 
     '''Split the data into sets.

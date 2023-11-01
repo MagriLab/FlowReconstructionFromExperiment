@@ -11,7 +11,10 @@ number = Union[float, int, np.number]
 
 logger = logging.getLogger(f'fr.{__name__}')
 
-def read_data(dir:path, idx_body:int):
+
+# ================== 2D triangle ==============================
+
+def read_data_2dtriangle(dir:path, idx_body:int):
     '''Read the data for 2d triangle bluff body simulation.
     
     Arguments:\n
@@ -82,3 +85,21 @@ def take_measurement_base(data:np.ndarray,
         logger.info(f'Calculating index. Measurements start at the closest available points that are inside the width of the body. Index {idx_y}.')
 
     return data[...,idx_x,np.s_[idx_y[0]:idx_y[1]]]
+
+
+
+# ===================== Kolmogorov flow =========================
+
+def read_data_kolsol(data_path: path):
+    ''' Read Kolmogorov flow data generated using KolSol.\n
+    Returns data with shape [t, x, y, ..., dim+1], the last dimension contains u1, u2, ..., p.
+    '''
+
+    data_path = Path(data_path)
+    if not data_path.exists():
+        raise ValueError('Data path does not exist.')
+
+    with h5py.File(data_path) as hf:
+        u_p = np.array(hf.get('state'))
+    
+    return u_p

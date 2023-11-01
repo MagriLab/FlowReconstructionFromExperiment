@@ -106,6 +106,16 @@ def wandb_init(wandbcfg:config_dict.ConfigDict):
     return run
 
 
+_keys_to_exclude = [
+    'u_train_clean',
+    'u_val_clean',
+    'train_minmax',
+    'val_minmax',
+    'u_train',
+    'u_val',
+    'inn_train',
+    'inn_val'
+]
 
 
 def fit(
@@ -313,11 +323,13 @@ def main(_):
     logger.debug(f'Data dictionary has {data.keys()}')
     logger.debug(f'Datainfo is {datainfo}')
 
+    observe_kwargs = {key: value for key, value in data.items() if key not in _keys_to_exclude}
     logger.info('Taking observations.')
     take_observation, insert_observation = cfg.case.observe(
         datacfg,
         example_pred_snapshot = data['u_train'][0,...],
-        example_pin_snapshot = data['inn_train'][0,...]
+        example_pin_snapshot = data['inn_train'][0,...],
+        **observe_kwargs
     )
     observed_train = take_observation(data['u_train'])
     observed_val = take_observation(data['u_val'])
