@@ -29,7 +29,13 @@ def observe_example(data_config:ConfigDict, **kwargs):
     '''
 
     def take_observation(u:jax.Array, **kwargs) -> jax.Array:
-        raise NotImplementedError 
+
+        if ('init' in kwargs) and (kwargs['init'] is True):
+            # return observed, range
+            raise NotImplementedError 
+        
+        # return observed
+        raise NotImplementedError
 
     def insert_observation(pred:jax.Array, observed:jax.Array, **kwargs) -> jax.Array:
         # Available kwargs are:
