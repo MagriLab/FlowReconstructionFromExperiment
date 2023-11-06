@@ -87,19 +87,27 @@ def shuffle_with_idx(length:int,rng:np.random.Generator):
     return idx_shuffle, idx_unshuffle
 
 
-def normalise(*args:Array) -> tuple[list[Array], list]:
+def normalise(*args:Array, range:list = None) -> tuple[list[Array], list]:
     '''Normalise array/arrays to between -1 and 1.
     Returns a list of the normalised arrays and a list of range for those arrays.\n
     '''
 
-    ran = []
+    if range:
+        logger.info('Using user provided range.')
+        ran = list(range)
+        assert len(ran) == len(args), 'Range provided does not match the number of arrays to normalise.'
+    else:
+        logger.debug('Using calculated range.')
+        ran = []
+        for data in args:
+            r = [np.min(data), np.max(data)]
+            ran.append(np.array(r).astype('float32'))
+    
     data_new = []
 
-    for data in args:
+    for data,r in zip(args,ran):
         logging.debug(f'data has type {type(data)} and shape {data.shape}')
-        r = [np.min(data), np.max(data)]
         d = 2 * ( (data - r[0]) / (r[1] - r[0]) ) - 1
-        ran.append(np.array(r).astype('float32'))
         data_new.append(d)
 
     return data_new, ran

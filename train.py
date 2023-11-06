@@ -331,12 +331,14 @@ def main(_):
         example_pin_snapshot = data['inn_train'][0,...],
         **observe_kwargs
     )
-    observed_train = take_observation(data['u_train'])
-    observed_val = take_observation(data['u_val'])
+    observed_train, train_minmax = take_observation(data['u_train'])
+    observed_val, val_minmax = take_observation(data['u_val'])
     
     data.update({
         'y_train':observed_train,
-        'y_val':observed_val
+        'y_val':observed_val,
+        'train_minmax':train_minmax,
+        'val_minmax':val_minmax 
     })
     logger.debug(f'Data dict now has {data.keys()}')
 

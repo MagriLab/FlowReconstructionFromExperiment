@@ -228,14 +228,14 @@ def _load_kolsol(dim:int) -> tuple[dict, ClassDataMetadata]:
             SHUFFLE=cfg.shuffle
         )
 
-        if cfg.normalise:
-            logger.info('Normalising the clean input.')
-            x_train_components = np.squeeze(np.split(u_train, dim+1, axis=-1))
-            x_val_components = np.squeeze(np.split(u_val, dim+1, axis=-1))
-            x_train_normalised, _ = normalise(*x_train_components)
-            x_val_normalised, _ = normalise(*x_val_components)
-            u_train = np.stack(x_train_normalised,axis=-1)
-            u_val = np.stack(x_val_normalised,axis=-1)
+        # if cfg.normalise:
+        #     logger.info('Normalising the clean input.')
+        #     x_train_components = np.squeeze(np.split(u_train, dim+1, axis=-1))
+        #     x_val_components = np.squeeze(np.split(u_val, dim+1, axis=-1))
+        #     x_train_normalised, _ = normalise(*x_train_components)
+        #     x_val_normalised, _ = normalise(*x_val_components)
+        #     u_train = np.stack(x_train_normalised,axis=-1)
+        #     u_val = np.stack(x_val_normalised,axis=-1)
             
         logger.info('Saving clean data for calculating true loss')
         data.update({
@@ -268,22 +268,22 @@ def _load_kolsol(dim:int) -> tuple[dict, ClassDataMetadata]:
         SHUFFLE=cfg.shuffle
     )
 
-    if cfg.normalise:
-        logger.info('Normalising the clean input.')
-        x_train_components = np.squeeze(np.split(u_train, dim+1, axis=-1))
-        x_val_components = np.squeeze(np.split(u_val, dim+1, axis=-1))
-        x_train_normalised, train_minmax = normalise(*x_train_components)
-        x_val_normalised, val_minmax = normalise(*x_val_components)
-        u_train = np.stack(x_train_normalised,axis=-1)
-        u_val = np.stack(x_val_normalised,axis=-1)
-    else:
-        train_minmax = []
-        val_minmax = []
-
-    data.update({
-        'train_minmax': jnp.asarray(train_minmax),
-        'val_minmax': jnp.asarray(val_minmax),
-    })
+    # if cfg.normalise:
+    #     logger.info('Normalising the clean input.')
+    #     x_train_components = np.squeeze(np.split(u_train, dim+1, axis=-1))
+    #     x_val_components = np.squeeze(np.split(u_val, dim+1, axis=-1))
+    #     x_train_normalised, train_minmax = normalise(*x_train_components)
+    #     x_val_normalised, val_minmax = normalise(*x_val_components)
+    #     u_train = np.stack(x_train_normalised,axis=-1)
+    #     u_val = np.stack(x_val_normalised,axis=-1)
+    # else:
+    #     train_minmax = []
+    #     val_minmax = []
+# 
+    # data.update({
+    #     'train_minmax': jnp.asarray(train_minmax),
+    #     'val_minmax': jnp.asarray(val_minmax),
+    # })
 
     ## get inputs
     logger.info('Generating inputs')

@@ -2,6 +2,7 @@ from flowrec._typing import *
 from ml_collections.config_dict import ConfigDict
 
 from flowrec.utils.py_helper import slice_from_tuple
+from flowrec.data import normalise
 
 import jax
 import jax.numpy as jnp
@@ -28,13 +29,13 @@ def observe_example(data_config:ConfigDict, **kwargs):
     '''
 
     def take_observation(u:jax.Array, **kwargs) -> jax.Array:
-        pass    
+        raise NotImplementedError 
 
     def insert_observation(pred:jax.Array, observed:jax.Array, **kwargs) -> jax.Array:
         # Available kwargs are:
         # example_pred_snapshot
         # example_pin_snapshot
-        pass
+        raise NotImplementedError
 
     return take_observation, insert_observation
 
@@ -52,7 +53,16 @@ def observe_grid(data_config:ConfigDict, **kwargs):
     s = (np.s_[:],) + s_space + (np.s_[:],)
 
     def take_observation(u:jax.Array,**kwargs) -> jax.Array:
-        return u[s]
+        us = u[s]
+        if data_config.normalise:
+            logger.info('Normalising observations')
+            num_dim = u.shape[-1]
+            components = np.squeeze(np.split(us, num_dim, axis=-1))
+            components_n, r = normalise(*components)
+            us = np.stack(components_n,axis=-1)
+        else:
+            r = None
+        return us, r
 
 
     def insert_observation(pred:jax.Array, observed:jax.Array, **kwargs) -> jax.Array:
@@ -87,10 +97,29 @@ def observe_grid_pin(data_config:ConfigDict,
     
 
     def take_observation(u:jax.Array,**kwargs) -> jax.Array:
-        us = u[s].reshape((-1,num_sensors))
-        ps = u[s_pressure].reshape((-1,num_pressure))
+        us = u[s]
+        ps = u[s_pressure]
+
+        if data_config.normalise:
+            logger.info('Normalising observations')
+            num_dim = u.shape[-1]
+            components = np.squeeze(np.split(us, num_dim, axis=-1))
+            components_u = components[:-1]
+            _, r = normalise(*components_u)
+            rp = [min(np.min(components[-1]),np.min(ps)), max(np.max(components[-1]),np.max(ps))]
+            r.append(np.array(rp))
+            
+            components_n, _ = normalise(*components, range=r)
+            us = np.stack(components_n,axis=-1)
+
+            ps, _ = normalise(ps, range=[np.array(rp)])
+        else:
+            r = None
+        
+        us = us.reshape((-1,num_sensors))
+        ps = ps.reshape((-1,num_pressure))
         observed = jnp.concatenate((us,ps), axis=1)
-        return observed # observed has shape [t,number_of_all_observed]
+        return observed, r # observed has shape [t,number_of_all_observed]
 
 
     def insert_observation(pred:jax.Array, observed:jax.Array, **kwargs) -> jax.Array:
