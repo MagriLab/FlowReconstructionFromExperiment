@@ -331,8 +331,8 @@ def main(_):
         example_pin_snapshot = data['inn_train'][0,...],
         **observe_kwargs
     )
-    observed_train, train_minmax = take_observation(data['u_train'])
-    observed_val, val_minmax = take_observation(data['u_val'])
+    observed_train, train_minmax = take_observation(data['u_train'], init=True)
+    observed_val, val_minmax = take_observation(data['u_val'], init=True)
     
     data.update({
         'y_train':observed_train,
