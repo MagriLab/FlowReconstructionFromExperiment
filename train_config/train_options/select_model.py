@@ -2,6 +2,7 @@ from flowrec._typing import *
 from ml_collections.config_dict import ConfigDict
 
 from flowrec.models import cnn, feedforward
+from flowrec.data import normalise
 
 import logging
 logger = logging.getLogger(f'fr.{__name__}')
@@ -39,10 +40,45 @@ def select_model_example(**kwargs):
 
 
 def select_model_ffcnn(**kwargs):
+    if 'datacfg' in kwargs:
+       flag_norm = kwargs['datacfg'].normalise
 
-    def prep_data(data:dict) -> dict:
-        # make data into suitable form
-        # data.update({'u_train':new_u_train,'inn_train':new_inn_train})
+    def prep_data(data:dict, **kwargs) -> dict:
+        '''make data into suitable form
+        data.update({'u_train':new_u_train,'inn_train':new_inn_train})'''
+
+#         if ('normalise' in kwargs) and kwargs['normalise'] is True:
+        if flag_norm:
+
+            r_train = data['train_minmax']
+            r_val = data['val_minmax']
+
+            [new_train_inn, new_val_inn], _ = normalise(data['inn_train'], data['inn_val'], range=[r_train[-1],r_val[-1]])
+            data.update({
+                'inn_train': new_train_inn,
+                'inn_val': new_val_inn
+            })
+            logger.debug('Update inputs to normalised inputs.')
+
+            if data['u_train_clean'] is not None:
+                u_train = data['u_train_clean']
+                u_val = data['u_val_clean']
+                num_components = u_train.shape[-1]
+
+                x_train_components = np.squeeze(np.split(u_train, num_components, axis=-1))
+                x_val_components = np.squeeze(np.split(u_val, num_components, axis=-1))
+                x_train_normalised, _ = normalise(*x_train_components, range=r_train)
+                x_val_normalised, _ = normalise(*x_val_components, range=r_val)
+                u_train = np.stack(x_train_normalised,axis=-1)
+                u_val = np.stack(x_val_normalised,axis=-1)
+
+                data.update({
+                    'u_train_clean': u_train,
+                    'u_val_clean': u_val
+                })
+                logger.debug('Update clean data to normalised clean data.')
+
+
         return data
 
 
