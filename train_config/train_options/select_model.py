@@ -40,12 +40,15 @@ def select_model_example(**kwargs):
 
 
 def select_model_ffcnn(**kwargs):
+    if 'datacfg' in kwargs:
+       flag_norm = kwargs['datacfg'].normalise
 
     def prep_data(data:dict, **kwargs) -> dict:
         '''make data into suitable form
         data.update({'u_train':new_u_train,'inn_train':new_inn_train})'''
 
-        if ('normalise' in kwargs) and kwargs['normalise'] is True:
+#         if ('normalise' in kwargs) and kwargs['normalise'] is True:
+        if flag_norm:
 
             r_train = data['train_minmax']
             r_val = data['val_minmax']

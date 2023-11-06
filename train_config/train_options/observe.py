@@ -112,7 +112,7 @@ def observe_grid_pin(data_config:ConfigDict,
             components_n, _ = normalise(*components, range=r)
             us = np.stack(components_n,axis=-1)
 
-            ps, _ = normalise(ps, range=[np.array(rp)])
+            [ps], _ = normalise(ps, range=[np.array(rp)])
         else:
             r = None
         
