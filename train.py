@@ -153,6 +153,7 @@ def fit(
             
     # compile first
     _ = update(state, rng, x_train_batched[0], y_train_batched[0])
+    logger.info('Successfully compiled the update function.')
 
     for i in range(epochs+1):
         [rng] = jax.random.split(rng,1)

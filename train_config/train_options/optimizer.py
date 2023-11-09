@@ -33,7 +33,7 @@ def get_scheduler(scheduler,lr):
         return optax.exponential_decay(init_value=lr,transition_steps=1000,decay_rate=0.95,transition_begin=5000,end_value=0.5*lr)
     else:
         schedule_kwargs = literal_eval(scheduler)
-        my_scheduler_name = schedule_kwargs.pop['scheduler']
+        my_scheduler_name = schedule_kwargs.pop('scheduler')
         logger.debug(f"Using custom learning rate schedule '{my_scheduler_name}'.")
         my_scheduler = getattr(lr_schedule, my_scheduler_name)
         return my_scheduler(init_value=lr, **schedule_kwargs)
