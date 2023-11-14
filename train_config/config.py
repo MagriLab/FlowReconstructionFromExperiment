@@ -190,7 +190,8 @@ _default_datacfg = {
         'dx': 2*np.pi/128,
         'dy': 2*np.pi/128,
         'pressure_inlet_slice': placeholder(tuple),
-        'random_input': placeholder(tuple)# (randseed, number of pressure sensors)
+        'random_input': placeholder(tuple), # (randseed, number of pressure sensors)
+        'forcing_frequency': 4
     }
 }
 

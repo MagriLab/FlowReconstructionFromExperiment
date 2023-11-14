@@ -175,12 +175,9 @@ def dataloader_2dtriangle() -> tuple[dict, ClassDataMetadata]:
 
 
 
-def _load_kolsol(dim:int) -> tuple[dict, ClassDataMetadata]:
+def _load_kolsol(cfg:ConfigDict, dim:int) -> tuple[dict, ClassDataMetadata]:
     '''Load KolSol data, use dim=2 dor 2D simulation and dim=3 for 3D simulation.'''
 
-    cfg = FLAGS.cfg.data_config
-    if cfg.remove_mean:
-        warnings.warn('Method of removing mean from the Kolmogorov data has not been implemented. Ignoring remove_mean in configs.')
 
     data = {}
     logger.debug(f'Loading data with config file {cfg.to_dict()}')
@@ -327,5 +324,15 @@ def _load_kolsol(dim:int) -> tuple[dict, ClassDataMetadata]:
 
 def dataloader_2dkol() -> tuple[dict,ClassDataMetadata]:
     '''Load 2D Kolmogorov flow generated with KolSol.'''
-    data, datainfo = _load_kolsol(2)
+    
+    cfg = FLAGS.cfg.data_config
+    if cfg.remove_mean:
+        warnings.warn('Method of removing mean from the Kolmogorov data has not been implemented. Ignoring remove_mean in configs.')
+    
+    data, datainfo = _load_kolsol(cfg,2)
+
+
+    ngrid = data['u_val'].shape[datainfo.axx]
+    f = simulation.kolsol_forcing_term(cfg.forcing_frequency,ngrid,2)
+    data.update({'forcing': f})
     return data, datainfo
