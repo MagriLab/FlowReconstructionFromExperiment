@@ -156,11 +156,14 @@ def momentum_residual_field(
     **kwargs) -> Array:
     
     '''Calculate the momentum residue of the nondimensional Navier Stokes equation for selected velocity.
-    Either 2D or 3D, no forcing term or gravity\n
+    Either 2D or 3D.\n
     
     Arguments:\n
         u_p: array of velocitie and pressure with shape [t,x,y,...,i], u_p[...,-1] is the pressure field. \n
         datainfo: an instance of DataMetadata.\n
+
+    Available kwargs:\n
+        forcing: array of forcing term. The residual will return as dudt + u*dudx + dpdx - (re^-1) * d2udx2 + forcing 
 
     return:\n
         Momentum residue field, has shape [i,...], where i is the number of velocity and ... is the shape of the input velocity field.
@@ -212,5 +215,9 @@ def momentum_residual_field(
     d2udx2_i = jnp.einsum('ji... - > i...', d2ui_dxj2) # [i,t,x,y,z]
 
     residual = dui_dt + ududx_i + dpdx_i - (d2udx2_i/datainfo.re)
+
+    if 'forcing' in kwargs:
+        logger.debug('Forced flow')
+        return residual + kwargs['forcing']
     
     return residual

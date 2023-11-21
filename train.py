@@ -199,13 +199,13 @@ def fit(
         logger.debug('Calculating true validation loss using clean data.')
         l_val_mse = eval_true_mse(state.params,None,x_val,yfull_val_clean)
 
-        l_val_true = np.sum([l_val_div, l_val_mom, l_val_mse])
+        l_val_true = float(np.sum([l_val_div, l_val_mom, l_val_mse]))
 
-        loss_val.append(l_val)
-        loss_val_true.append(l_val_true)
-        loss_val_div.append(l_val_div)
-        loss_val_momentum.append(l_val_mom)
-        loss_val_sensors.append(l_val_s)
+        loss_val.append(float(l_val))
+        loss_val_true.append(float(l_val_true))
+        loss_val_div.append(float(l_val_div))
+        loss_val_momentum.append(float(l_val_mom))
+        loss_val_sensors.append(float(l_val_s))
 
 
         if FLAGS.wandb:
@@ -216,7 +216,7 @@ def fit(
                 'loss_div':loss_div[-1], 
                 'loss_momentum':loss_momentum[-1], 
                 'loss_sensors':loss_sensors[-1],
-                'loss_val':float(l_val),
+                'loss_val':l_val,
                 'loss_val_true': l_val_true,
                 'loss_val_div':l_val_div, 
                 'loss_val_momentum':l_val_mom, 
@@ -251,7 +251,7 @@ def fit(
     return state, loss_dict
 
 
-
+standard_data_keys = ['u_train_clean', 'u_val_clean', 'train_minmax', 'val_minmax', 'u_train', 'u_val', 'inn_train', 'inn_val', 'y_train', 'y_val']
 
 
 def main(_):
@@ -342,6 +342,7 @@ def main(_):
         'val_minmax':val_minmax 
     })
     logger.debug(f'Data dict now has {data.keys()}')
+    data_extra = {k: data[k] for k in data if k not in standard_data_keys}
 
     percent_observed = 100*(observed_train.size/data['u_train'].size)
     if run:
@@ -385,7 +386,8 @@ def main(_):
         cfg,
         datainfo = datainfo,
         take_observation = take_observation,
-        insert_observation = insert_observation
+        insert_observation = insert_observation,
+        **data_extra
     )
     logger.info('Created loss function.')
 

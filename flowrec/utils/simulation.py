@@ -103,3 +103,10 @@ def read_data_kolsol(data_path: path):
         u_p = np.array(hf.get('state'))
     
     return u_p
+
+def kolsol_forcing_term(k:float, ngrid: int, dim:int) -> np.array:
+    x = np.linspace(0, 2*np.pi, ngrid+1)[:-1]
+    f_single_line = np.sin(k*x)
+    f = np.tile(f_single_line.reshape((1,-1)),[ngrid,1])
+    f = np.stack([f,np.zeros_like(f)],axis=0).reshape((dim,1,ngrid,ngrid))
+    return -f

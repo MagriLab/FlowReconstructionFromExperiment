@@ -184,13 +184,14 @@ _default_datacfg = {
         'train_test_split': (600,100,100)
     },
     '2dkol': {
-        'data_dir': './local_data/kolmogorov/dim2_re42_k32_f4_dt005_grid128.h5',
+        'data_dir': './local_data/kolmogorov/dim2_re34_k32_f4_dt001_grid128.h5',
         're': 42,
         'dt': 0.005,
         'dx': 2*np.pi/128,
         'dy': 2*np.pi/128,
         'pressure_inlet_slice': placeholder(tuple),
-        'random_input': placeholder(tuple)# (randseed, number of pressure sensors)
+        'random_input': placeholder(tuple), # (randseed, number of pressure sensors)
+        'forcing_frequency': 4
     }
 }
 
@@ -205,7 +206,7 @@ _default_mdlcfg_ffcnn = {
     '2dkol': {
         'mlp_layers': (49152,),
         'output_shape': (128,128,3),
-        'cnn_channels': (8,8,8,3),
+        'cnn_channels': (3,3),
         'cnn_filters': ((3,3),),
     }
 }

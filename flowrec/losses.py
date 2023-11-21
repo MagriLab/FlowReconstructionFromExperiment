@@ -100,9 +100,10 @@ def divergence(
     return div_loss
 
 
-def momemtum_loss(
+def momentum_loss(
         u: Array,
-        datainfo:ClassDataMetadata) -> float:
+        datainfo:ClassDataMetadata,
+        **kwargs) -> float:
 
     ''' Calculate the momentum loss.
     Squared mean of the momentum field, summed over each dimension.\n
@@ -115,7 +116,7 @@ def momemtum_loss(
         A non-negative scalar.
     '''
     
-    mom_field = momentum_residual_field(u_p=u, datainfo=datainfo)
+    mom_field = momentum_residual_field(u_p=u, datainfo=datainfo, **kwargs)
     mom_loss = jnp.mean(mom_field**2)*mom_field.shape[0]
 
     return mom_loss

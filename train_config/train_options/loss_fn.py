@@ -77,7 +77,8 @@ def loss_fn_physicswithdata(cfg,**kwargs):
 
     if ws > 0.0:
         logger.info('Training with both physics and sensor loss even though sensor measurements have already been inserted into the prediction.')
-
+    
+    f = _is_forced(**kwargs)
 
     def loss_fn(apply_fn:Callable,
                 params:Params, 
@@ -100,10 +101,15 @@ def loss_fn_physicswithdata(cfg,**kwargs):
             logger.debug('Un-normalise before calculating loss.')
 
         loss_div = losses.divergence(pred_new[...,:-1], datainfo)
-        mom_field = derivatives.momentum_residual_field(
-                            u_p=pred_new,
-                            datainfo=datainfo) # [i,t,x,y]
-        loss_mom = jnp.mean(mom_field**2)*mom_field.shape[0]
+        # mom_field = derivatives.momentum_residual_field(
+        #                     u_p=pred_new,
+        #                     datainfo=datainfo) # [i,t,x,y]
+        # loss_mom = jnp.mean(mom_field**2)*mom_field.shape[0]
+        loss_mom = losses.momentum_loss(
+            u=pred_new,
+            datainfo=datainfo,
+            forcing=f
+        )
         
         
         return wdiv*loss_div+wmom*loss_mom+ws*loss_sensor, (loss_div,loss_mom,loss_sensor)
@@ -245,3 +251,12 @@ def loss_fn_physicsandmean(cfg, **kwargs):
         return wdiv*loss_div+wmom*loss_mom+ws*loss_sensor, (loss_div,loss_mom,loss_sensor)
 
     return Partial(loss_fn, normalise=cfg.data_config.normalise)
+
+
+def _is_forced(**kwargs):
+    if 'forcing' in kwargs:
+        forcing = kwargs['forcing']
+        logger.debug('Forced flow.')
+    else:
+        forcing = None
+    return forcing
