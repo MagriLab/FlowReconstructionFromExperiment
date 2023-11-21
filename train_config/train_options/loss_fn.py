@@ -105,7 +105,7 @@ def loss_fn_physicswithdata(cfg,**kwargs):
         #                     u_p=pred_new,
         #                     datainfo=datainfo) # [i,t,x,y]
         # loss_mom = jnp.mean(mom_field**2)*mom_field.shape[0]
-        loss_mom = losses.momemtum_loss(
+        loss_mom = losses.momentum_loss(
             u=pred_new,
             datainfo=datainfo,
             forcing=f

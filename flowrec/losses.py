@@ -100,7 +100,7 @@ def divergence(
     return div_loss
 
 
-def momemtum_loss(
+def momentum_loss(
         u: Array,
         datainfo:ClassDataMetadata,
         **kwargs) -> float:
