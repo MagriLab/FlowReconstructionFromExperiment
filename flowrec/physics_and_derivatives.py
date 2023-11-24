@@ -38,35 +38,46 @@ def derivative2(f:Array, h:Scalar, axis:int=0) -> Array:
     slice2 = [slice(None)]*f.ndim
     slice3 = [slice(None)]*f.ndim
     slice4 = [slice(None)]*f.ndim
+    slice5 = [slice(None)]*f.ndim
 
-    # interior points
-    # second order scheme used f(x+h), f(x) and f(x-h)
-    # = (f(x+h) - 2f(x) + f(x-h)) / (h**2)
-    slice1[axis] = slice(2,None)
-    slice2[axis] = slice(1,-1)
-    slice3[axis] = slice(None,-2)
+    # # interior points
+    # # second order scheme used f(x+h), f(x) and f(x-h)
+    # # = (f(x+h) - 2f(x) + f(x-h)) / (h**2)
+    # slice1[axis] = slice(2,None)
+    # slice2[axis] = slice(1,-1)
+    # slice3[axis] = slice(None,-2)
 
-    interior = (f[tuple(slice1)] - 2*f[tuple(slice2)] + f[tuple(slice3)]) / (h**2)
+    # interior = (f[tuple(slice1)] - 2*f[tuple(slice2)] + f[tuple(slice3)]) / (h**2)
 
     # left boundary (x=0)
     # second order forward difference
     # = (2f(x) - 5f(x+h) + 4f(x+2h) - f(x+3h)) / (h**2)
-    slice1[axis] = slice(0,1)
-    slice2[axis] = slice(1,2)
-    slice3[axis] = slice(2,3)
-    slice4[axis] = slice(3,4)
+    slice1[axis] = slice(0,2)
+    slice2[axis] = slice(1,3)
+    slice3[axis] = slice(2,4)
+    slice4[axis] = slice(3,5)
 
     left = (2*f[tuple(slice1)] - 5*f[tuple(slice2)] + 4*f[tuple(slice3)] - f[tuple(slice4)]) / (h**2)
     
     # right boundary (x=L)
     # second order backward difference
     # = (2f(x) - 5f(x-h) + 4f(x-2h) - f(x-3h)) / (h**2)
-    slice1[axis] = slice(-1,None)
-    slice2[axis] = slice(-2,-1)
-    slice3[axis] = slice(-3,-2)
-    slice4[axis] = slice(-4,-3)
+    slice1[axis] = slice(-2,None)
+    slice2[axis] = slice(-3,-1)
+    slice3[axis] = slice(-4,-2)
+    slice4[axis] = slice(-5,-3)
 
     right = (2*f[tuple(slice1)] - 5*f[tuple(slice2)] + 4*f[tuple(slice3)] - f[tuple(slice4)]) / (h**2)
+
+    # 4th order interior points
+    # = (-f(x+2h) + 16f(x+h) - 30f(x) + 16f(x-h) -f(x-2h)) / (12 * h**2)
+    slice1[axis] = slice(4,None)
+    slice2[axis] = slice(3,-1)
+    slice3[axis] = slice(2,-2)
+    slice4[axis] = slice(1,-3)
+    slice5[axis] = slice(None,-4)
+
+    interior = (-f[tuple(slice1)] + 16*f[tuple(slice2)] - 30*f[tuple(slice3)] + 16*f[tuple(slice4)] - f[tuple(slice5)]) / (12* (h**2))
 
     return jnp.concatenate((left,interior,right),axis=axis)
 
@@ -97,30 +108,40 @@ def derivative1(f:Array, h:Scalar, axis:int=0) -> Array:
     slice1 = [slice(None)]*f.ndim
     slice2 = [slice(None)]*f.ndim
     slice3 = [slice(None)]*f.ndim
+    slice4 = [slice(None)]*f.ndim
 
-    # interior points, central difference second order
-    # = (f(x+h) - f(x-h)) / 2h
-    slice1[axis] = slice(2,None)
-    slice2[axis] = slice(1,-1)
-    slice3[axis] = slice(None,-2)
+    # # interior points, central difference second order
+    # # = (f(x+h) - f(x-h)) / 2h
+    # slice1[axis] = slice(2,None)
+    # slice2[axis] = slice(1,-1)
+    # slice3[axis] = slice(None,-2)
 
-    interior = (f[tuple(slice1)] - f[tuple(slice3)]) / (2*h)
+    # interior = (f[tuple(slice1)] - f[tuple(slice3)]) / (2*h)
 
     # left boundary, second order forward difference
     # = (-3f(x) + 4f(x+h) - f(x+2h)) / 2h
-    slice1[axis] = slice(0,1)
-    slice2[axis] = slice(1,2)
-    slice3[axis] = slice(2,3)
+    slice1[axis] = slice(0,2)
+    slice2[axis] = slice(1,3)
+    slice3[axis] = slice(2,4)
 
     left = (-3*f[tuple(slice1)] + 4*f[tuple(slice2)] - f[tuple(slice3)]) / (2*h)
 
     # right boundary, second order backward difference
     # = ( 3f(x) - 4f(x+h) + f(x+2h)) / 2h
-    slice1[axis] = slice(-1,None)
-    slice2[axis] = slice(-2,-1)
-    slice3[axis] = slice(-3,-2)
+    slice1[axis] = slice(-2,None)
+    slice2[axis] = slice(-3,-1)
+    slice3[axis] = slice(-4,-2)
 
     right = (3*f[tuple(slice1)] - 4*f[tuple(slice2)] + f[tuple(slice3)]) / (2*h)
+
+    # 4th order central difference interior points
+    # = (-f(x+2h) + 8f(x+h) - 8f(x-h) + f(x-2h)) / 12h
+    slice1[axis] = slice(4,None)
+    slice2[axis] = slice(3,-1)
+    slice3[axis] = slice(1,-3)
+    slice4[axis] = slice(None,-4)
+
+    interior = ( -f[tuple(slice1)] + 8*f[tuple(slice2)] - 8*f[tuple(slice3)] + f[tuple(slice4)]) / (12*h)
 
     return jnp.concatenate((left,interior,right),axis=axis)
 
