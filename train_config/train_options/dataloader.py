@@ -178,6 +178,8 @@ def dataloader_2dtriangle() -> tuple[dict, ClassDataMetadata]:
 def _load_kolsol(cfg:ConfigDict, dim:int) -> tuple[dict, ClassDataMetadata]:
     '''Load KolSol data, use dim=2 dor 2D simulation and dim=3 for 3D simulation.'''
 
+    if cfg.remove_mean:
+        logging.error('Removing mean at this step introduces information about the clean flow fields to the training samples.')
 
     data = {}
     logger.debug(f'Loading data with config file {cfg.to_dict()}')
@@ -220,7 +222,7 @@ def _load_kolsol(cfg:ConfigDict, dim:int) -> tuple[dict, ClassDataMetadata]:
             x, 
             axis=0, 
             partition=cfg.train_test_split,
-            REMOVE_MEAN=False,
+            REMOVE_MEAN=cfg.remove_mean,
             randseed=randseed,
             SHUFFLE=cfg.shuffle
         )
