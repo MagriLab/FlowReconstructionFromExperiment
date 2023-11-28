@@ -101,10 +101,6 @@ def loss_fn_physicswithdata(cfg,**kwargs):
             logger.debug('Un-normalise before calculating loss.')
 
         loss_div = losses.divergence(pred_new[...,:-1], datainfo)
-        # mom_field = derivatives.momentum_residual_field(
-        #                     u_p=pred_new,
-        #                     datainfo=datainfo) # [i,t,x,y]
-        # loss_mom = jnp.mean(mom_field**2)*mom_field.shape[0]
         loss_mom = losses.momentum_loss(
             u=pred_new,
             datainfo=datainfo,
@@ -127,6 +123,8 @@ def loss_fn_physicsnoreplace(cfg,**kwargs):
     wmom = cfg.train_config.weight_momentum
     ws = cfg.train_config.weight_sensors
 
+    f = _is_forced(**kwargs)
+
     def loss_fn(apply_fn:Callable,
                 params:Params, 
                 rng:jax.random.PRNGKey, 
@@ -146,10 +144,11 @@ def loss_fn_physicsnoreplace(cfg,**kwargs):
             logger.debug('Un-normalise before calculating loss.')
 
         loss_div = losses.divergence(pred[...,:-1], datainfo)
-        mom_field = derivatives.momentum_residual_field(
-                            u_p=pred,
-                            datainfo=datainfo) # [i,t,x,y]
-        loss_mom = jnp.mean(mom_field**2)*mom_field.shape[0]
+        loss_mom = losses.momentum_loss(
+            u=pred,
+            datainfo=datainfo,
+            forcing=f
+        )
         
         return wdiv*loss_div+wmom*loss_mom+ws*loss_sensor, (loss_div,loss_mom,loss_sensor)
     
@@ -172,8 +171,7 @@ def loss_fn_physicsreplacemean(cfg,**kwargs):
     wmom = cfg.train_config.weight_momentum
     ws = cfg.train_config.weight_sensors
 
-    if ws > 0.0:
-        logger.info('Training with both physics and sensor loss even though sensor measurements have already been inserted into the prediction.')
+    f = _is_forced(**kwargs)
 
     def loss_fn(apply_fn:Callable,
                 params:Params, 
@@ -198,10 +196,11 @@ def loss_fn_physicsreplacemean(cfg,**kwargs):
             logger.debug('Un-normalise before calculating loss.')
         
         loss_div = losses.divergence(pred_new[...,:-1], datainfo)
-        mom_field = derivatives.momentum_residual_field(
-                            u_p=pred_new,
-                            datainfo=datainfo) # [i,t,x,y]
-        loss_mom = jnp.mean(mom_field**2)*mom_field.shape[0]
+        loss_mom = losses.momentum_loss(
+            u = pred_new,
+            datainfo = datainfo,
+            forcing = f
+        )
         
         return wdiv*loss_div+wmom*loss_mom+ws*loss_sensor, (loss_div,loss_mom,loss_sensor)
 
@@ -221,6 +220,10 @@ def loss_fn_physicsandmean(cfg, **kwargs):
     wdiv= cfg.train_config.weight_continuity
     wmom = cfg.train_config.weight_momentum
     ws = cfg.train_config.weight_sensors
+    
+    logger.warn("Are you looking for 'physicsreplacemean'")
+
+    f = _is_forced(**kwargs)
 
     def loss_fn(apply_fn:Callable,
                 params:Params, 
@@ -243,10 +246,11 @@ def loss_fn_physicsandmean(cfg, **kwargs):
             logger.debug('Un-normalise before calculating loss.')
 
         loss_div = losses.divergence(pred[...,:-1], datainfo)
-        mom_field = derivatives.momentum_residual_field(
-                            u_p=pred,
-                            datainfo=datainfo) # [i,t,x,y]
-        loss_mom = jnp.mean(mom_field**2)*mom_field.shape[0]
+        loss_mom = losses.momentum_loss(
+            u=pred,
+            datainfo=datainfo,
+            forcing=f
+        )
         
         return wdiv*loss_div+wmom*loss_mom+ws*loss_sensor, (loss_div,loss_mom,loss_sensor)
 
