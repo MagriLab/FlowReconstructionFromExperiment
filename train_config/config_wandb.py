@@ -40,7 +40,7 @@ def get_config(cfgstr:str = None):
     # training
     cfg.config.nb_batches = placeholder(int)
     cfg.config.dropout_rate = placeholder(float)
-    cfg.config.regularisation_trength = placeholder(float)
+    cfg.config.regularisation_strength = placeholder(float)
     cfg.config.learning_rate = placeholder(float)
 
     # cases
