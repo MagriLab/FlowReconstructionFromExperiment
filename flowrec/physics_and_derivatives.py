@@ -242,3 +242,38 @@ def momentum_residual_field(
         return residual + kwargs['forcing']
     
     return residual
+
+
+
+def dissipation(
+    u: Array, 
+    datainfo: ClassDataMetadata
+    ) -> Array:
+
+    step_space = datainfo.discretisation[1:]
+    axis_space = datainfo.axis_index[1:]
+    re = datainfo.re
+    
+    # check dimension and prepare matrix
+    u = jnp.moveaxis(u[...],-1,0) # move velocity axis to 0
+    chex.assert_axis_dimension(u,0,len(step_space))
+
+    v_derivative1 = jax.vmap(derivative1,(0,None,None),0)
+    def _didj(de_fun,inn):
+        didj_T = de_fun(inn,datainfo.dx,datainfo.axx).reshape((-1,)+inn.shape)
+        for j in range (1,u.shape[0]):
+            didj_T = jnp.concatenate(
+                (
+                didj_T,
+                de_fun(inn,step_space[j],axis_space[j]).reshape((-1,)+inn.shape)
+                ),
+                axis=0
+            )
+        return didj_T # for de_fun = v_derivative1 and inn=u -> [j,i,t,x,y,z]
+    
+    dui_dxj_T = _didj(v_derivative1, u) # [j,i,t,x,y,z]
+
+    d = jnp.sqrt(jnp.einsum('jit... -> t...', dui_dxj_T**2)) / re # [t,x,y,z]
+
+    return d
+ 
