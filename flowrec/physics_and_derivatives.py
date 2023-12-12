@@ -249,6 +249,15 @@ def dissipation(
     u: Array, 
     datainfo: ClassDataMetadata
     ) -> Array:
+    """Calculate dissipation from velocity
+    
+    Arguments:\n
+        u: [...,u], last dimension must be velocity.\n
+        datainfo: an instance of DataMetadata.\n
+    
+    Return:\n
+        dissipation: of shape [t,x,y,z]
+    """
 
     step_space = datainfo.discretisation[1:]
     axis_space = datainfo.axis_index[1:]
@@ -277,3 +286,41 @@ def dissipation(
 
     return d
  
+
+
+
+def vorticity(u:Array, datainfo:ClassDataMetadata) -> Array:
+    """Calculate vorticity field.\n
+    
+    Arguments:\n
+        u: [...,u], last dimension must be velocity.\n
+        datainfo: an instance of DataMetadata.\n
+    
+    Return:\n
+        vorticity: of shape [1,x,y,z]
+    """
+
+    step_space = datainfo.discretisation[1:]
+    axis_space = datainfo.axis_index[1:]
+    u = jnp.moveaxis(u[...],-1,0) # move velocity axis to 0
+    v_derivative1 = jax.vmap(derivative1,(0,None,None),0)
+    def _didj(de_fun,inn):
+        didj_T = de_fun(inn,datainfo.dx,datainfo.axx).reshape((-1,)+inn.shape)
+        for j in range (1,u.shape[0]):
+            didj_T = jnp.concatenate(
+                (
+                didj_T,
+                de_fun(inn,step_space[j],axis_space[j]).reshape((-1,)+inn.shape)
+                ),
+                axis=0
+            )
+        return didj_T # for de_fun = v_derivative1 and inn=u -> [j,i,t,x,y,z]
+    
+    dui_dxj_T = _didj(v_derivative1, u) # [j,i,t,x,y,z]
+
+    vort = dui_dxj_T[0,1,...] - dui_dxj_T[1,0,...]
+
+    if len(axis_space) == 3:
+        vort = vort + (dui_dxj_T[1,2] - dui_dxj_T[2,1]) + (dui_dxj_T[2,0]-dui_dxj_T[0,2])
+
+    return vort
