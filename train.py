@@ -324,8 +324,8 @@ def main(_):
     logger.debug(f'Data dictionary has {data.keys()}')
     logger.debug(f'Datainfo is {datainfo}')
 
-    observe_kwargs = {key: value for key, value in data.items() if key not in _keys_to_exclude}
     logger.info('Taking observations.')
+    observe_kwargs = {key: value for key, value in data.items() if key not in _keys_to_exclude}
     take_observation, insert_observation = cfg.case.observe(
         datacfg,
         example_pred_snapshot = data['u_train'][0,...],

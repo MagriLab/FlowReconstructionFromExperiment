@@ -44,7 +44,7 @@ def dataloader_example() -> tuple[dict, ClassDataMetadata]:
 
 
 
-def dataloader_2dtriangle() -> tuple[dict, ClassDataMetadata]:
+def dataloader_2dtriangle(cfg:ConfigDict = None) -> tuple[dict, ClassDataMetadata]:
     '''# Load data base on data_config. 
     For use with the generated 2D wake behind the triangle, any Reynolds number.\n
     
@@ -59,7 +59,8 @@ def dataloader_2dtriangle() -> tuple[dict, ClassDataMetadata]:
     datainfo: of class _Metadata2d.
     
     '''
-    cfg = FLAGS.cfg.data_config
+    if not cfg:
+        cfg = FLAGS.cfg.data_config
     data = {}
 
     x_base = 132
@@ -324,10 +325,10 @@ def _load_kolsol(cfg:ConfigDict, dim:int) -> tuple[dict, ClassDataMetadata]:
     return data, datainfo
 
 
-def dataloader_2dkol() -> tuple[dict,ClassDataMetadata]:
+def dataloader_2dkol(cfg:ConfigDict = None) -> tuple[dict,ClassDataMetadata]:
     '''Load 2D Kolmogorov flow generated with KolSol.'''
-    
-    cfg = FLAGS.cfg.data_config
+    if not cfg:
+        cfg = FLAGS.cfg.data_config
     if cfg.remove_mean:
         warnings.warn('Method of removing mean from the Kolmogorov data has not been implemented. Ignoring remove_mean in configs.')
     

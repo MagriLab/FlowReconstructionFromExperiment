@@ -54,6 +54,7 @@ flags.DEFINE_bool('chatty',False,'Print information on where the program is at n
 
 ## Define interal global variables
 flags.DEFINE_bool('_noisy',False,'DO NOT CHANGE! True loss will be calculated with clean data if the data is noisy.')
+flags.DEFINE_string('_experimentcfgstr',None,'DO NOT CHANGE! For use with experiments only.')
 
 _WANDB = config_flags.DEFINE_config_file('wandbcfg','train_config/config_wandb.py','path to wandb config file.')
 
@@ -104,7 +105,16 @@ def wandb_init(wandbcfg:config_dict.ConfigDict):
     
     return run
 
-
+_keys_to_exclude = [
+    'u_train_clean',
+    'u_val_clean',
+    'train_minmax',
+    'val_minmax',
+    'u_train',
+    'u_val',
+    'inn_train',
+    'inn_val'
+]
 
 
 def fit(
@@ -243,6 +253,7 @@ def fit(
 
 
 
+standard_data_keys = ['u_train_clean', 'u_val_clean', 'train_minmax', 'val_minmax', 'u_train', 'u_val', 'inn_train', 'inn_val', 'y_train', 'y_val']
 
 
 
@@ -257,6 +268,8 @@ def main(_):
     mdlcfg = cfg.model_config
     traincfg = cfg.train_config
     wandbcfg = FLAGS.wandbcfg
+    if FLAGS._experimentcfgstr:
+        logger.error('Cannot change config for a restarted experiment. Ignoring the pre-set experiment config.')
 
 
     # ===================== setting up system ==========================
@@ -299,24 +312,29 @@ def main(_):
     
     # data has u_train, u_val, inn_train, inn_val [t, space..., 3] or [t, len]
     logger.info('Loading data.')
-    data, datainfo = cfg.case.dataloader(datacfg)
+    data, datainfo = cfg.case.dataloader(cfg.data_config)
     logger.debug(f'Data dictionary has {data.keys()}')
     logger.debug(f'Datainfo is {datainfo}')
 
     logger.info('Taking observations.')
+    observe_kwargs = {key: value for key, value in data.items() if key not in _keys_to_exclude}
     take_observation, insert_observation = cfg.case.observe(
         datacfg,
         example_pred_snapshot = data['u_train'][0,...],
-        example_pin_snapshot = data['inn_train'][0,...]
+        example_pin_snapshot = data['inn_train'][0,...],
+        **observe_kwargs
     )
-    observed_train = take_observation(data['u_train'])
-    observed_val = take_observation(data['u_val'])
+    observed_train, train_minmax = take_observation(data['u_train'], init=True)
+    observed_val, val_minmax = take_observation(data['u_val'], init=True)
     
     data.update({
         'y_train':observed_train,
-        'y_val':observed_val
+        'y_val':observed_val,
+        'train_minmax':train_minmax,
+        'val_minmax':val_minmax 
     })
     logger.debug(f'Data dict now has {data.keys()}')
+    data_extra = {k: data[k] for k in data if k not in standard_data_keys}
 
     percent_observed = 100*(observed_train.size/data['u_train'].size)
     if run:
@@ -349,10 +367,8 @@ def main(_):
     
     logger.debug(jax.tree_util.tree_map(lambda x: x.shape,state.params))
     
-    # opt_state = optimizer.init(state.params)
     logger.info('Restored state.')
     
-    # state = TrainingState(params, opt_state)
 
 
     # =================== loss function ==========================
@@ -361,7 +377,8 @@ def main(_):
         cfg,
         datainfo = datainfo,
         take_observation = take_observation,
-        insert_observation = insert_observation
+        insert_observation = insert_observation,
+        **data_extra
     )
     logger.info('Created loss function.')
 
