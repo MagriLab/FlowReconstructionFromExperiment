@@ -1,0 +1,147 @@
+import logging
+logger = logging.getLogger(f'fr.{__name__}')
+import numpy as np
+
+from scipy.signal import butter, filtfilt
+
+from typing import Tuple
+from ._typing import *
+
+
+def movemean(signal: Array, window_size:int, start_idx:int) -> Array:
+    '''Compute the running average of the signal.
+    
+    Arguments:\n
+        signal: a 1D array of signal.\n
+        window_size: the window size for computing average. If window is even, then window/2 number of points on each side of the centre point will be used. If window is odd, then (window-1)/2 number of points on each side will be used.\n
+        start_idx: from where to start computing the running average. \n
+    Return:\n
+        the smoothed signal with the same dimension as the original.
+    '''
+
+    if len(signal.shape) > 1:
+        raise ValueError('Running average only works on 1D array.')
+
+    l = len(signal)
+    w2 = int(window_size/2)
+    smooth_signal = np.zeros_like(signal)
+    
+    if start_idx > 0:
+        smooth_signal[:start_idx] = signal[:start_idx]
+    
+    if w2 > start_idx: # if there are not enough points in the window
+        logger.debug('Not enough points to compute the running average for the user defined window size. Using increasing window size.')        
+        start_from = w2
+        for j in range(start_idx,w2):
+            smooth_signal[j] = np.mean(signal[j-start_idx:j+1])
+    else:
+        start_from = start_idx
+    
+    # Now using the user defined window size
+    for j in range(start_from,l):
+        smooth_signal[j] = np.mean(signal[j-w2:j+w2])
+
+    return smooth_signal
+
+
+
+def butter_lowpass_filter(
+        signal:Array, 
+        cutoff:Scalar, 
+        fs:Scalar, 
+        order:int = 2
+    ) -> Array:
+    '''Butterworth low pass filter.
+    
+    Arguments:\n
+        signal: a 1D array representing a time series.\n
+        cutoff: cutoff frequency.\n
+        fs: sampling frequency of the signal.\n
+        order: order of the filter, see scipy.signal.butter. A higher order will make the filter attenuate signal quicker.\n
+    Returns:\n
+        Filtered signal.
+    '''
+    
+    normal_cutoff = cutoff / fs / 2
+    b, a = butter(order, normal_cutoff, btype='low', analog=False)# Get the filter coefficients 
+    y = filtfilt(b, a, signal)
+
+    return y
+
+
+# From the paper by Oxlade et al. 2012. De-noising of time-resolved PIV.
+def estimate_noise_floor(
+        signal, 
+        fs, 
+        f1=None, 
+        window_fn='hanning',
+        convergence='movemean',
+        **kwargs
+    ) -> Tuple[Scalar, Array]: 
+    '''Estimate the power of the white noise.
+    
+    Arguments:\n
+        signal: a 1D array of time series.\n
+        fs: the sampling frequency.\n
+        f1: lowest expected noise frequency.\n
+        window_fn: window function for use in fft.\n
+        convergence: 'standard'-using fft power without futher processing. 'movemean'-using running average to improve convergence.\n
+        **kwargs: kwargs for use in convergence functions.\n
+    Returns:\n
+        estimated_noise_floor, power spectrum of the signal
+    '''
+
+    dt = 1/fs
+    ls = len(signal)
+
+    if ls%2 != 0:
+        nfft = ls+1
+    else:
+        nfft = ls
+
+    if window_fn == 'hanning':
+        window = np.hanning(ls)
+    else:
+        raise NotImplementedError
+
+    fftfreq = np.fft.fftfreq(nfft,dt)
+    df = fs/nfft
+    power = np.abs(
+        np.fft.fft(signal*window, nfft)
+    )**2 
+
+    if convergence == 'movemean':
+        power = movemean(power,**kwargs)
+    elif convergence == 'standard':
+        pass
+    else:
+        raise ValueError
+
+    f2 = 0.5*fs - df
+    if not f1:
+        f1 = 0.46*(fs/2) # this is the value given in the paper
+    idx_lower = (np.abs(fftfreq - f1)).argmin()
+    idx_upper = (np.abs(fftfreq - f2)).argmin()
+
+    return np.mean(power[idx_lower:idx_upper]), power
+
+
+def estimate_noise_cutoff_frequency(
+        power:Array, 
+        noise_estimate:Scalar, 
+        df:Scalar, 
+        slack:Scalar
+    ) -> Scalar:
+
+    '''Find the cut-off frequency for a low-pass filter based on the estimated noise floor. 
+    
+    Arguments:\n
+        power: the power spectrum of the signal.\n
+        noise_estimate: the estimated noise floor from the power spectrum.\n
+        df: frequency resolution.\n
+        slack: how much to raise the cut-off frequency by. For example, 0.1*Nyquist frequency.\n
+    Returns:\n
+        the cut-off frequency to use with a low-pass filter.
+    '''
+
+    return np.argmax(power < noise_estimate) * df + slack 
