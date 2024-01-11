@@ -164,6 +164,11 @@ def get_whitenoise_std(snr:Scalar,std_signal:Union[Array,Scalar]) -> Union[Array
     std_n = np.sqrt(std_signal**2/snr_l)
     return std_n
 
+def signal_noise_ratio(std_signal:Union[Array,Scalar], std_noise:Union[Array,Scalar]) -> Union[Array,Scalar]:
+    '''Compute the signal to noise ratio.'''
+    
+    return 10.* np.log10(std_signal**2 / std_noise**2)
+
 
 
 

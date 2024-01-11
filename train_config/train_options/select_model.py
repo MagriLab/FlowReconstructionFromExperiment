@@ -1,8 +1,10 @@
 from flowrec._typing import *
 from ml_collections.config_dict import ConfigDict
 
+import flowrec.signal as flowsignal
 from flowrec.models import cnn, feedforward
 from flowrec.data import normalise
+
 
 import logging
 logger = logging.getLogger(f'fr.{__name__}')
@@ -43,9 +45,109 @@ def select_model_ffcnn(**kwargs):
     if 'datacfg' in kwargs:
        flag_norm = kwargs['datacfg'].normalise
 
-    def prep_data(data:dict, **kwargs) -> dict:
+    def prep_data(data:dict, datainfo:DataMetadata, **kwargs) -> dict:
         '''make data into suitable form
         data.update({'u_train':new_u_train,'inn_train':new_inn_train})'''
+
+        if ('filter' in kwargs) and (kwargs['filter'] == 'lowpass'):
+            (nt_train, nin) = data['inn_train'].shape # always has shape [t,j]
+            (nt_val, _) = data['inn_val'].shape
+            fs = 1/datainfo.dt
+
+            old_inn_train = data['inn_train']
+            new_inn_train = np.zeros_like(old_inn_train)
+            old_inn_val = data['inn_val']
+            new_inn_val = np.zeros_like(old_inn_val)
+            for n in range(nin):
+                nest_t, pobserved_t = flowsignal.estimate_noise_floor(
+                    old_inn_train[:,n],
+                    fs,
+                    window_size=int(0.005*nt_train),
+                    start_idx=0
+                )
+                cutoff_t = flowsignal.estimate_noise_cutoff_frequency(
+                    pobserved_t,
+                    nest_t,
+                    fs/nt_train,
+                    0.1*fs/2
+                )
+                new_inn_train[:,n] = flowsignal.butter_lowpass_filter(
+                    old_inn_train[:,n],
+                    cutoff_t,
+                    fs
+                )
+
+                nest_v, pobserved_v = flowsignal.estimate_noise_floor(
+                    old_inn_val[:,n],
+                    fs,
+                    window_size=int(0.005*nt_val),
+                    start_idx=0
+                )
+                cutoff_v = flowsignal.estimate_noise_cutoff_frequency(
+                    pobserved_v,
+                    nest_v,
+                    fs/nt_val,
+                    0.1*fs/2
+                )
+                new_inn_val[:,n] = flowsignal.butter_lowpass_filter(
+                    old_inn_val[:,n],
+                    cutoff_v,
+                    fs
+                ) 
+            data.update({
+                'inn_train': new_inn_train,
+                'inn_val': new_inn_val
+            })
+
+            # has shape [t,...], ... changes when using different observation function
+            shape_y_train = data['y_train'].shape 
+            shape_y_val = data['y_val'].shape
+            old_y_train = data['y_train'].reshape((nt_train,-1))
+            new_y_train = np.zeros_like(old_y_train)
+            old_y_val = data['y_val'].reshape((nt_val,-1))
+            new_y_val = np.zeros_like(old_y_val)
+            for n in range(old_y_train.shape[1]): # interate of all observations
+                nest_t, pobserved_t = flowsignal.estimate_noise_floor(
+                    old_y_train[:,n],
+                    fs,
+                    window_size=int(0.005*nt_train),
+                    start_idx=0
+                )
+                cutoff_t = flowsignal.estimate_noise_cutoff_frequency(
+                    pobserved_t,
+                    nest_t,
+                    fs/nt_train,
+                    0.1*fs/2
+                )
+                new_y_train[:,n] = flowsignal.butter_lowpass_filter(
+                    old_y_train[:,n],
+                    cutoff_t,
+                    fs
+                )
+
+                nest_v, pobserved_v = flowsignal.estimate_noise_floor(
+                    old_y_val[:,n],
+                    fs,
+                    window_size=int(0.005*nt_val),
+                    start_idx=0
+                )
+                cutoff_v = flowsignal.estimate_noise_cutoff_frequency(
+                    pobserved_v,
+                    nest_v,
+                    fs/nt_val,
+                    0.1*fs/2
+                )
+                new_y_val[:,n] = flowsignal.butter_lowpass_filter(
+                    old_y_val[:,n],
+                    cutoff_v,
+                    fs
+                )
+            data.update({
+                'y_train': new_y_train.reshape(shape_y_train),
+                'y_val': new_y_val.reshape(shape_y_val),
+            })
+            
+
 
 #         if ('normalise' in kwargs) and kwargs['normalise'] is True:
         if flag_norm:
