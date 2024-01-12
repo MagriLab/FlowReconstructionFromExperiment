@@ -43,13 +43,16 @@ def select_model_example(**kwargs):
 
 def select_model_ffcnn(**kwargs):
     if 'datacfg' in kwargs:
-       flag_norm = kwargs['datacfg'].normalise
+        flag_norm = kwargs['datacfg'].normalise
+        filter_type = kwargs['datacfg'].filter
+        
 
     def prep_data(data:dict, datainfo:DataMetadata, **kwargs) -> dict:
         '''make data into suitable form
         data.update({'u_train':new_u_train,'inn_train':new_inn_train})'''
 
-        if ('filter' in kwargs) and (kwargs['filter'] == 'lowpass'):
+        if filter_type == 'lowpass':
+            logger.info('Using the lowpass filter to de-noise.')
             (nt_train, nin) = data['inn_train'].shape # always has shape [t,j]
             (nt_val, _) = data['inn_val'].shape
             fs = 1/datainfo.dt
@@ -146,8 +149,10 @@ def select_model_ffcnn(**kwargs):
                 'y_train': new_y_train.reshape(shape_y_train),
                 'y_val': new_y_val.reshape(shape_y_val),
             })
+        elif filter_type is not None:
+            logger.error('The requested filtering method is not implemented.')
+            raise NotImplementedError
             
-
 
 #         if ('normalise' in kwargs) and kwargs['normalise'] is True:
         if flag_norm:

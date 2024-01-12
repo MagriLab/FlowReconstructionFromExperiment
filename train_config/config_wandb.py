@@ -55,6 +55,7 @@ def get_config(cfgstr:str = None):
     cfg.config.normalise = placeholder(bool)
     cfg.config.re = placeholder(float)
     cfg.config.snr = placeholder(float)
+    cfg.config.filter = placeholder(str)
     cfg.config.percent_observed = placeholder(float)
 
 

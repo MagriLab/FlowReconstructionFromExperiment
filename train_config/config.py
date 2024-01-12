@@ -43,6 +43,7 @@ def get_basic_config() -> config_dict.ConfigDict:
     cfg.data_config.dy = placeholder(float)
     cfg.data_config.dz = placeholder(float)
     cfg.data_config.snr = placeholder(float)
+    cfg.data_config.filter = placeholder(str)
 
 
     ## Model
