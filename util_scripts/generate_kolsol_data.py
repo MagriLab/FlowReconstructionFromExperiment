@@ -107,29 +107,28 @@ def fourier_to_physical(args):
     with h5py.File(fourier_data_path,'r') as hf:
         nk = int(hf['nk'][()])
         nf = int(hf['nf'][()])
-        re = int(hf['re'][()])
-        dt = int(hf['dt'][()])
+        re = float(hf['re'][()])
+        dt = float(hf['dt'][()])
         ndim = int(hf['ndim'][()])
         state_hat = np.array(hf.get('state_hat'))
+
+    physical_data_path = Path(args.physical_data_path)
+    setup_directory(physical_data_path)
 
     print(f'02 :: Move data to physical domain with {args.ngrid} grid points.')
     ks = KolSol(nk=nk, nf=nf, re=re, ndim=ndim)
     state = ks.fourier_to_phys(state_hat, nref=args.ngrid)
 
-
-    physical_data_path = Path(args.physical_data_path)
-    setup_directory(physical_data_path)
-
     data_dict = {
-        'state': state,
+        'state': state[::args.save_frequency,...],
         'ndim': ndim,
         'nf': nf,
         're': re,
-        'dt': dt,
+        'dt': dt*args.save_frequency,
         'ngrid': args.ngrid
     }
 
-    print('02 :: Saving data in physical domain.')
+    print('03 :: Saving data in physical domain.')
     write_h5(data_dict, physical_data_path)
 
 
@@ -208,6 +207,12 @@ if __name__ == '__main__':
         'ngrid',
         type=int,
         help='Number of grid points each side in the physical domain.'
+    )
+    parser_t.add_argument(
+        '--save_frequency',
+        default=1,
+        type=int,
+        help='How often to write output. Default write all snapshots.'
     )
     parser_t.set_defaults(func=fourier_to_physical)
 
