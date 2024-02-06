@@ -10,9 +10,10 @@ def sweep_preprocess_cfg(cfg):
     # t2 = literal_eval(cfg._cnn_channels)
     # cfg.update({'cnn_channels':t2}, allow_val_change=True)
 
-
-    step = int(cfg._slice_grid_sensors_step)
-    cfg.update({'slice_grid_sensors':((None,None,step),(None,None,step))}, allow_val_change=True)
+    # print(cfg.slice_grid_sensors)
+    # step = int(cfg._slice_grid_sensors_step)
+    # cfg.update({'slice_grid_sensors':((None,None,step),(None,None,step))}, allow_val_change=True)
+    # print(cfg.slice_grid_sensors)
 
     
     return cfg
