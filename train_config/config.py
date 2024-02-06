@@ -151,13 +151,13 @@ def get_config(cfgstr:str = None):
         raise ValueError('Invalid select_model option.')
 
 
-    if _loss_fn == 'physicswithdata' or 'physicsreplacemean':
+    if _loss_fn == 'physicswithdata' or 'physicsreplacemean' or 'physicswithdata_mae' or 'physicsreplacemean_mae':
         cfg.train_config.update({
             'weight_momentum': 1.0,
             'weight_continuity': 1.0,
             'weight_sensors': 0.0
         })
-    elif _loss_fn == 'physicsnoreplace' or 'physicsandmean':
+    elif _loss_fn == 'physicsnoreplace' or 'physicsandmean' or 'physicsnoreplace_mae' or 'physicsandmean_mae':
         cfg.train_config.update({
             'weight_momentum': 1.0,
             'weight_continuity': 1.0,

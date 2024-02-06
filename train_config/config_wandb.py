@@ -2,6 +2,9 @@ from ml_collections import config_dict
 from ml_collections.config_dict import placeholder
 import warnings
 
+
+_valid_loss_fn = ['physicswithdata_mae', 'physicsnoreplace_mae', 'physicsreplacemean_mae', 'physicsandmean_mae', 'physicswithdata', 'physicsnoreplace', 'physicsreplacemean', 'physicsandmean']
+
 def get_config(cfgstr:str = None):
     
     if cfgstr:
@@ -66,7 +69,7 @@ def get_config(cfgstr:str = None):
     else:
         raise ValueError('Invalid model option for wandb configuration.')
 
-    if _loss_fn == 'physicswithdata' or 'physicsnoreplace' or 'physicsreplacemean' or 'physicsandmean':
+    if _loss_fn in _valid_loss_fn:
         cfg.config.weight_momentum = placeholder(float)
         cfg.config.weight_continuity = placeholder(float)
         cfg.config.weight_sensors = placeholder(float)

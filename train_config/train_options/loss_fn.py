@@ -74,6 +74,8 @@ def loss_fn_physicswithdata(cfg,**kwargs):
     wdiv= cfg.train_config.weight_continuity
     wmom = cfg.train_config.weight_momentum
     ws = cfg.train_config.weight_sensors
+    
+    data_loss_fn, div_loss_fn, momentum_loss_fn = _use_mae(**kwargs)
 
     if ws > 0.0:
         logger.info('Training with both physics and sensor loss even though sensor measurements have already been inserted into the prediction.')
@@ -91,7 +93,7 @@ def loss_fn_physicswithdata(cfg,**kwargs):
                 **kwargs):
         pred = apply_fn(params, rng, x, **apply_kwargs)
         pred_observed = take_observation(pred)
-        loss_sensor = losses.mse(pred_observed, y)
+        loss_sensor = data_loss_fn(pred_observed, y)
 
         pred_new = insert_observation(pred,y)
 
@@ -100,8 +102,8 @@ def loss_fn_physicswithdata(cfg,**kwargs):
             pred_new = unnormalise_group(pred_new, y_minmax, axis_data=-1, axis_range=0)
             logger.debug('Un-normalise before calculating loss.')
 
-        loss_div = losses.divergence(pred_new[...,:-1], datainfo)
-        loss_mom = losses.momentum_loss(
+        loss_div = div_loss_fn(pred_new[...,:-1], datainfo)
+        loss_mom = momentum_loss_fn(
             u=pred_new,
             datainfo=datainfo,
             forcing=f
@@ -123,6 +125,7 @@ def loss_fn_physicsnoreplace(cfg,**kwargs):
     wmom = cfg.train_config.weight_momentum
     ws = cfg.train_config.weight_sensors
 
+    data_loss_fn, div_loss_fn, momentum_loss_fn = _use_mae(**kwargs)
     f = _is_forced(**kwargs)
 
     def loss_fn(apply_fn:Callable,
@@ -136,15 +139,15 @@ def loss_fn_physicsnoreplace(cfg,**kwargs):
                 **kwargs):
         pred = apply_fn(params, rng, x, **apply_kwargs)
         pred_observed = take_observation(pred)
-        loss_sensor = losses.mse(pred_observed, y)
+        loss_sensor = data_loss_fn(pred_observed, y)
 
         # normalise
         if normalise:
             pred = unnormalise_group(pred, y_minmax, axis_data=-1, axis_range=0)
             logger.debug('Un-normalise before calculating loss.')
 
-        loss_div = losses.divergence(pred[...,:-1], datainfo)
-        loss_mom = losses.momentum_loss(
+        loss_div = div_loss_fn(pred[...,:-1], datainfo)
+        loss_mom = momentum_loss_fn(
             u=pred,
             datainfo=datainfo,
             forcing=f
@@ -171,6 +174,7 @@ def loss_fn_physicsreplacemean(cfg,**kwargs):
     wmom = cfg.train_config.weight_momentum
     ws = cfg.train_config.weight_sensors
 
+    data_loss_fn, div_loss_fn, momentum_loss_fn = _use_mae(**kwargs)
     f = _is_forced(**kwargs)
 
     def loss_fn(apply_fn:Callable,
@@ -184,7 +188,7 @@ def loss_fn_physicsreplacemean(cfg,**kwargs):
                 **kwargs):
         pred = apply_fn(params, rng, x, **apply_kwargs)
         pred_observed = take_observation(pred)
-        loss_sensor = losses.mse(pred_observed, y)
+        loss_sensor = data_loss_fn(pred_observed, y)
         
         pred_replaced = insert_observation(pred,y)
         pred_f = pred - jnp.mean(pred,axis=0,keepdims=True)
@@ -195,8 +199,8 @@ def loss_fn_physicsreplacemean(cfg,**kwargs):
             pred_new = unnormalise_group(pred_new, y_minmax, axis_data=-1, axis_range=0)
             logger.debug('Un-normalise before calculating loss.')
         
-        loss_div = losses.divergence(pred_new[...,:-1], datainfo)
-        loss_mom = losses.momentum_loss(
+        loss_div = div_loss_fn(pred_new[...,:-1], datainfo)
+        loss_mom = momentum_loss_fn(
             u = pred_new,
             datainfo = datainfo,
             forcing = f
@@ -223,6 +227,7 @@ def loss_fn_physicsandmean(cfg, **kwargs):
     
     logger.warn("Are you looking for 'physicsreplacemean'")
 
+    data_loss_fn, div_loss_fn, momentum_loss_fn = _use_mae(**kwargs)
     f = _is_forced(**kwargs)
 
     def loss_fn(apply_fn:Callable,
@@ -238,15 +243,15 @@ def loss_fn_physicsandmean(cfg, **kwargs):
         pred_observed = take_observation(pred)
         
         ## mean loss
-        loss_sensor = losses.mse(jnp.mean(pred_observed,axis=0), jnp.mean(y,axis=0))
+        loss_sensor = data_loss_fn(jnp.mean(pred_observed,axis=0), jnp.mean(y,axis=0))
 
         # normalise
         if normalise:
             pred = unnormalise_group(pred, y_minmax, axis_data=-1, axis_range=0)
             logger.debug('Un-normalise before calculating loss.')
 
-        loss_div = losses.divergence(pred[...,:-1], datainfo)
-        loss_mom = losses.momentum_loss(
+        loss_div = div_loss_fn(pred[...,:-1], datainfo)
+        loss_mom = momentum_loss_fn(
             u=pred,
             datainfo=datainfo,
             forcing=f
@@ -257,6 +262,20 @@ def loss_fn_physicsandmean(cfg, **kwargs):
     return Partial(loss_fn, normalise=cfg.data_config.normalise)
 
 
+
+# MAE losses
+def loss_fn_physicswithdata_mae(cfg, **kwargs):
+    return loss_fn_physicswithdata(cfg, mae=True, **kwargs)
+def loss_fn_physicsnoreplace_mae(cfg, **kwargs):
+    return loss_fn_physicsnoreplace(cfg, mae=True, **kwargs)
+def loss_fn_physicsreplacemean_mae(cfg, **kwargs):
+    return loss_fn_physicsreplacemean(cfg, mae=True, **kwargs)
+def loss_fn_physicsandmean_mae(cfg, **kwargs):
+    return loss_fn_physicsandmean(cfg, mae=True, **kwargs)
+
+
+# ========================================================================
+
 def _is_forced(**kwargs):
     if 'forcing' in kwargs:
         forcing = kwargs['forcing']
@@ -264,3 +283,14 @@ def _is_forced(**kwargs):
     else:
         forcing = None
     return forcing
+
+
+def _use_mae(**kwargs):
+    if 'mae' in kwargs:
+        if kwargs['mae']:
+            logger.info('Using MAE instead of the default MSE for losses.')
+            data_loss_fn = losses.mae
+            div_loss_fn = jax.tree_util.Partial(losses.divergence, mae=True)
+            momentum_loss_fn = jax.tree_util.Partial(losses.momentum_loss, mae=True)
+            return data_loss_fn, div_loss_fn, momentum_loss_fn
+    return losses.mse, losses.divergence, losses.momentum_loss
