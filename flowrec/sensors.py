@@ -1,6 +1,7 @@
 from ._typing import *
 from scipy import linalg
 from scipy.spatial import distance
+from scipy.interpolate import griddata
 
 
 def sensor_placement_qrpivot(basis:Array, n_sensors:int, basis_rank:int, **kwargs):
@@ -57,3 +58,40 @@ def keep_one_point_per_cluster(points:Array, threshold:Scalar, metric='euclidean
         i += 1
     return new_points
 
+
+def make_points_periodic(points:Array, values:Array, side:float=2*np.pi):
+
+    points1 = np.ones_like(points)
+    points1[:,0] = points[:,0] - side
+    points1[:,1] = points[:,1] + side
+    points2 = np.ones_like(points)
+    points2[:,0] = points[:,0]
+    points2[:,1] = points[:,1] + side
+    points3 = np.ones_like(points)
+    points3[:,0] = points[:,0] + side
+    points3[:,1] = points[:,1] + side
+    points4 = np.ones_like(points)
+    points4[:,0] = points[:,0] - side
+    points4[:,1] = points[:,1]
+    points6 = np.ones_like(points)
+    points6[:,0] = points[:,0] + side
+    points6[:,1] = points[:,1]
+    points7 = np.ones_like(points)
+    points7[:,0] = points[:,0] - side
+    points7[:,1] = points[:,1] - side
+    points8 = np.ones_like(points)
+    points8[:,0] = points[:,0]
+    points8[:,1] = points[:,1] - side
+    points9 = np.ones_like(points)
+    points9[:,0] = points[:,0] + side
+    points9[:,1] = points[:,1] - side
+
+    points_periodic = np.concatenate([points1,points2,points3,points4,points,points6,points7,points8,points9],axis=0)
+    values_periodic = np.tile(values,9)
+    return points_periodic, values_periodic 
+
+
+def griddata_periodic(points:Array, values:Array, grid, method:str, side:float = 2*np.pi):
+    points_periodic, values_periodic = make_points_periodic(points, values, side)
+    grid_interp = griddata(points_periodic, values_periodic, grid, method)
+    return grid_interp
