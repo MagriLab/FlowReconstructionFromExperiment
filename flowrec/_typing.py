@@ -1,4 +1,4 @@
-from typing import Union
+from typing import Union, Tuple
 
 import numpy as np
 import jax
@@ -12,3 +12,4 @@ Model = Union[BaseModel, hk.Transformed]
 Scalar = Union[int, float]
 ClassDataMetadata = Union[DataMetadata, _Metadata2d, _Metadata3d]
 MetadataTree = Union[_Metadata3d,_Metadata2d]
+NestedTupleInteger = Tuple[Tuple[int, ...], ...]
