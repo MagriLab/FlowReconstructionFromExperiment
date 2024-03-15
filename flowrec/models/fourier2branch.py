@@ -20,18 +20,40 @@ def _empty_fun(x):
 
 
 def _test_cnn_filters(cnn_filters,cnn_channels):
-        if len(cnn_filters) == 1:
-            logger.info('Received only one convolution filter size, use the same size filter for all layers.')
-            return [cnn_filters[0] for _ in range(len(cnn_channels))]
-        elif len(cnn_filters) != len(cnn_channels):
-            logger.error(f'Received {len(cnn_filters)} filter size for {len(cnn_channels)} layers. Cannot generate network.')
-            raise ValueError('Number of filters do not match the number of layers.')
-        else:
-            return cnn_filters
+    """Make cnn filters from user input. If only one filter size is given, then the same filter size will be applied to all layers."""
+    if len(cnn_filters) == 1:
+        logger.info('Received only one convolution filter size, use the same size filter for all layers.')
+        return [cnn_filters[0] for _ in range(len(cnn_channels))]
+    elif len(cnn_filters) != len(cnn_channels):
+        logger.error(f'Received {len(cnn_filters)} filter size for {len(cnn_channels)} layers. Cannot generate network.')
+        raise ValueError('Number of filters do not match the number of layers.')
+    else:
+        return cnn_filters
 
 
 
 class Fourier2Branch(hk.Module):
+    """A two branch model, branch 1 is fourier convolution, branch 2 is a normal convolution.
+
+
+
+    Attributes
+    --------------------
+    - b0_shape: tuple, the shape of the image in branch 0. (x1,x2) if the output is 2D, (x1,x2,x3) if the output is 3D.
+    - b1_shape: tuple, the shape of the image in branch 1 (Fourier branch).
+    - b2_shapes: a sequence of tuples, the shape of the image at each layer in branch 2.
+    - output_shape: tuple, the shape of the output. (x1,x2) if the output is 2D, the number of variables are not included.
+
+    Graph of branches
+    --------------------
+    - inputs --> branch 0 (b0) --> split into branch 1 (b3) / branch 2 (b2) --> merge to branch 3(b3) --> output
+    - Branch 0: inputs -> mlp -> reshape into b0_shape -> conv -> b1/b2
+    - Branch 1: b0 -> resize to b1_shape -> FFT(unless specified) -> conv ... -> inverse FFT -> b3
+    - Branch 2: b0 -> (resize -> conv) ... -> b3
+    - Branch 3: concatenate(b1,b2) -> resize -> conv ... -> output
+
+
+    """
     def __init__(
             self,
             img_shapes:NestedTupleInteger,
@@ -45,13 +67,44 @@ class Fourier2Branch(hk.Module):
             w_init:Optional[hk.initializers.Initializer]=hk.initializers.VarianceScaling(1.0,"fan_avg","uniform"),
             resize_method:str = 'linear',
             dropout_rate:Optional[float] = None,
+            fft_branch:bool = True,
             conv_kwargs:dict = {},
             fft_kwargs:dict = {},
             mlp_kwargs:dict = {},
-            fft_branch:bool = True,
             name:Optional[str] = None,
             **kwargs
     ) -> None:
+        """Initialise with
+        ---------------------
+        - img_shapes: a nested tuple of integers. (b0_shape, b2_shape_layer1,...,b2_shape_layer_last, output_shape). See below for more explainations.
+        - b1_channels: a sequency of integers. The number of convolution channels in branch 1, one integer per layer.
+        - b2_channels: a sequency of integers. The number of convolution channels in branch 2, one integer per layer.
+        - b3_channels: a sequency of integers. The number of convolution channels in branch 3, one integer per layer.
+        - b1_filters: A list of tuples. Each tuple is the size of the convolution filters for a layer in branch 1. If only of size is given, it is applied to all layers in branch 1.
+        - b2_filters: A list of tuples. Each tuple is the size of the convolution filters for a layer in branch 2. If only of size is given, it is applied to all layers in branch 2.
+        - b3_filters: A list of tuples. Each tuple is the size of the convolution filters for a layer in branch 3. If only of size is given, it is applied to all layers in branch 3.
+        - activation: function. The activation function for all except the last layers.
+        w_init: haiku initalizer. Weight initializer.
+        - resize_method: string. Resize method availbel in jax.image.resize. default linear.
+        - dropout_rate: a float between 0 and 1. default None.
+        - fft_branch: bool. When True, Fourier transform is applied. If false, there will be no Fourier layers. 
+        - conv_kwargs: for haiku convolution layers.
+        - fft_kwargs: for jax.numpy.fft.rfftn and irffn.
+        - mlp_kwargs: for flowrec.model.feedforward.MLP
+
+        Parameter 'img_shapes' and channels
+        ------------------------
+        This is a nested tuple of integers, each tuple specifies the shape of the image the network will resize to at layers (b0, b2_1, b2_2, ... , b2_last, output_shape). The shape of images in branch 1 will be the same as the shape 'b2_last'. 
+        - For example, if we want the output to be a 128-by-128 flow field with 3 variables, and we want three layers in u-net style branch 2 but only one layer is branch 3 after merging.
+        ima_shapes = ((64,64), (32,32), (16,16), (32,32), (128,128))
+        b3_channels = (3,)
+        After branch 0, the image will have shape (64,64), but the Fourier convolution will operate of an image of shape (32,32).
+
+
+        Available keywords
+        -------------------------
+        - b0_filter: tuple of integers. Filter size of branch 0 convolution layer. Default (3,3).
+        """
         super().__init__(name)
 
         if 'b0_filter' in kwargs:
@@ -187,6 +240,7 @@ class Fourier2Branch(hk.Module):
         
     @staticmethod
     def dropout(x, TRAINING:bool, dropout_rate:Optional[float]):
+        """Apply dropout with if TRAINING is True"""
         if TRAINING and (dropout_rate is not None):
             logger.debug('Doing dropout')
             return hk.dropout(hk.next_rng_key(), dropout_rate, x)
@@ -196,7 +250,62 @@ class Fourier2Branch(hk.Module):
 
 
 
-# class Model(BaseModel):
-#     raise NotImplementedError
+class Model(BaseModel):
+    """Container for the Fourier2Branch model.
+    
+    A two branch model, branch 1 is fourier convolution, branch 2 is a normal convolution.
 
+    """
+    def __init__(
+        self,
+        img_shapes:NestedTupleInteger,
+        b1_channels:Sequence[int],
+        b2_channels:Sequence[int],
+        b3_channels:Sequence[int],
+        b1_filters:List[Tuple[int, ...]] = [(3,3),],
+        b2_filters:List[Tuple[int, ...]] = [(3,3),],
+        b3_filters:List[Tuple[int, ...]] = [(3,3),],
+        dropout_rate:Optional[float] = None,
+        **kwargs,
+    ) -> None:
+        super().__init__()
 
+        def forward_fn(x, TRAINING=True):
+            mdl = Fourier2Branch(
+                img_shapes=img_shapes,
+                b1_channels=b1_channels,
+                b2_channels=b2_channels,
+                b3_channels=b3_channels,
+                b1_filters=b1_filters,
+                b2_filters=b2_filters,
+                b3_filters=b3_filters,
+                dropout_rate=dropout_rate,
+                **kwargs
+            )
+            return mdl(x, TRAINING)
+        
+        self.mdl = hk.transform(forward_fn)
+        self._apply = jax.jit(self.mdl.apply)
+        self._init = jax.jit(self.mdl.init)
+        self._predict = jax.jit(jax.tree_util.Partial(self.mdl.apply,TRAINING=False))
+        logger.info('Successfully created model.')
+
+        
+    def init(self, rng, sample_input) -> hk.Params:
+        '''Initialise params'''
+        params = self._init(rng,sample_input)
+        return params
+    
+    def apply(self, params:hk.Params, rng:jax.random.PRNGKey, *args, **kwargs):
+        '''hk.Transformed.apply, training mode by default\n
+        
+        Arguments:\n
+            params: hk.Params.\n
+            rng: jax random number generator key.\n
+            Also takes positional and keyword arguments for hk.Transformed.apply.
+        '''
+        return self._apply(params, rng, *args, **kwargs)
+    
+    def predict(self,params:hk.Params,x,**kwargs):
+        '''Same as apply, but Training flag is False and no randomness.'''
+        return self._predict(params,None,x,**kwargs)
