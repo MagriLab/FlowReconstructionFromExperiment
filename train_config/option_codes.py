@@ -8,48 +8,57 @@ logger.addHandler(_handler)
 
 from ml_collections.config_dict import ConfigDict
 
-def code(cfgcase: ConfigDict):
-    if cfgcase._case_dataloader == '2dtriangle':
-        sdata = 't2'
-    elif cfgcase._case_dataloader == '2dkol':
-        sdata = 'k2'
-    else:
-        sdata = 'zz'
-    
-    if cfgcase._case_observe == 'grid':
-        sob = 'gd'
-    elif cfgcase._case_observe == 'grid_pin':
-        sob = 'gp'
-    elif cfgcase._case_observe == 'sparse':
-        sob = 'sa'
-    elif cfgcase._case_observe == 'sparse_pin':
-        sob = 'sp'
-    else:
-        sob = 'zz'
-    
-    if cfgcase._case_select_model == 'ffcnn':
-        smdl = 'fc'
-    else:
-        smdl = 'zz'
 
-    if cfgcase._case_loss_fn == 'physicswithdata':
-        sloss = 'pi3'
-    elif cfgcase._case_loss_fn == 'physicsnoreplace':
-        sloss = 'pi1'
-    elif cfgcase._case_loss_fn == 'physicsreplacemean':
-        sloss = 'pm3'
-    elif cfgcase._case_loss_fn == 'physicsandmean':
-        sloss = 'pm1'
-    elif cfgcase._case_loss_fn == 'physicswithdata_mae':
-        sloss = 'pi3(1)'
-    elif cfgcase._case_loss_fn == 'physicsnoreplace_mae':
-        sloss = 'pi1(1)'
-    elif cfgcase._case_loss_fn == 'physicsreplacemean_mae':
-        sloss = 'pm3(1)'
-    elif cfgcase._case_loss_fn == 'physicsandmean_mae':
-        sloss = 'pm1(1)'
-    else:
+code_dataloader = {
+    '2dtriangle': 't2',
+    '2dkol': 'k2',
+}
+code_observe = {
+    'grid': 'gd',
+    'grid_pin': 'gp',
+    'sparse': 'sa',
+    'sparse_pin': 'sp',
+}
+code_model = {
+    'ffcnn': 'fc',
+    'fc2branch': 'b2',
+}
+code_loss = {
+    'physicswithdata': 'pi3',
+    'physicsnoreplace': 'pi1',
+    'physicsreplacemean': 'pm3',
+    'physicsandmean': 'pm1',
+    'physicswithdata_mae': 'pi3(1)',
+    'physicsnoreplace_mae': 'pi1(1)',
+    'physicsreplacemean_mae': 'pm3(1)',
+    'physicsandmean_mae': 'pm1(1)',
+}
+
+
+def code(cfgcase: ConfigDict):
+    try:
+        sdata = code_dataloader[cfgcase._case_dataloader]
+    except KeyError as e:
+        sdata = 'zz'
+        logger.warning(f"This dataloader '{e}' has not been assigned an option code yet.")
+
+    try: 
+        sob = code_observe[cfgcase._case_observe]
+    except KeyError as e:
+        sob = 'zz'
+        logger.warning(f"This observation function '{e}' has not been assigned an option code yet.")
+    
+    try:
+        smdl = code_model[cfgcase._case_select_model]
+    except KeyError as e:
+        smdl = 'zz'
+        logger.warning(f"This model '{e}' has not been assigned an option code yet.")
+
+    try:
+        sloss = code_loss[cfgcase._case_loss_fn]
+    except KeyError as e:
         sloss = 'zz'
+        logger.warning(f"This loss function '{e}' has not been assigned an option code yet.")
 
     s = sdata + sob + smdl + sloss
 

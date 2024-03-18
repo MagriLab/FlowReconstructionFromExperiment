@@ -101,7 +101,7 @@ def get_config(cfgstr:str = None):
         _dataloader = user['dataloader']
     if 'observe' in user:
         _observe = user['observe']
-    if 'select_model' in user:
+    if 'model' in user:
         _select_model = user['model']
     if 'loss_fn' in user:
         _loss_fn = user['loss_fn']
@@ -147,6 +147,8 @@ def get_config(cfgstr:str = None):
 
     if _select_model == 'ffcnn':
         cfg.model_config.update(_default_mdlcfg_ffcnn[_dataloader])
+    elif _select_model == 'fc2branch':
+        cfg.model_config.update(_default_mdlcfg_fc2branch[_dataloader])
     else:
         raise ValueError('Invalid select_model option.')
 
@@ -185,9 +187,9 @@ _default_datacfg = {
         'train_test_split': (600,100,100)
     },
     '2dkol': {
-        'data_dir': './local_data/kolmogorov/dim2_re30_k32_f4_dt01_grid128.h5',
-        're': 30,
-        'dt': 0.01,
+        'data_dir': './local_data/kolmogorov/dim2_re34_k32_f4_dt1_grid128_14635.h5',
+        're': 34.0,
+        'dt': 0.1,
         'dx': 2*np.pi/128,
         'dy': 2*np.pi/128,
         'pressure_inlet_slice': placeholder(tuple),
@@ -210,5 +212,21 @@ _default_mdlcfg_ffcnn = {
         'output_shape': (128,128,3),
         'cnn_channels': (3,3),
         'cnn_filters': ((3,3),),
+    }
+}
+_default_mdlcfg_fc2branch = {
+    '2dtriangle': {
+
+    },
+    '2dkol': {
+        'img_shapes': ((64,64),(64,64),(32,32),(16,16),(32,32),(64,64),(128,128)),
+        'b1_channels': (4,),
+        'b2_channels': (4,8,16,8,4),
+        'b3_channels': (4,3),
+        'b1_filters': ((3,3),),
+        'b2_filters': ((3,3),),
+        'b3_filters': ((3,3),),
+        'resize_method': 'linear',
+        'fft_branch': True
     }
 }

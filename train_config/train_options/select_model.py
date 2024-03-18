@@ -2,7 +2,7 @@ from flowrec._typing import *
 from ml_collections.config_dict import ConfigDict
 
 import flowrec.signal as flowsignal
-from flowrec.models import cnn, feedforward
+from flowrec.models import cnn, fourier2branch
 from flowrec.data import normalise
 
 
@@ -200,3 +200,169 @@ def select_model_ffcnn(**kwargs):
         return mdl
 
     return prep_data, make_model
+
+
+
+def select_model_fc2branch(**kwargs):
+    '''# Example model selection function.\n
+    Pass select_model@example to use this model.\n
+
+    Returns two functions -- prep_data and make_model.\n
+    1. prep_data: (data:dict -> data_new:dict).
+        Takes the data dictionary and performs data.update({'u_train':new_u_train,'inn_train':new_inn_train, 'u_val':new_u_val, 'inn_val':new_inn_val})
+    
+    2. make_model: (model_config -> BaseModel)
+        Make a model with parameters in model_config and returns that model.
+
+    '''
+    
+    if 'datacfg' in kwargs:
+        flag_norm = kwargs['datacfg'].normalise
+        filter_type = kwargs['datacfg'].filter
+
+    def prep_data(data:dict, datainfo:DataMetadata, **kwargs) -> dict:
+        # make data into suitable form
+        if filter_type == 'lowpass':
+            logger.info('Using the lowpass filter to de-noise.')
+            (nt_train, nin) = data['inn_train'].shape # always has shape [t,j]
+            (nt_val, _) = data['inn_val'].shape
+            fs = 1/datainfo.dt
+
+            old_inn_train = data['inn_train']
+            new_inn_train = np.zeros_like(old_inn_train)
+            old_inn_val = data['inn_val']
+            new_inn_val = np.zeros_like(old_inn_val)
+            for n in range(nin):
+                nest_t, pobserved_t = flowsignal.estimate_noise_floor(
+                    old_inn_train[:,n],
+                    fs,
+                    window_size=int(0.005*nt_train),
+                    start_idx=0
+                )
+                cutoff_t = flowsignal.estimate_noise_cutoff_frequency(
+                    pobserved_t,
+                    nest_t,
+                    fs/nt_train,
+                    0.1*fs/2
+                )
+                new_inn_train[:,n] = flowsignal.butter_lowpass_filter(
+                    old_inn_train[:,n],
+                    cutoff_t,
+                    fs
+                )
+
+                nest_v, pobserved_v = flowsignal.estimate_noise_floor(
+                    old_inn_val[:,n],
+                    fs,
+                    window_size=int(0.005*nt_val),
+                    start_idx=0
+                )
+                cutoff_v = flowsignal.estimate_noise_cutoff_frequency(
+                    pobserved_v,
+                    nest_v,
+                    fs/nt_val,
+                    0.1*fs/2
+                )
+                new_inn_val[:,n] = flowsignal.butter_lowpass_filter(
+                    old_inn_val[:,n],
+                    cutoff_v,
+                    fs
+                ) 
+            data.update({
+                'inn_train': new_inn_train,
+                'inn_val': new_inn_val
+            })
+
+            # has shape [t,...], ... changes when using different observation function
+            shape_y_train = data['y_train'].shape 
+            shape_y_val = data['y_val'].shape
+            old_y_train = data['y_train'].reshape((nt_train,-1))
+            new_y_train = np.zeros_like(old_y_train)
+            old_y_val = data['y_val'].reshape((nt_val,-1))
+            new_y_val = np.zeros_like(old_y_val)
+            for n in range(old_y_train.shape[1]): # interate of all observations
+                nest_t, pobserved_t = flowsignal.estimate_noise_floor(
+                    old_y_train[:,n],
+                    fs,
+                    window_size=int(0.005*nt_train),
+                    start_idx=0
+                )
+                cutoff_t = flowsignal.estimate_noise_cutoff_frequency(
+                    pobserved_t,
+                    nest_t,
+                    fs/nt_train,
+                    0.1*fs/2
+                )
+                new_y_train[:,n] = flowsignal.butter_lowpass_filter(
+                    old_y_train[:,n],
+                    cutoff_t,
+                    fs
+                )
+
+                nest_v, pobserved_v = flowsignal.estimate_noise_floor(
+                    old_y_val[:,n],
+                    fs,
+                    window_size=int(0.005*nt_val),
+                    start_idx=0
+                )
+                cutoff_v = flowsignal.estimate_noise_cutoff_frequency(
+                    pobserved_v,
+                    nest_v,
+                    fs/nt_val,
+                    0.1*fs/2
+                )
+                new_y_val[:,n] = flowsignal.butter_lowpass_filter(
+                    old_y_val[:,n],
+                    cutoff_v,
+                    fs
+                )
+            data.update({
+                'y_train': new_y_train.reshape(shape_y_train),
+                'y_val': new_y_val.reshape(shape_y_val),
+            })
+        elif filter_type is not None:
+            logger.error('The requested filtering method is not implemented.')
+            raise NotImplementedError
+
+#         if ('normalise' in kwargs) and kwargs['normalise'] is True:
+        if flag_norm:
+
+            r_train = data['train_minmax']
+            r_val = data['val_minmax']
+
+            [new_train_inn, new_val_inn], _ = normalise(data['inn_train'], data['inn_val'], range=[r_train[-1],r_val[-1]])
+            data.update({
+                'inn_train': new_train_inn,
+                'inn_val': new_val_inn
+            })
+            logger.debug('Update inputs to normalised inputs.')
+
+            if data['u_train_clean'] is not None:
+                u_train = data['u_train_clean']
+                u_val = data['u_val_clean']
+                num_components = u_train.shape[-1]
+
+                x_train_components = np.squeeze(np.split(u_train, num_components, axis=-1))
+                x_val_components = np.squeeze(np.split(u_val, num_components, axis=-1))
+                x_train_normalised, _ = normalise(*x_train_components, range=r_train)
+                x_val_normalised, _ = normalise(*x_val_components, range=r_val)
+                u_train = np.stack(x_train_normalised,axis=-1)
+                u_val = np.stack(x_val_normalised,axis=-1)
+
+                data.update({
+                    'u_train_clean': u_train,
+                    'u_val_clean': u_val
+                })
+                logger.debug('Update clean data to normalised clean data.')
+
+        return data
+    
+    def make_model(cfg:ConfigDict) -> BaseModel:
+        # mdl = 'a BaseModel createed with parameters in model_config'
+        # return mdl
+        mdl_config_dict = cfg.to_dict()
+        mdl = fourier2branch.Model(**mdl_config_dict)
+        return mdl
+
+    return prep_data, make_model
+        

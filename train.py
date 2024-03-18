@@ -155,7 +155,7 @@ def fit(
     _ = update(state, rng, x_train_batched[0], y_train_batched[0])
     logger.info('Successfully compiled the update function.')
 
-    for i in range(epochs+1):
+    for i in range(epochs):
         [rng] = jax.random.split(rng,1)
 
         loss_epoch = []
@@ -178,12 +178,13 @@ def fit(
                 loss_epoch_s.append(l_s)
 
             ## Calculate loss_true = loss_mse_of_all_clean_data+loss_physics
-            logger.debug('Calculating true loss using clean data.')
+            if i == 0:
+                logger.debug('Calculating true loss using clean data.')
             l_mse = eval_true_mse(state.params,None,x_train_batched[b],yfull_train_batched_clean[b])
 
             loss_epoch_true.append(l_mse+l_div+l_mom)
             
-            if b == 0 or b == n_batch-1:
+            if (b == 0 or b == n_batch-1) and i == 0:
                 logger.debug(f'batch {b} has size {x_train_batched[b].shape[0]}, loss: {l:.7f}.')
 
         loss_train.append(np.mean(loss_epoch))
@@ -319,6 +320,7 @@ def main(_):
     # =================== pre-processing ================================
     
     # data has u_train, u_val, inn_train, inn_val [t, space..., 3] or [t, len]
+    logger.info(f'Running case {cfg.case.values()}')
     logger.info('Loading data.')
     data, datainfo = cfg.case.dataloader()
     logger.debug(f'Data dictionary has {data.keys()}')

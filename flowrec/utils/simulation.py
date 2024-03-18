@@ -101,8 +101,10 @@ def read_data_kolsol(data_path: path):
 
     with h5py.File(data_path) as hf:
         u_p = np.array(hf.get('state'))
+        dt = float(hf.get('dt')[()])
+        re = float(hf.get('re')[()])
     
-    return u_p
+    return u_p, re, dt
 
 def kolsol_forcing_term(k:float, ngrid: int, dim:int) -> np.array:
     x = np.linspace(0, 2*np.pi, ngrid+1)[:-1]
