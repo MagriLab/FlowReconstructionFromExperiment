@@ -80,9 +80,6 @@ class Fourier2Branch(hk.Module):
         - b1_channels: a sequency of integers. The number of convolution channels in branch 1, one integer per layer.
         - b2_channels: a sequency of integers. The number of convolution channels in branch 2, one integer per layer.
         - b3_channels: a sequency of integers. The number of convolution channels in branch 3, one integer per layer.
-        - b1_filters: A list of tuples. Each tuple is the size of the convolution filters for a layer in branch 1. If only of size is given, it is applied to all layers in branch 1.
-        - b2_filters: A list of tuples. Each tuple is the size of the convolution filters for a layer in branch 2. If only of size is given, it is applied to all layers in branch 2.
-        - b3_filters: A list of tuples. Each tuple is the size of the convolution filters for a layer in branch 3. If only of size is given, it is applied to all layers in branch 3.
         - activation: function. The activation function for all except the last layers.
         w_init: haiku initalizer. Weight initializer.
         - resize_method: string. Resize method availbel in jax.image.resize. default linear.
@@ -118,9 +115,9 @@ class Fourier2Branch(hk.Module):
         except AssertionError as e:
             logger.error("Wrong user value for 'img_shapes'.")
             raise e
-        self.b1_filters = _test_cnn_filters(b1_filters, b1_channels)
-        self.b2_filters = _test_cnn_filters(b2_filters, b2_channels)
-        self.b3_filters = _test_cnn_filters(b3_filters, b3_channels)
+        fb1 = _test_cnn_filters(b1_filters, b1_channels)
+        fb2 = _test_cnn_filters(b2_filters, b2_channels)
+        fb3 = _test_cnn_filters(b3_filters, b3_channels)
         self.act = activation
         self.dropout_rate = dropout_rate
         self.b0_shape = img_shapes[0]
@@ -131,8 +128,8 @@ class Fourier2Branch(hk.Module):
         assert isinstance(self.b1_shape[0],int)
         self.output_shape = img_shapes[-1]
         assert isinstance(self.output_shape[0],int)
-        if len(self.b2_shapes) != len(self.b2_filters):
-            print(len(self.b2_shapes),len(self.b2_filters))
+        if len(self.b2_shapes) != len(fb2):
+            print(len(self.b2_shapes),len(fb2))
             raise ValueError("The expected number of layers in branch 2 is different when calculating from 'image_shapes' and 'b2_channels'.")
         self.output_dim = b3_channels[-1]
         logger.debug(f'Output will have {self.output_dim} variables.')
@@ -143,8 +140,7 @@ class Fourier2Branch(hk.Module):
 
         ## DEFINE NETWORK
         # define mlp network
-        mlp_size = jnp.prod(jnp.asarray(self.b0_shape+(self.output_dim,)))
-        # mlp_size = jnp.prod(self.b0_shape)*self.output_dim
+        mlp_size = np.prod(np.asarray(self.b0_shape+(self.output_dim,))).astype('int16')
         self._mlp = MLP([mlp_size], activation=self.act, w_init=w_init, dropout_rate=self.dropout_rate, **mlp_kwargs)
 
         # branch 0: first convolution
@@ -162,7 +158,7 @@ class Fourier2Branch(hk.Module):
             self._ifft = _empty_fun
             logger.debug('No Fourier branch.')
 
-        for i, (c,f) in enumerate(zip(b1_channels, self.b1_filters)):
+        for i, (c,f) in enumerate(zip(b1_channels, fb1)):
             b1.append(
                 hk.Conv2D(c, f, name=f'branch1_conv_{i}', **conv_kwargs)
             )
@@ -170,7 +166,7 @@ class Fourier2Branch(hk.Module):
 
         # branch 2: unet style
         b2 = []
-        for i, (c,f) in enumerate(zip(b2_channels, self.b2_filters)):
+        for i, (c,f) in enumerate(zip(b2_channels, fb2)):
             b2.append(
                 hk.Conv2D(c, f, w_init=w_init, name=f'branch2_conv_{i}', **conv_kwargs)
             )
@@ -178,7 +174,7 @@ class Fourier2Branch(hk.Module):
 
         # merge branches
         b3 = []
-        for i, (c,f) in enumerate(zip(b3_channels, self.b3_filters)):
+        for i, (c,f) in enumerate(zip(b3_channels, fb3)):
             b3.append(
                 hk.Conv2D(c, f, w_init=w_init, name=f'branch3_conv_{i}', **conv_kwargs)
             )
@@ -216,7 +212,7 @@ class Fourier2Branch(hk.Module):
 
         # branch 2 cnn
         x2 = self.vv_resize(x, self.b2_shapes[0])
-        logger.debug(f'Branch 2 first resize to shape {x1.shape}')
+        logger.debug(f'Branch 2 first resize to shape {x2.shape}')
         x2 = self.b2[0](x2)
         x2 = self.dropout(x2,TRAINING, self.dropout_rate)
         x2 = self.act(x2)
