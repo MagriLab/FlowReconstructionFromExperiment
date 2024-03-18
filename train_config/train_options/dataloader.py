@@ -185,8 +185,14 @@ def _load_kolsol(cfg:ConfigDict, dim:int) -> tuple[dict, ClassDataMetadata]:
     data = {}
     logger.debug(f'Loading data with config file {cfg.to_dict()}')
 
-    x = simulation.read_data_kolsol(cfg.data_dir)
+    x, re, dt = simulation.read_data_kolsol(cfg.data_dir)
     logger.debug(f'The simulated kolmogorov flow has shape {x.shape}')
+    if re != cfg.re or dt!= cfg.dt:
+        cfg.update({'re':re, 'dt':dt})
+        logger.error('The provided Reynolds number or time step does not match the data')
+        logger.debug(f'Data has Re={re}, dt={dt}')
+        if cfg.re < 0.00001 or cfg.dt < 0.0000001:
+            raise ValueError
 
     if not cfg.randseed:
         randseed = np.random.randint(1,10000)

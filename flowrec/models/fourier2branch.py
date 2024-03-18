@@ -162,6 +162,7 @@ class Fourier2Branch(hk.Module):
             b1.append(
                 hk.Conv2D(c, f, name=f'branch1_conv_{i}', **conv_kwargs)
             )
+        logger.info("'w_init' is not specified in branch 1.")
         self.b1 = tuple(b1)
 
         # branch 2: unet style
@@ -182,7 +183,7 @@ class Fourier2Branch(hk.Module):
         logger.info(f'Branch 1 has {len(self.b1)} layers, branch 2 has {len(self.b2)} layers, Branch 3 (after merging has) {len(self.b3)} layers.')
 
 
-    def __call__(self, x, TRAINING:bool):
+    def __call__(self, x, TRAINING):
         '''Apply network to x. No dropout if TRAINING is false. Activation function is not applied after the last layer.'''
         if TRAINING:
             logger.info('Model is called in training mode.')
@@ -281,7 +282,7 @@ class Model(BaseModel):
             return mdl(x, TRAINING)
         
         self.mdl = hk.transform(forward_fn)
-        self._apply = jax.jit(self.mdl.apply)
+        self._apply = jax.jit(self.mdl.apply,static_argnames='TRAINING')
         self._init = jax.jit(self.mdl.init)
         self._predict = jax.jit(jax.tree_util.Partial(self.mdl.apply,TRAINING=False))
         logger.info('Successfully created model.')

@@ -310,6 +310,7 @@ def main(_):
 
     # =================== pre-processing ================================
     
+    logger.info(f'Running case {cfg.case.values()}')
     # data has u_train, u_val, inn_train, inn_val [t, space..., 3] or [t, len]
     logger.info('Loading data.')
     data, datainfo = cfg.case.dataloader(cfg.data_config)
