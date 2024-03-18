@@ -16,7 +16,7 @@ def get_config(cfgstr:str = None):
     # Set up default options
     _mdl = 'ffcnn'
     _loss_fn = 'physicswithdata'
-    if 'select_model' in user:
+    if 'model' in user:
         _mdl = user['model']
     if 'loss_fn' in user:
         _loss_fn = user['loss_fn']
