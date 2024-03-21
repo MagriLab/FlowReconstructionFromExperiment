@@ -11,7 +11,7 @@ def get_config(cfgstr:str = None):
         user = dict([x.split('@') for x in cfgstr.split(',')])
     else:
         user = {}
-        warnings.warn('No training case is selected, proceeds with the basic configuration.\n Are you sure this is not a mistake?')
+        warnings.warn('No training case is selected, proceeds with the basic configuration. Are you sure this is not a mistake?')
 
     # Set up default options
     _mdl = 'ffcnn'
