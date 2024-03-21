@@ -62,6 +62,7 @@ def observe_grid(data_config:ConfigDict, **kwargs):
         us = u[s]
 
         if ('init' in kwargs) and (kwargs['init'] is True):
+            logger.debug(f'{us[0,...].size} observations for each snapshot, has shape {us[0,...].shape}')
             if data_config.normalise:
                 logger.info('Normalising observations')
                 num_dim = u.shape[-1]

@@ -225,7 +225,7 @@ def loss_fn_physicsandmean(cfg, **kwargs):
     wmom = cfg.train_config.weight_momentum
     ws = cfg.train_config.weight_sensors
     
-    logger.warn("Are you looking for 'physicsreplacemean'")
+    logger.warn("This loss function is not in active use, are you looking for 'physicsreplacemean'")
 
     data_loss_fn, div_loss_fn, momentum_loss_fn = _use_mae(**kwargs)
     f = _is_forced(**kwargs)

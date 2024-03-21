@@ -35,7 +35,7 @@ def get_basic_config() -> config_dict.ConfigDict:
     cfg.data_config.shuffle = False
     cfg.data_config.randseed = placeholder(int)
     cfg.data_config.remove_mean = False # Do NOT remove mean
-    cfg.data_config.normalise = True
+    cfg.data_config.normalise = False
     cfg.data_config.train_test_split = placeholder(tuple)
     cfg.data_config.re = placeholder(float)
     cfg.data_config.dt = placeholder(float)
@@ -216,7 +216,15 @@ _default_mdlcfg_ffcnn = {
 }
 _default_mdlcfg_fc2branch = {
     '2dtriangle': {
-
+        'img_shapes': ((128,64),(128,32),(64,16),(128,64),(250,129)),
+        'b1_channels': (4,),
+        'b2_channels': (8,16,8),
+        'b3_channels': (4,3),
+        'b1_filters': ((3,3),),
+        'b2_filters': ((3,3),),
+        'b3_filters': ((3,3),),
+        'resize_method': 'linear',
+        'fft_branch': True
     },
     '2dkol': {
         'img_shapes': ((64,64),(64,64),(32,32),(16,16),(32,32),(64,64),(128,128)),

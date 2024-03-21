@@ -323,7 +323,7 @@ def main(_):
     logger.info(f'Running case {cfg.case.values()}')
     logger.info('Loading data.')
     data, datainfo = cfg.case.dataloader()
-    logger.debug(f'Data dictionary has {data.keys()}')
+    logger.debug(f'Data dictionary has {[(k, data[k].shape) if data[k] is not None else (k, None) for k in data.keys()]}')
     logger.debug(f'Datainfo is {datainfo}')
 
     logger.info('Taking observations.')
@@ -427,6 +427,7 @@ def main(_):
     y_batched = batching(traincfg.nb_batches, data['y_train'])
     logger.info('Prepared data as required by the model selected and batched the data.')
     logger.debug(f'First batch of input data has shape {x_batched[0].shape}.')
+    logger.debug(f'First batch of output has shape {mdl.predict(state.params, x_batched[0]).shape}')
 
     if FLAGS._noisy:
         logger.debug('Batching clean data because training data is noisy.')

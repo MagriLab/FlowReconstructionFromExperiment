@@ -237,7 +237,7 @@ def momentum_residual_field(
 
     residual = dui_dt + ududx_i + dpdx_i - (d2udx2_i/datainfo.re)
 
-    if 'forcing' in kwargs:
+    if 'forcing' in kwargs and (kwargs['forcing'] is not None):
         logger.debug('Forced flow')
         return residual + kwargs['forcing']
     
