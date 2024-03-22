@@ -110,20 +110,21 @@ class Fourier2Branch(hk.Module):
             b0_filter = (3,3)
 
         try:
-            assert isinstance(img_shapes[0], tuple)
+            assert isinstance(img_shapes[0], (tuple,list))
             assert len(img_shapes) > 2
         except AssertionError as e:
             logger.error("Wrong user value for 'img_shapes'.")
+            logger.debug(f"The provided img_shapes has length {len(img_shapes)} and the first entry is {img_shapes[0]} of type {type(img_shapes[0])}.")
             raise e
         fb1 = _test_cnn_filters(b1_filters, b1_channels)
         fb2 = _test_cnn_filters(b2_filters, b2_channels)
         fb3 = _test_cnn_filters(b3_filters, b3_channels)
         self.act = activation
         self.dropout_rate = dropout_rate
-        self.b0_shape = img_shapes[0]
+        self.b0_shape = tuple(img_shapes[0])
         assert isinstance(self.b0_shape[0],int)
         self.b2_shapes = img_shapes[1:-1]
-        assert isinstance(self.b2_shapes[0],tuple)
+        assert isinstance(self.b2_shapes[0],(tuple,list))
         self.b1_shape = self.b2_shapes[-1]
         assert isinstance(self.b1_shape[0],int)
         self.output_shape = img_shapes[-1]
