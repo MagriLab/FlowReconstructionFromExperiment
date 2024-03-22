@@ -224,9 +224,9 @@ def fit(
                 'loss_val_sensors':l_val_s,
             })
 
-        if l_val < min_loss:
+        if l < min_loss:
             best_state = state
-            min_loss = l_val
+            min_loss = l
             save_trainingstate(tmp_dir,state,'state')
 
         if i%200 == 0:
