@@ -3,17 +3,12 @@ from ml_collections.config_dict import ConfigDict
 
 from flowrec.utils import simulation
 from flowrec.utils.py_helper import slice_from_tuple
-from flowrec.data import data_partition, unnormalise_group, normalise,get_whitenoise_std
+from flowrec.data import data_partition ,get_whitenoise_std
 
-import jax.numpy as jnp
-from jax.tree_util import Partial
-
-from typing import Callable, Sequence
 
 import warnings
 import logging
 logger = logging.getLogger(f'fr.{__name__}')
-import chex
 
 from absl import flags
 FLAGS = flags.FLAGS
@@ -90,11 +85,6 @@ def dataloader_2dtriangle(cfg:ConfigDict = None) -> tuple[dict, ClassDataMetadat
         [ux_train,uy_train,pp_train] = np.squeeze(np.split(x_train,3,axis=0))
         [ux_val,uy_val,pp_val] = np.squeeze(np.split(x_val,3,axis=0))
         
-        if cfg.normalise:
-            logger.info('Normalising the clean input.')
-            [ux_train,uy_train,pp_train], _ = normalise(ux_train,uy_train,pp_train)
-            [ux_val,uy_val,pp_val], _ = normalise(ux_val,uy_val,pp_val)
-
         u_train = np.stack((ux_train,uy_train,pp_train),axis=-1)
         u_val = np.stack((ux_val,uy_val,pp_val),axis=-1)
 
@@ -127,21 +117,6 @@ def dataloader_2dtriangle(cfg:ConfigDict = None) -> tuple[dict, ClassDataMetadat
 
     [ux_train,uy_train,pp_train] = np.squeeze(np.split(x_train,3,axis=0))
     [ux_val,uy_val,pp_val] = np.squeeze(np.split(x_val,3,axis=0))
-    
-    # Normalise
-    if cfg.normalise:
-        logger.info('Normalising input.')
-        [ux_train,uy_train,pp_train], train_minmax = normalise(ux_train,uy_train,pp_train)
-        [ux_val,uy_val,pp_val], val_minmax = normalise(ux_val,uy_val,pp_val)
-    else:
-        train_minmax = []
-        val_minmax = []
-    
-    data.update({
-        'train_minmax': jnp.asarray(train_minmax),
-        'val_minmax': jnp.asarray(val_minmax),
-    })
-
     
     pb_train = simulation.take_measurement_base(pp_train,ly=triangle_base_coords,centrex=0)
     pb_val = simulation.take_measurement_base(pp_val,ly=triangle_base_coords,centrex=0)
@@ -234,15 +209,6 @@ def _load_kolsol(cfg:ConfigDict, dim:int) -> tuple[dict, ClassDataMetadata]:
             SHUFFLE=cfg.shuffle
         )
 
-        # if cfg.normalise:
-        #     logger.info('Normalising the clean input.')
-        #     x_train_components = np.squeeze(np.split(u_train, dim+1, axis=-1))
-        #     x_val_components = np.squeeze(np.split(u_val, dim+1, axis=-1))
-        #     x_train_normalised, _ = normalise(*x_train_components)
-        #     x_val_normalised, _ = normalise(*x_val_components)
-        #     u_train = np.stack(x_train_normalised,axis=-1)
-        #     u_val = np.stack(x_val_normalised,axis=-1)
-            
         logger.info('Saving clean data for calculating true loss')
         data.update({
             'u_train_clean': u_train,
@@ -273,23 +239,6 @@ def _load_kolsol(cfg:ConfigDict, dim:int) -> tuple[dict, ClassDataMetadata]:
         randseed=randseed,
         SHUFFLE=cfg.shuffle
     )
-
-    # if cfg.normalise:
-    #     logger.info('Normalising the clean input.')
-    #     x_train_components = np.squeeze(np.split(u_train, dim+1, axis=-1))
-    #     x_val_components = np.squeeze(np.split(u_val, dim+1, axis=-1))
-    #     x_train_normalised, train_minmax = normalise(*x_train_components)
-    #     x_val_normalised, val_minmax = normalise(*x_val_components)
-    #     u_train = np.stack(x_train_normalised,axis=-1)
-    #     u_val = np.stack(x_val_normalised,axis=-1)
-    # else:
-    #     train_minmax = []
-    #     val_minmax = []
-# 
-    # data.update({
-    #     'train_minmax': jnp.asarray(train_minmax),
-    #     'val_minmax': jnp.asarray(val_minmax),
-    # })
 
     ## get inputs
     logger.info('Generating inputs')
