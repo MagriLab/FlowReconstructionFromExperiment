@@ -4,6 +4,7 @@ tmp*
 *.h5
 *.png
 *.pdf
+*.sh
 
 
 __pycache__/
@@ -12,3 +13,4 @@ wandb/
 system_config.yml
 err
 log
+util_scripts/kolsol_data_convergence.py
