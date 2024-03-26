@@ -14,7 +14,7 @@ def get_config(cfgstr:str = None):
         warnings.warn('No training case is selected, proceeds with the basic configuration. Are you sure this is not a mistake?')
 
     # Set up default options
-    _mdl = 'ffcnn'
+    _mdl = 'fc2branch'
     _loss_fn = 'physicswithdata'
     if 'model' in user:
         _mdl = user['model']

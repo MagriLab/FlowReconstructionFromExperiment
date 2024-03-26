@@ -55,7 +55,7 @@ def get_basic_config() -> config_dict.ConfigDict:
     ## Training
     cfg.train_config = config_dict.ConfigDict()
     
-    cfg.train_config.nb_batches = 10
+    cfg.train_config.nb_batches = 20
     cfg.train_config.learning_rate = 3e-4
     cfg.train_config.regularisation_strength = 0.0
     cfg.train_config.epochs = 20000
@@ -88,8 +88,8 @@ def get_config(cfgstr:str = None):
 
     # Set up default options
     _dataloader = '2dtriangle'
-    _observe = 'grid'
-    _select_model = 'ffcnn'
+    _observe = 'grid_pin'
+    _select_model = 'fc2branch'
     _loss_fn = 'physicswithdata'
 
 
@@ -217,11 +217,11 @@ _default_mdlcfg_ffcnn = {
 _default_mdlcfg_fc2branch = {
     '2dtriangle': {
         'img_shapes': ((128,64),(128,32),(64,16),(128,64),(250,129)),
-        'b1_channels': (4,),
+        'b1_channels': (1,),
         'b2_channels': (8,16,8),
         'b3_channels': (4,3),
         'b1_filters': ((3,3),),
-        'b2_filters': ((3,3),),
+        'b2_filters': ((5,5),),
         'b3_filters': ((3,3),),
         'resize_method': 'linear',
         'fft_branch': True

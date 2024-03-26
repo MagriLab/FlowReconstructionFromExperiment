@@ -4,6 +4,7 @@ from absl import flags
 FLAGS = flags.FLAGS
 
 def loss3(casestr:str):
+    raise ValueError('Update the defaults first!')
 
     cfgstr = 'loss_fn@physicswithdata'
 
@@ -39,6 +40,7 @@ def loss3(casestr:str):
 
 
 def lossclassic(casestr:str):
+    raise ValueError('Update the defaults first!')
 
     cfgstr = 'loss_fn@physicsnoreplace'
 
@@ -78,6 +80,7 @@ def lossclassic(casestr:str):
     
 
 def lossmean3(casestr:str):
+    raise ValueError('Update the defaults first!')
 
     cfgstr = 'loss_fn@physicsreplacemean'
 
@@ -124,25 +127,25 @@ def lossmean3(casestr:str):
 
 def clean_minimum(group):
 
-    if group == 'grid':
+    if group == '2dtriangle':
 
-        cfgstr = 'observe@grid_pin'
+        cfgstr = 'dataloader@2dtriangle,observe@sparse_pin'
         datacfg_update = {
-            'slice_grid_sensors': ((None,None,30),(None,None,30)),
-            'normalise': True,
+            'sensor_index': ((52, 52, 27, 27, 78, 27, 48, 114, 9, 9, 160, 200, 220, 230, 187, 232, 10, 10 ),(45, 83, 51, 77, 64, 64, 64, 64, 50, 78, 15, 97, 64, 34, 92, 115, 10, 115)),
+            'normalise': False,
         }
-
-    elif group == 'sparse':
-
-        cfgstr = 'observe@sparse_pin'
-        datacfg_update = {
-            'sensor_index': ((44, 44, 23, 23, 140, 68, 40, 103, 5, 5, 20, 20, 150, 175, 200, 225),(81, 47, 51, 77, 64, 64, 64, 64, 80, 48, 78, 50, 10, 119, 10, 119)),
-            'normalise': True,
+        mdlcfg_update = {
+            'b1_channels': (1,),
+        }
+        traincfg_update = {
+            'nb_batches': 20,
+            'learning_rate': 0.0075,
+            'lr_scheduler': "{'scheduler':'cyclic_cosine_decay_schedule','decay_steps':(800,1000,1200,1500,2000),'alpha':(0.3,0.3,0.38,0.38,0.38),'lr_multiplier':(1.0,1.0,1.0,0.7,0.5),'boundaries':(1000,2200,3600,5500,8000)}",
         }
 
     else:
         raise NotImplementedError
-    return cfgstr, datacfg_update
+    return cfgstr, mdlcfg_update, datacfg_update, traincfg_update
     
 
 
@@ -153,13 +156,14 @@ def get_config(cfgstr:str):
     # objective@noise,group@10,case@1
 
     objectives = {
-        'noise': 'dataloader@2dtriangle,model@ffcnn,observe@grid_pin,',
-        'clean_minimum': 'dataloader@2dtriangle,model@ffcnn,loss_fn@physicswithdata,',
+        'noise': 'dataloader@2dtriangle,model@fc2branch,observe@grid_pin,',
+        'clean_minimum': 'model@fc2branch,loss_fn@physicswithdata,',
     }
 
     general_cfgstr = objectives[experiment['objective']]
 
     if experiment['objective'] == 'noise':
+        raise ValueError('Update the defaults first!')
         print("running experiment 'noise'")
 
         testcase = {
@@ -182,39 +186,26 @@ def get_config(cfgstr:str):
             'snr': float(experiment['group'])
         })
 
-        cfg.model_config.update(mdlcfg_update)
-        cfg.data_config.update(datacfg_update)
-        cfg.train_config.update(traincfg_update)
-    
-
     if experiment['objective'] == 'clean_minimum':
         print("running experiment 'clean_repeat'")
 
         testgroup = {
-            '1': 'grid',
-            '2': 'sparse'
+            '1': '2dtriangle',
+            '2': '2dkol'
         }
-        _cfgstr, datacfg_update = clean_minimum(testgroup[experiment['group']])
+        _cfgstr, mdlcfg_update, datacfg_update, traincfg_update = clean_minimum(testgroup[experiment['group']])
 
-        mdlcfg_update = {
-            'cnn_filters': ((5,5),)
-        }
-        traincfg_update = {
-            'learning_rate': 0.001,
-            'nb_batches': 19,
-            'weight_continuity':1.0,
-        }
-
-        ## get config and update
+        ## get general config
         general_cfgstr = general_cfgstr + _cfgstr
         cfg = base_config.get_config(general_cfgstr)
 
-        cfg.model_config.update(mdlcfg_update)
-        cfg.data_config.update(datacfg_update)
-        cfg.train_config.update(traincfg_update)
-
     else:
         raise NotImplementedError
+
+    ## update configs
+    cfg.model_config.update(mdlcfg_update)
+    cfg.data_config.update(datacfg_update)
+    cfg.train_config.update(traincfg_update)
 
     FLAGS._experimentcfgstr = general_cfgstr
 
