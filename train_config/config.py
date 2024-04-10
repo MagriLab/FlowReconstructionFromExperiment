@@ -228,7 +228,7 @@ _default_mdlcfg_fc2branch = {
     },
     '2dkol': {
         'img_shapes': ((64,64),(64,64),(32,32),(16,16),(32,32),(64,64),(128,128)),
-        'b1_channels': (4,),
+        'b1_channels': (1,),
         'b2_channels': (4,8,16,8,4),
         'b3_channels': (4,3),
         'b1_filters': ((3,3),),
