@@ -80,24 +80,30 @@ def lossclassic(casestr:str):
     
 
 def lossmean3(casestr:str):
-    raise ValueError('Update the defaults first!')
 
     cfgstr = 'loss_fn@physicsreplacemean'
 
     if casestr == 'snr20':
-        mdlcfg_update = {'dropout_rate': 0.038}
+        mdlcfg_update = {
+            'dropout_rate': 0.002,
+            'fft_branch': False,
+            }
         datacfg_update = {'normalise': False}
         traincfg_update = {
-            'learning_rate': 0.002,
-            'nb_batches': 8,
-            'regularisation_strength': 0.0048,
-            'weight_continuity': 1.09,
-            'weight_sensors': 15.0,
-            'lr_scheduler': 'exponential_decay'
+            'learning_rate': 0.0027,
+            'nb_batches': 12,
+            'regularisation_strength': 0.05,
+            'weight_continuity': 2.0,
+            'weight_sensors': 25.0,
+            'lr_scheduler': "{'scheduler':'cyclic_cosine_decay_schedule','decay_steps':(800,1000,1200,1500,2000),'alpha':(0.3,0.3,0.38,0.38,0.38),'lr_multiplier':(1.0,1.0,1.0,0.7,0.5),'boundaries':(1000,2200,3600,5500,8000)}",
         }
 
     elif casestr == 'snr10':
-        mdlcfg_update = {'dropout_rate': 0.038}
+        raise NotImplementedError
+        mdlcfg_update = {
+            'dropout_rate': 0.002,
+            'fft_branch': False,
+            }
         datacfg_update = {'normalise': False}
         traincfg_update = {
             'learning_rate': 0.002,
@@ -108,7 +114,11 @@ def lossmean3(casestr:str):
             'lr_scheduler': 'exponential_decay'
         }
     elif casestr == 'snr5':
-        mdlcfg_update = {'dropout_rate': 0.03}
+        raise NotImplementedError
+        mdlcfg_update = {
+            'dropout_rate': 0.002,
+            'fft_branch': False,
+            }
         datacfg_update = {'normalise': False}
         traincfg_update = {
             'learning_rate': 0.002,
@@ -116,7 +126,7 @@ def lossmean3(casestr:str):
             'regularisation_strength': 0.015,
             'weight_continuity': 1.09,
             'weight_sensors': 5.0,
-            'lr_scheduler': 'exponential_decay'
+            'lr_scheduler': "{'scheduler':'cyclic_cosine_decay_schedule','decay_steps':(800,1000,1200,1500,2000),'alpha':(0.3,0.3,0.38,0.38,0.38),'lr_multiplier':(1.0,1.0,1.0,0.7,0.5),'boundaries':(1000,2200,3600,5500,8000)}",
         }
     else:
         raise NotImplementedError
@@ -156,15 +166,14 @@ def get_config(cfgstr:str):
     # objective@noise,group@10,case@1
 
     objectives = {
-        'noise': 'dataloader@2dtriangle,model@fc2branch,observe@grid_pin,',
+        'noise-2dtriangle': 'dataloader@2dtriangle,model@fc2branch,observe@grid_pin,',
         'clean_minimum': 'model@fc2branch,loss_fn@physicswithdata,',
     }
 
     general_cfgstr = objectives[experiment['objective']]
 
-    if experiment['objective'] == 'noise':
-        raise ValueError('Update the defaults first!')
-        print("running experiment 'noise'")
+    if experiment['objective'] == 'noise-2dtriangle':
+        print("running experiment 'noise-2dtriangle'")
 
         testcase = {
             '1': lossclassic,
@@ -177,11 +186,8 @@ def get_config(cfgstr:str):
         general_cfgstr = general_cfgstr + _cfgstr
         cfg = base_config.get_config(general_cfgstr)
 
-        mdlcfg_update.update({
-            'cnn_filters': ((5,5),)
-        })
         datacfg_update.update({
-            'slice_grid_sensors': ((None,None,15),(None,None,10)),
+            'slice_grid_sensors': ((1,None,18),(3,None,12)),
             'randseed': 19070949,
             'snr': float(experiment['group'])
         })
