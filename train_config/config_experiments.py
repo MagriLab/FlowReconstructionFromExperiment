@@ -192,7 +192,7 @@ def get_config(cfgstr:str):
             'snr': float(experiment['group'])
         })
 
-    if experiment['objective'] == 'clean_minimum':
+    elif experiment['objective'] == 'clean_minimum':
         print("running experiment 'clean_repeat'")
 
         testgroup = {
