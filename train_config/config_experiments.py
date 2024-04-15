@@ -4,19 +4,25 @@ from absl import flags
 FLAGS = flags.FLAGS
 
 def loss3(casestr:str):
-    raise ValueError('Update the defaults first!')
 
     cfgstr = 'loss_fn@physicswithdata'
 
     if casestr == 'snr20':
-        mdlcfg_update = {'dropout_rate': 0.0078}
-        datacfg_update = {'normalise': True}
+        mdlcfg_update = {
+            'dropout_rate': 0.012,
+            'fft_branch': False,
+            }
+        datacfg_update = {'normalise': False}
         traincfg_update = {
-            'learning_rate': 0.0006,
-            'nb_batches': 20,
-            'regularisation_strength': 0.097
+            'learning_rate': 0.0068,
+            'nb_batches': 17,
+            'regularisation_strength': 0.03,
+            'weight_continuity': 2.0,
+            'weight_sensors': 25.0,
+            'lr_scheduler': "{'scheduler':'cyclic_cosine_decay_schedule','decay_steps':(800,1000,1200,1500,2000),'alpha':(0.3,0.3,0.38,0.38,0.38),'lr_multiplier':(1.0,1.0,1.0,0.7,0.5),'boundaries':(1000,2200,3600,5500,8000)}",
         }
     elif casestr == 'snr10':
+        raise NotImplementedError
         mdlcfg_update = {'dropout_rate': 0.0078}
         datacfg_update = {'normalise': True}
         traincfg_update = {
@@ -25,6 +31,7 @@ def loss3(casestr:str):
             'regularisation_strength': 0.1
         }
     elif casestr == 'snr5':
+        raise NotImplementedError
         mdlcfg_update = {'dropout_rate': 0.02}
         datacfg_update = {'normalise': True}
         traincfg_update = {
@@ -40,20 +47,25 @@ def loss3(casestr:str):
 
 
 def lossclassic(casestr:str):
-    raise ValueError('Update the defaults first!')
 
     cfgstr = 'loss_fn@physicsnoreplace'
 
     if casestr == 'snr20':
-        mdlcfg_update = {'dropout_rate': 0.0078}
+        mdlcfg_update = {
+            'dropout_rate': 0.0011,
+            'fft_branch': False,
+            }
         datacfg_update = {'normalise': True}
         traincfg_update = {
-            'learning_rate': 0.000146,
-            'nb_batches': 20,
-            'regularisation_strength': 0.02,
-            'weight_sensors': 2.0
+            'learning_rate': 0.0036,
+            'nb_batches': 8,
+            'regularisation_strength': 0.06,
+            'weight_continuity': 3.3,
+            'weight_sensors': 9.0,
+            'lr_scheduler': "{'scheduler':'cyclic_cosine_decay_schedule','decay_steps':(800,1000,1200,1500,2000),'alpha':(0.3,0.3,0.38,0.38,0.38),'lr_multiplier':(1.0,1.0,1.0,0.7,0.5),'boundaries':(1000,2200,3600,5500,8000)}",
         }
     elif casestr == 'snr10':
+        raise NotImplementedError
         mdlcfg_update = {'dropout_rate': 0.0078}
         datacfg_update = {'normalise': True}
         traincfg_update = {
@@ -63,6 +75,7 @@ def lossclassic(casestr:str):
             'weight_sensors': 2.0
         }
     elif casestr == 'snr5':
+        raise NotImplementedError
         mdlcfg_update = {'dropout_rate': 0.006}
         datacfg_update = {'normalise': True}
         traincfg_update = {
