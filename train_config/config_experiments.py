@@ -16,9 +16,8 @@ def loss3(casestr:str):
         traincfg_update = {
             'learning_rate': 0.0068,
             'nb_batches': 17,
-            'regularisation_strength': 0.03,
-            'weight_continuity': 2.0,
-            'weight_sensors': 25.0,
+            'regularisation_strength': 0.003,
+            'weight_continuity': 1.0,
             'lr_scheduler': "{'scheduler':'cyclic_cosine_decay_schedule','decay_steps':(800,1000,1200,1500,2000),'alpha':(0.3,0.3,0.38,0.38,0.38),'lr_multiplier':(1.0,1.0,1.0,0.7,0.5),'boundaries':(1000,2200,3600,5500,8000)}",
         }
     elif casestr == 'snr10':
