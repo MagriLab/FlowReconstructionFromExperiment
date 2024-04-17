@@ -161,27 +161,38 @@ def select_model_ffcnn(**kwargs):
             r_val = data['val_minmax']
 
             [new_train_inn, new_val_inn], _ = normalise(data['inn_train'], data['inn_val'], range=[r_train[-1],r_val[-1]])
+
+            u_train = data['u_train']
+            u_val = data['u_val']
+            num_components = u_train.shape[-1]
+            x_train_components = np.squeeze(np.split(u_train, num_components, axis=-1))
+            x_val_components = np.squeeze(np.split(u_val, num_components, axis=-1))
+            x_train_normalised, _ = normalise(*x_train_components, range=r_train)
+            x_val_normalised, _ = normalise(*x_val_components, range=r_val)
+            u_train = np.stack(x_train_normalised,axis=-1)
+            u_val = np.stack(x_val_normalised,axis=-1)
             data.update({
                 'inn_train': new_train_inn,
-                'inn_val': new_val_inn
+                'inn_val': new_val_inn,
+                'u_train_clean': u_train,
+                'u_val_clean': u_val
             })
-            logger.debug('Update inputs to normalised inputs.')
+            logger.debug('Update inputs and data to normalised inputs.')
 
             if data['u_train_clean'] is not None:
-                u_train = data['u_train_clean']
-                u_val = data['u_val_clean']
-                num_components = u_train.shape[-1]
+                u_train_clean = data['u_train_clean']
+                u_val_clean = data['u_val_clean']
 
-                x_train_components = np.squeeze(np.split(u_train, num_components, axis=-1))
-                x_val_components = np.squeeze(np.split(u_val, num_components, axis=-1))
-                x_train_normalised, _ = normalise(*x_train_components, range=r_train)
-                x_val_normalised, _ = normalise(*x_val_components, range=r_val)
-                u_train = np.stack(x_train_normalised,axis=-1)
-                u_val = np.stack(x_val_normalised,axis=-1)
+                x_train_clean_components = np.squeeze(np.split(u_train_clean, num_components, axis=-1))
+                x_val_clean_components = np.squeeze(np.split(u_val_clean, num_components, axis=-1))
+                x_train_clean_normalised, _ = normalise(*x_train_clean_components, range=r_train)
+                x_val_clean_normalised, _ = normalise(*x_val_clean_components, range=r_val)
+                u_train_clean = np.stack(x_train_clean_normalised,axis=-1)
+                u_val_clean = np.stack(x_val_clean_normalised,axis=-1)
 
                 data.update({
-                    'u_train_clean': u_train,
-                    'u_val_clean': u_val
+                    'u_train_clean': u_train_clean,
+                    'u_val_clean': u_val_clean
                 })
                 logger.debug('Update clean data to normalised clean data.')
 
@@ -331,27 +342,38 @@ def select_model_fc2branch(**kwargs):
             r_val = data['val_minmax']
 
             [new_train_inn, new_val_inn], _ = normalise(data['inn_train'], data['inn_val'], range=[r_train[-1],r_val[-1]])
+
+            u_train = data['u_train']
+            u_val = data['u_val']
+            num_components = u_train.shape[-1]
+            x_train_components = np.squeeze(np.split(u_train, num_components, axis=-1))
+            x_val_components = np.squeeze(np.split(u_val, num_components, axis=-1))
+            x_train_normalised, _ = normalise(*x_train_components, range=r_train)
+            x_val_normalised, _ = normalise(*x_val_components, range=r_val)
+            u_train = np.stack(x_train_normalised,axis=-1)
+            u_val = np.stack(x_val_normalised,axis=-1)
             data.update({
                 'inn_train': new_train_inn,
-                'inn_val': new_val_inn
+                'inn_val': new_val_inn,
+                'u_train_clean': u_train,
+                'u_val_clean': u_val
             })
-            logger.debug('Update inputs to normalised inputs.')
+            logger.debug('Update inputs and data to normalised inputs.')
 
             if data['u_train_clean'] is not None:
-                u_train = data['u_train_clean']
-                u_val = data['u_val_clean']
-                num_components = u_train.shape[-1]
+                u_train_clean = data['u_train_clean']
+                u_val_clean = data['u_val_clean']
 
-                x_train_components = np.squeeze(np.split(u_train, num_components, axis=-1))
-                x_val_components = np.squeeze(np.split(u_val, num_components, axis=-1))
-                x_train_normalised, _ = normalise(*x_train_components, range=r_train)
-                x_val_normalised, _ = normalise(*x_val_components, range=r_val)
-                u_train = np.stack(x_train_normalised,axis=-1)
-                u_val = np.stack(x_val_normalised,axis=-1)
+                x_train_clean_components = np.squeeze(np.split(u_train_clean, num_components, axis=-1))
+                x_val_clean_components = np.squeeze(np.split(u_val_clean, num_components, axis=-1))
+                x_train_clean_normalised, _ = normalise(*x_train_clean_components, range=r_train)
+                x_val_clean_normalised, _ = normalise(*x_val_clean_components, range=r_val)
+                u_train_clean = np.stack(x_train_clean_normalised,axis=-1)
+                u_val_clean = np.stack(x_val_clean_normalised,axis=-1)
 
                 data.update({
-                    'u_train_clean': u_train,
-                    'u_val_clean': u_val
+                    'u_train_clean': u_train_clean,
+                    'u_val_clean': u_val_clean
                 })
                 logger.debug('Update clean data to normalised clean data.')
 
