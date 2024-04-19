@@ -174,8 +174,8 @@ def select_model_ffcnn(**kwargs):
             data.update({
                 'inn_train': new_train_inn,
                 'inn_val': new_val_inn,
-                'u_train_clean': u_train,
-                'u_val_clean': u_val
+                'u_train': u_train,
+                'u_val': u_val
             })
             logger.debug('Update inputs and data to normalised inputs.')
 
@@ -355,8 +355,8 @@ def select_model_fc2branch(**kwargs):
             data.update({
                 'inn_train': new_train_inn,
                 'inn_val': new_val_inn,
-                'u_train_clean': u_train,
-                'u_val_clean': u_val
+                'u_train': u_train,
+                'u_val': u_val
             })
             logger.debug('Update inputs and data to normalised inputs.')
 
