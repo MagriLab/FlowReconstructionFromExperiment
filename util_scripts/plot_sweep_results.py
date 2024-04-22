@@ -5,7 +5,7 @@ import jax
 import yaml
 import warnings
 import matplotlib
-matplotlib.use('qtagg')
+matplotlib.use('agg')
 import matplotlib.pyplot as plt
 import numpy as np
 import jax.numpy as jnp
@@ -84,6 +84,13 @@ def get_summary_onecase(d:Path):
     if cfg.data_config.normalise:
         pred_train = data_utils.unnormalise_group(pred_train, train_minmax, axis_data=-1, axis_range=0)
         pred_val = data_utils.unnormalise_group(pred_val, val_minmax, axis_data=-1, axis_range=0)
+    
+    # _fig, _ax = plt.subplots(1,2)
+    # _im0 = _ax[0].imshow(pred_train[20,...,0])
+    # plt.colorbar(_im0)
+    # _im1 = _ax[1].imshow(data['u_train'][20,...,0])
+    # plt.colorbar(_im1)
+    # _fig.savefig(Path(result_dir,f'{run_name}'))
 
     observed_train_pred = take_observation(pred_train)
     observed_val_pred = take_observation(pred_val)
