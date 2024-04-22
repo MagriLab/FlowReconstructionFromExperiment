@@ -1,10 +1,8 @@
 from flowrec._typing import *
 from ml_collections.config_dict import ConfigDict
 
-from flowrec.utils.py_helper import slice_from_tuple
-from flowrec.data import data_partition, unnormalise_group, normalise
+from flowrec.data import unnormalise_group
 from flowrec import losses
-from flowrec import physics_and_derivatives as derivatives
 
 import jax
 import jax.numpy as jnp
@@ -92,15 +90,15 @@ def loss_fn_physicswithdata(cfg,**kwargs):
                 apply_kwargs:dict = {}, 
                 **kwargs):
         pred = apply_fn(params, rng, x, **apply_kwargs)
+        # un-normalise
+        if normalise:
+            pred = unnormalise_group(pred, y_minmax, axis_data=-1, axis_range=0)
+            logger.debug('Un-normalise before calculating loss.')
+
         pred_observed = take_observation(pred)
         loss_sensor = data_loss_fn(pred_observed, y)
 
         pred_new = insert_observation(pred,y)
-
-        # normalise
-        if normalise:
-            pred_new = unnormalise_group(pred_new, y_minmax, axis_data=-1, axis_range=0)
-            logger.debug('Un-normalise before calculating loss.')
 
         loss_div = div_loss_fn(pred_new[...,:-1], datainfo)
         loss_mom = momentum_loss_fn(
@@ -138,14 +136,13 @@ def loss_fn_physicsnoreplace(cfg,**kwargs):
                 apply_kwargs:dict = {}, 
                 **kwargs):
         pred = apply_fn(params, rng, x, **apply_kwargs)
-        pred_observed = take_observation(pred)
-        loss_sensor = data_loss_fn(pred_observed, y)
-
-        # normalise
+        # un-normalise
         if normalise:
             pred = unnormalise_group(pred, y_minmax, axis_data=-1, axis_range=0)
             logger.debug('Un-normalise before calculating loss.')
 
+        pred_observed = take_observation(pred)
+        loss_sensor = data_loss_fn(pred_observed, y)
         loss_div = div_loss_fn(pred[...,:-1], datainfo)
         loss_mom = momentum_loss_fn(
             u=pred,
@@ -187,17 +184,17 @@ def loss_fn_physicsreplacemean(cfg,**kwargs):
                 apply_kwargs:dict = {}, 
                 **kwargs):
         pred = apply_fn(params, rng, x, **apply_kwargs)
+        # un-normalise
+        if normalise:
+            pred = unnormalise_group(pred, y_minmax, axis_data=-1, axis_range=0)
+            logger.debug('Un-normalise before calculating loss.')
+        
         pred_observed = take_observation(pred)
         loss_sensor = data_loss_fn(pred_observed, y)
         
         pred_replaced = insert_observation(pred,y)
         pred_f = pred - jnp.mean(pred,axis=0,keepdims=True)
         pred_new = pred_f + jnp.mean(pred_replaced,axis=0,keepdims=True)
-        
-        # normalise
-        if normalise:
-            pred_new = unnormalise_group(pred_new, y_minmax, axis_data=-1, axis_range=0)
-            logger.debug('Un-normalise before calculating loss.')
         
         loss_div = div_loss_fn(pred_new[...,:-1], datainfo)
         loss_mom = momentum_loss_fn(
@@ -240,15 +237,14 @@ def loss_fn_physicsandmean(cfg, **kwargs):
                 apply_kwargs:dict = {}, 
                 **kwargs):
         pred = apply_fn(params, rng, x, **apply_kwargs)
-        pred_observed = take_observation(pred)
-        
-        ## mean loss
-        loss_sensor = data_loss_fn(jnp.mean(pred_observed,axis=0), jnp.mean(y,axis=0))
-
         # normalise
         if normalise:
             pred = unnormalise_group(pred, y_minmax, axis_data=-1, axis_range=0)
             logger.debug('Un-normalise before calculating loss.')
+        pred_observed = take_observation(pred)
+        
+        ## mean loss
+        loss_sensor = data_loss_fn(jnp.mean(pred_observed,axis=0), jnp.mean(y,axis=0))
 
         loss_div = div_loss_fn(pred[...,:-1], datainfo)
         loss_mom = momentum_loss_fn(

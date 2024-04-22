@@ -64,11 +64,11 @@ def observe_grid(data_config:ConfigDict, **kwargs):
         if ('init' in kwargs) and (kwargs['init'] is True):
             logger.debug(f'{us[0,...].size} observations for each snapshot, has shape {us[0,...].shape}')
             if data_config.normalise:
-                logger.info('Normalising observations')
+                # logger.info('Normalising observations')
                 num_dim = u.shape[-1]
                 components = np.squeeze(np.split(us, num_dim, axis=-1))
-                components_n, r = normalise(*components)
-                us = np.stack(components_n,axis=-1)
+                _, r = normalise(*components)
+                # us = np.stack(components_n,axis=-1)
             else:
                 r = None
             return us, r
@@ -112,7 +112,7 @@ def observe_grid_pin(data_config:ConfigDict,
 
         if ('init' in kwargs) and (kwargs['init'] is True):
             if data_config.normalise:
-                logger.info('Normalising observations')
+                # logger.info('Normalising observations')
                 num_dim = u.shape[-1]
                 components = np.squeeze(np.split(us, num_dim, axis=-1))
                 components_u = components[:-1]
@@ -120,10 +120,10 @@ def observe_grid_pin(data_config:ConfigDict,
                 rp = [min(np.min(components[-1]),np.min(ps)), max(np.max(components[-1]),np.max(ps))]
                 r.append(np.array(rp))
                 
-                components_n, _ = normalise(*components, range=r)
-                us = np.stack(components_n,axis=-1)
+                # components_n, _ = normalise(*components, range=r)
+                # us = np.stack(components_n,axis=-1)
 
-                [ps], _ = normalise(ps, range=[np.array(rp)])
+                # [ps], _ = normalise(ps, range=[np.array(rp)])
             else:
                 r = None
             
@@ -175,11 +175,11 @@ def observe_sparse(data_config:ConfigDict, **kwargs):
 
         if ('init' in kwargs) and (kwargs['init'] is True):
             if data_config.normalise:
-                logger.info('Normalising observations')
+                # logger.info('Normalising observations')
                 num_dim = u.shape[-1]
                 components = np.squeeze(np.split(us, num_dim, axis=-1))
-                components_n, r = normalise(*components)
-                us = np.stack(components_n,axis=-1)
+                _, r = normalise(*components)
+                # us = np.stack(components_n,axis=-1)
             else:
                 r = None
             return us, r 
@@ -227,16 +227,16 @@ def observe_sparse_pin(data_config:ConfigDict,
         if ('init' in kwargs) and (kwargs['init'] is True):
 
             if data_config.normalise:
-                logger.info('Normalising observations')
+                # logger.info('Normalising observations')
                 num_dim = u.shape[-1]
                 components = np.squeeze(np.split(us, num_dim, axis=-1))
                 components_u = components[:-1]
                 _, r = normalise(*components_u)
                 rp = [min(np.min(components[-1]),np.min(ps)), max(np.max(components[-1]),np.max(ps))]
                 r.append(np.array(rp))
-                components_n, _ = normalise(*components, range=r)
-                us = np.stack(components_n,axis=-1)
-                [ps], _ = normalise(ps, range=[np.array(rp)])
+                # components_n, _ = normalise(*components, range=r)
+                # us = np.stack(components_n,axis=-1)
+                # [ps], _ = normalise(ps, range=[np.array(rp)])
             else:
                 r = None
 

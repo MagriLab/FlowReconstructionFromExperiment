@@ -19,8 +19,6 @@ from flowrec.training_and_states import save_trainingstate, TrainingState, gener
 from flowrec.losses import loss_mse
 from flowrec.utils.py_helper import update_matching_keys
 from flowrec.utils.system import temporary_fix_absl_logging
-# from train_config.sweep_process_config import sweep_preprocess_cfg
-from train_config.option_codes import code
 from train_config.train_options.optimizer import get_optimizer
 
 import logging
@@ -130,7 +128,8 @@ def fit(
     mdl_validation_loss:Callable,
     tmp_dir:Path,
     wandb_run,
-    eval_true_mse:Callable,
+    eval_true_mse_train:Callable,
+    eval_true_mse_val:Callable,
     yfull_train_batched_clean:Optional[Sequence[jax.Array]],
     yfull_val_clean:Optional[jax.Array],
     mdlcfg
@@ -178,7 +177,12 @@ def fit(
 
             ## Calculate loss_true = loss_mse_of_all_clean_data+loss_physics
             logger.debug('Calculating true loss using clean data.')
-            l_mse = eval_true_mse(state.params,None,x_train_batched[b],yfull_train_batched_clean[b])
+            l_mse = eval_true_mse_train(
+                state.params,
+                None,
+                x_train_batched[b],
+                yfull_train_batched_clean[b]
+            )
 
             loss_epoch_true.append(l_mse+l_div+l_mom)
             
@@ -197,15 +201,15 @@ def fit(
         loss_val.append(l_val)
 
         logger.debug('Calculating true validation loss using clean data.')
-        l_val_mse = eval_true_mse(state.params,None,x_val,yfull_val_clean)
+        l_val_mse = eval_true_mse_val(state.params,None,x_val,yfull_val_clean)
 
         l_val_true = np.sum([l_val_div, l_val_mom, l_val_mse])
 
-        loss_val.append(l_val)
-        loss_val_true.append(l_val_true)
-        loss_val_div.append(l_val_div)
-        loss_val_momentum.append(l_val_mom)
-        loss_val_sensors.append(l_val_s)
+        loss_val.append(float(l_val))
+        loss_val_true.append(float(l_val_true))
+        loss_val_div.append(float(l_val_div))
+        loss_val_momentum.append(float(l_val_mom))
+        loss_val_sensors.append(float(l_val_s))
 
 
         if FLAGS.wandb:
@@ -313,7 +317,7 @@ def main(_):
     logger.info(f'Running case {cfg.case.values()}')
     # data has u_train, u_val, inn_train, inn_val [t, space..., 3] or [t, len]
     logger.info('Loading data.')
-    data, datainfo = cfg.case.dataloader(cfg.data_config)
+    data, datainfo = cfg.case.dataloader()
     logger.debug(f'Data dictionary has {data.keys()}')
     logger.debug(f'Datainfo is {datainfo}')
 
@@ -401,11 +405,22 @@ def main(_):
 
 
     logger.info('MSE of the entire field is used to calculate true loss so we can have an idea of the true performance of the model. It is not used in training.')
-    eval_mse = jax.jit(
+    eval_mse_train = jax.jit(
         jax.tree_util.Partial(
             loss_mse,
             mdl.apply,
-            apply_kwargs={'TRAINING':False}
+            apply_kwargs={'TRAINING':False},
+            normalise=datacfg.normalise,
+            y_minmax=data['train_minmax']
+        )
+    )
+    eval_mse_val = jax.jit(
+        jax.tree_util.Partial(
+            loss_mse,
+            mdl.apply,
+            apply_kwargs={'TRAINING':False},
+            normalise=datacfg.normalise,
+            y_minmax=data['val_minmax']
         )
     )
 
@@ -440,7 +455,8 @@ def main(_):
         mdl_validation_loss=mdl_validation_loss,
         tmp_dir=tmp_dir,
         wandb_run=run,
-        eval_true_mse=eval_mse,
+        eval_true_mse_train=eval_mse_train,
+        eval_true_mse_val=eval_mse_val,
         yfull_train_batched_clean=yfull_batched_clean,
         yfull_val_clean=yfull_val_clean,
         mdlcfg=mdlcfg
