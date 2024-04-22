@@ -4,6 +4,7 @@ import jax.numpy as jnp
 import numpy as np
 
 from .physics_and_derivatives import div_field, momentum_residual_field
+from .data import unnormalise_group
 
 import chex
 from typing import Optional, Callable
@@ -36,6 +37,9 @@ def loss_mse(apply_fn:Callable,
         loss: the mean squared error between y and predicted y (from x).
     '''
     pred = apply_fn(params, rng, x, **apply_kwargs)
+    if ('normalise' in kwargs) and kwargs['normalise'] is True:
+        pred = unnormalise_group(pred, kwargs['y_minmax'], axis_data=-1, axis_range=0)
+        logger.debug('Un-normalise before calculating loss.')
     loss = mse(pred,y)
     return loss
 
@@ -60,6 +64,9 @@ def loss_mae(apply_fn:Callable,
         loss: the mean squared error between y and predicted y (from x).
     '''
     pred = apply_fn(params, rng, x, **apply_kwargs)
+    if ('normalise' in kwargs) and kwargs['normalise'] is True:
+        pred = unnormalise_group(pred, kwargs['y_minmax'], axis_data=-1, axis_range=0)
+        logger.debug('Un-normalise before calculating loss.')
     loss = mae(pred,y)
     return loss
 

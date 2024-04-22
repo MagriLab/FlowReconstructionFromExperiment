@@ -131,7 +131,8 @@ def fit(
     mdl_validation_loss:Callable,
     tmp_dir:Path,
     wandb_run,
-    eval_true_mse:Callable,
+    eval_true_mse_train:Callable,
+    eval_true_mse_val:Callable,
     yfull_train_batched_clean:Optional[Sequence[jax.Array]],
     yfull_val_clean:Optional[jax.Array],
 ):
@@ -180,7 +181,12 @@ def fit(
             ## Calculate loss_true = loss_mse_of_all_clean_data+loss_physics
             if i == 0:
                 logger.debug('Calculating true loss using clean data.')
-            l_mse = eval_true_mse(state.params,None,x_train_batched[b],yfull_train_batched_clean[b])
+            l_mse = eval_true_mse_train(
+                state.params,
+                None,
+                x_train_batched[b],
+                yfull_train_batched_clean[b]
+            )
 
             loss_epoch_true.append(l_mse+l_div+l_mom)
             
@@ -198,7 +204,7 @@ def fit(
         l_val, (l_val_div, l_val_mom, l_val_s) = mdl_validation_loss(state.params,None,x_val,y_val)
 
         logger.debug('Calculating true validation loss using clean data.')
-        l_val_mse = eval_true_mse(state.params,None,x_val,yfull_val_clean)
+        l_val_mse = eval_true_mse_val(state.params,None,x_val,yfull_val_clean)
 
         l_val_true = float(np.sum([l_val_div, l_val_mom, l_val_mse]))
 
@@ -411,11 +417,22 @@ def main(_):
 
 
     logger.info('MSE of the entire field is used to calculate true loss so we can have an idea of the true performance of the model. It is not used in training.')
-    eval_mse = jax.jit(
+    eval_mse_train = jax.jit(
         jax.tree_util.Partial(
             loss_mse,
             mdl.apply,
-            apply_kwargs={'TRAINING':False}
+            apply_kwargs={'TRAINING':False},
+            normalise=datacfg.normalise,
+            y_minmax=data['train_minmax']
+        )
+    )
+    eval_mse_val = jax.jit(
+        jax.tree_util.Partial(
+            loss_mse,
+            mdl.apply,
+            apply_kwargs={'TRAINING':False},
+            normalise=datacfg.normalise,
+            y_minmax=data['val_minmax']
         )
     )
 
@@ -452,7 +469,8 @@ def main(_):
         mdl_validation_loss=mdl_validation_loss,
         tmp_dir=tmp_dir,
         wandb_run=run,
-        eval_true_mse=eval_mse,
+        eval_true_mse_train=eval_mse_train,
+        eval_true_mse_val=eval_mse_val,
         yfull_train_batched_clean=yfull_batched_clean,
         yfull_val_clean=yfull_val_clean
     )
