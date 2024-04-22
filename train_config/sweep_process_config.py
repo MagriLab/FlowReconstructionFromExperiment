@@ -10,7 +10,7 @@ def sweep_preprocess_cfg(cfg):
     # t2 = literal_eval(cfg._cnn_channels)
     # cfg.update({'cnn_channels':t2}, allow_val_change=True)
 
-    # b1_channels = literal_eval(cfg._b1_channels)
+    b1_channels = literal_eval(cfg._b1_channels)
     scheduler = {
         'constant': 'constant',
         'exponential_decay': 'exponential_decay',
@@ -19,7 +19,7 @@ def sweep_preprocess_cfg(cfg):
 
     cfg.update(
         {
-        # 'b1_channels': b1_channels,
+        'b1_channels': b1_channels,
         'lr_scheduler': scheduler[cfg._lr_scheduler]
         },
         allow_val_change=True
