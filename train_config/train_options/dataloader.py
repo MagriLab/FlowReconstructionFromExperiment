@@ -94,7 +94,11 @@ def dataloader_2dtriangle(cfg:ConfigDict = None) -> tuple[dict, ClassDataMetadat
         })
 
         logger.info('Adding white noise to data.')
-        FLAGS._noisy = True
+        try:
+            FLAGS._noisy = True
+        except flags._exceptions.UnrecognizedFlagError as e:
+            warnings.warn(str(e))
+            warnings.warn('Are you calling the dataloader from train.py?')
         std_data = np.std(x,axis=(1,2,3),ddof=1)
         std_n = get_whitenoise_std(cfg.snr,std_data)
         noise_ux = rng.normal(scale=std_n[0],size=x[0,...].shape)
@@ -216,7 +220,11 @@ def _load_kolsol(cfg:ConfigDict, dim:int) -> tuple[dict, ClassDataMetadata]:
         })
 
         logger.info('Adding white noise to data.')
-        FLAGS._noisy = True
+        try:
+            FLAGS._noisy = True
+        except flags._exceptions.UnrecognizedFlagError as e:
+            warnings.warn(str(e))
+            warnings.warn('Are you calling the dataloader from train.py?')
         std_data = np.std(x,axis=tuple(np.arange(dim+1)),ddof=1)
         std_n = get_whitenoise_std(cfg.snr,std_data)
         noise = rng.normal([0]*len(std_n),std_n,size=x.shape)
