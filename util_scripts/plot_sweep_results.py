@@ -51,10 +51,8 @@ def get_summary_onecase(d:Path):
         example_pin_snapshot = data['inn_train'][0,...],
         **observe_kwargs
     )
-    _, train_minmax = take_observation(data['u_train'], init=True)
-    _, val_minmax = take_observation(data['u_val'], init=True)
-    observed_train = take_observation(data['u_train'])
-    observed_val = take_observation(data['u_val'])
+    observed_train, train_minmax = take_observation(data['u_train'], init=True)
+    observed_val, val_minmax = take_observation(data['u_val'], init=True)
     data.update({
         'y_train':observed_train, # not normalised
         'y_val':observed_val, # not normalised
@@ -87,8 +85,6 @@ def get_summary_onecase(d:Path):
         pred_train = data_utils.unnormalise_group(pred_train, train_minmax, axis_data=-1, axis_range=0)
         pred_val = data_utils.unnormalise_group(pred_val, val_minmax, axis_data=-1, axis_range=0)
 
-        yfull_train_clean = data_utils.unnormalise_group(yfull_train_clean, train_minmax, axis_data=-1, axis_range=0)    
-        yfull_val_clean = data_utils.unnormalise_group(yfull_val_clean, val_minmax, axis_data=-1, axis_range=0)    
     observed_train_pred = take_observation(pred_train)
     observed_val_pred = take_observation(pred_val)
     
@@ -130,9 +126,11 @@ def print_best_runs(result_dir, summary_name, summary_loss_train, summary_loss_v
 
 
         f.write('\n')
-        f.write('\nBest runs sorted by total training error: \n')
+        f.write('\n')
+        f.write('\nBest runs sorted by total validation error: \n')
         counter = 0
         for i in idx_val:
+            f.write('\n')
             f.write(f'{counter+1} {summary_name[i]}: {loss_val_total[i]:.5f}, {summary_loss_val[i,0]:.5f}, {loss_val_physics[i]:.4f}, {summary_loss_val[i,-1]:.5f}')
             counter = counter+1
 
@@ -153,7 +151,7 @@ def plot_correlation(result_dir, summary_loss_train, summary_loss_val):
     ax.set_xlabel('total training loss')
     ax.set_ylabel('rel_l2 training or validation')
 
-    fig.savefig(Path(result_dir,'total_loss_rel_L2_correlation.png'))
+    fig.savefig(Path(result_dir,'total_loss_rel_L2_correlation.png'),bbox_inches='tight')
 
 
 
@@ -163,14 +161,14 @@ def plot_train_validation_compare(result_dir, summary_loss_train, summary_loss_v
 
     i = np.arange(len(l_train))
 
-    fig,ax = plt.subplots(1,1)
+    fig1,ax1 = plt.subplots(1,1)
 
-    ax.scatter(i,l_train,marker='+',label='train',alpha=0.8)
-    ax.scatter(i,l_val,marker='*',label='validation',alpha=0.8)
+    ax1.scatter(i,l_train,marker='+',label='train',alpha=0.8)
+    ax1.scatter(i,l_val,marker='*',label='validation',alpha=0.8)
     
-    ax.set(yscale='log', xticks=[], ylabel='Rel L2')
-    ax.legend()
-    fig.savefig(Path(result_dir, 'train-val.png'))
+    ax1.set(yscale='log', xticks=[], ylabel='Rel L2')
+    ax1.legend()
+    fig1.savefig(Path(result_dir, 'train-val.png'),bbox_inches='tight')
 
 
 def save_sweep_summary(result_dir: Path):
@@ -193,6 +191,7 @@ def save_sweep_summary(result_dir: Path):
         for d in folder_list:
             run_name, loss_train, loss_val = get_summary_onecase(d)
             print(counter+1, run_name)
+            print(loss_train)
             counter += 1
             summary_name.append(run_name)
             summary_loss_train.append(loss_train)
