@@ -21,13 +21,17 @@ def loss3(casestr:str):
             'lr_scheduler': "{'scheduler':'cyclic_cosine_decay_schedule','decay_steps':(800,1000,1200,1500,2000),'alpha':(0.3,0.3,0.38,0.38,0.38),'lr_multiplier':(1.0,1.0,1.0,0.7,0.5),'boundaries':(1000,2200,3600,5500,8000)}",
         }
     elif casestr == 'snr10':
-        raise NotImplementedError
-        mdlcfg_update = {'dropout_rate': 0.0078}
-        datacfg_update = {'normalise': True}
+        mdlcfg_update = {
+            'dropout_rate': 0.0055,
+            'fft_branch': True,
+            'b1_channels': (1,),
+            }
+        datacfg_update = {'normalise': False}
         traincfg_update = {
-            'learning_rate': 0.0006,
-            'nb_batches': 20,
-            'regularisation_strength': 0.1
+            'learning_rate': 0.0068,
+            'nb_batches': 13,
+            'regularisation_strength': 0.056,
+            'lr_scheduler': "{'scheduler':'cyclic_cosine_decay_schedule','decay_steps':(800,1000,1200,1500,2000),'alpha':(0.3,0.3,0.38,0.38,0.38),'lr_multiplier':(1.0,1.0,1.0,0.7,0.5),'boundaries':(1000,2200,3600,5500,8000)}",
         }
     elif casestr == 'snr5':
         raise NotImplementedError
@@ -64,14 +68,19 @@ def lossclassic(casestr:str):
             'lr_scheduler': "{'scheduler':'cyclic_cosine_decay_schedule','decay_steps':(800,1000,1200,1500,2000),'alpha':(0.3,0.3,0.38,0.38,0.38),'lr_multiplier':(1.0,1.0,1.0,0.7,0.5),'boundaries':(1000,2200,3600,5500,8000)}",
         }
     elif casestr == 'snr10':
-        raise NotImplementedError
-        mdlcfg_update = {'dropout_rate': 0.0078}
-        datacfg_update = {'normalise': True}
+        mdlcfg_update = {
+            'dropout_rate': 0.0077,
+            'fft_branch': False,
+            'b1_channels': (4,4)
+            }
+        datacfg_update = {'normalise': False}
         traincfg_update = {
-            'learning_rate': 0.000146,
-            'nb_batches': 20,
+            'learning_rate': 0.0023,
+            'nb_batches': 9,
             'regularisation_strength': 0.05,
-            'weight_sensors': 2.0
+            'weight_continuity': 2.1,
+            'weight_sensors': 1.05,
+            'lr_scheduler': "{'scheduler':'cyclic_cosine_decay_schedule','decay_steps':(800,1000,1200,1500,2000),'alpha':(0.3,0.3,0.38,0.38,0.38),'lr_multiplier':(1.0,1.0,1.0,0.7,0.5),'boundaries':(1000,2200,3600,5500,8000)}",
         }
     elif casestr == 'snr5':
         raise NotImplementedError

@@ -121,7 +121,11 @@ def print_best_runs(result_dir, summary_name, summary_loss_train, summary_loss_v
     idx_val = np.argsort(loss_val_total)
 
     fpath = Path(result_dir, 'best_runs_sorted.txt') 
-    fpath.touch(exist_ok=True)
+    try:
+        fpath.touch(exist_ok=False)
+    except FileExistsError as e:
+        Path(result_dir,'best_runs_sorted(1).txt').touch(exist_ok=False)
+        print("The file already exist.")
     with open(fpath, 'a') as f:
         f.write('Best runs sorted by total training error: \n')
         f.write('Total loss, Rel L2, Physics loss, Sensor loss')
@@ -140,6 +144,7 @@ def print_best_runs(result_dir, summary_name, summary_loss_train, summary_loss_v
             f.write('\n')
             f.write(f'{counter+1} {summary_name[i]}: {loss_val_total[i]:.5f}, {summary_loss_val[i,0]:.5f}, {loss_val_physics[i]:.4f}, {summary_loss_val[i,-1]:.5f}')
             counter = counter+1
+        f.write('\n')
 
 
 def plot_correlation(result_dir, summary_loss_train, summary_loss_val):
