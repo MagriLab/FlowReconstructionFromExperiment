@@ -160,18 +160,19 @@ def clean_minimum(group):
 
     if group == '2dtriangle':
 
+        cfgstr = 'dataloader@2dtriangle,observe@sparse_pin,loss_fn@physicsnoreplace'
         datacfg_update = {
             'sensor_index': ((52, 52, 27, 27, 78, 27, 48, 114, 9, 9, 160, 200, 220, 230, 187, 232, 10, 10 ),(45, 83, 51, 77, 64, 64, 64, 64, 50, 78, 15, 97, 64, 34, 92, 115, 10, 115)),
-            'normalise': False,
+            'normalise': True,
         }
-        raise NotImplementedError
-        cfgstr = 'dataloader@2dtriangle,observe@sparse_pin,loss_fn@'
         mdlcfg_update = {
-            'b1_channels': (1,),
+            'fft_branch': False,
+            'b1_channels': (8,),
         }
         traincfg_update = {
-            'nb_batches': 20,
-            'learning_rate': 0.0075,
+            'nb_batches': 17,
+            'learning_rate': 0.0023,
+            'weight_sensors': 40.0,
             'lr_scheduler': "{'scheduler':'cyclic_cosine_decay_schedule','decay_steps':(800,1000,1200,1500,2000),'alpha':(0.3,0.3,0.38,0.38,0.38),'lr_multiplier':(1.0,1.0,1.0,0.7,0.5),'boundaries':(1000,2200,3600,5500,8000)}",
         }
     elif group == '2dkol':
