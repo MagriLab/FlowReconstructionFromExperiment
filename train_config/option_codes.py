@@ -18,6 +18,7 @@ code_observe = {
     'grid_pin': 'gp',
     'sparse': 'sa',
     'sparse_pin': 'sp',
+    'random_pin': 'rp'
 }
 code_model = {
     'ffcnn': 'fc',

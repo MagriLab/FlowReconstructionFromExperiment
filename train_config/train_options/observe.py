@@ -3,6 +3,7 @@ from ml_collections.config_dict import ConfigDict
 
 from flowrec.utils.py_helper import slice_from_tuple
 from flowrec.data import normalise
+from flowrec.sensors import random_coords_generator
 
 import jax
 import jax.numpy as jnp
@@ -267,6 +268,40 @@ def observe_sparse_pin(data_config:ConfigDict,
     return take_observation, insert_observation
 
 
+
+# ====================== random sparse ================================
+def observe_random_pin(data_config:ConfigDict,
+                        *, 
+                        example_pred_snapshot:jax.Array, 
+                        example_pin_snapshot:jax.Array,
+                        **kwargs):
+    
+    # dimensions of the problem
+    gridsize_space = example_pred_snapshot.shape[:-1]
+    dim = len(gridsize_space)
+    if (data_config.dz is not None) and (dim != 3):
+        logger.warning(f'Expect 3D data, got grid size {gridsize_space}.')
+    elif (data_config.dz is None) and (dim !=2 ):
+        logger.warning(f'Expect 2D data, got grid size {gridsize_space}.')
+        
+    sensor_seed, num_sensors = data_config.random_sensors
+    logger.info(f'Creating {num_sensors} random sensors on a grid of {gridsize_space}')
+    rng = np.random.default_rng(sensor_seed)
+    sensor_idx_np = random_coords_generator(
+        rng,
+        num_sensors,
+        gridsize_space
+    )
+    sensor_idx = tuple(tuple(_arr) for _arr in [*sensor_idx_np])
+
+    data_config.update({'sensor_index': sensor_idx})
+
+    logger.debug("Updated data_config.sensor_index with random index and calling 'oberve_sparse_pin'.")
+    return observe_sparse_pin(data_config, example_pred_snapshot=example_pred_snapshot, example_pin_snapshot=example_pin_snapshot, **kwargs)
+
+
+
+# =====================================================================
 
 def _make_pressure_index(data_config, **kwargs):
 

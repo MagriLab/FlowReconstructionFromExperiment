@@ -4,8 +4,10 @@ from ml_collections.config_dict import ConfigDict
 from flowrec.utils import simulation
 from flowrec.utils.py_helper import slice_from_tuple
 from flowrec.data import data_partition ,get_whitenoise_std
+from flowrec.sensors import random_coords_generator
 
 
+import itertools as it
 import warnings
 import logging
 logger = logging.getLogger(f'fr.{__name__}')
@@ -255,12 +257,14 @@ def _load_kolsol(cfg:ConfigDict, dim:int) -> tuple[dict, ClassDataMetadata]:
         sensor_seed, num_inputs = cfg.random_input
         logger.info(f'{num_inputs} random pressure inputs generated using random key specified by the user.')
         observation_rng  = np.random.default_rng(sensor_seed)
-        _idx = []
-        for i in range(dim):
-            _idx.append(
-                observation_rng.choice(np.arange(0,x.shape[i+1]), size=num_inputs, replace=False)
-            )
-        inn_idx = [l[:num_inputs] for l in _idx]
+        inn_idx = random_coords_generator(
+            observation_rng,
+            num_inputs,
+            x.shape[1:-1]
+        )
+        logger.debug(f'Coordinates created n a {x.shape[1:-1]} grid.')
+        logger.debug(f'Pressure input at grid points {tuple(inn_idx)}.')
+        # slice data
         slice_inn = np.s_[:,*inn_idx,-1]
         inn_train = u_train[slice_inn].reshape((-1,num_inputs))
         inn_val = u_val[slice_inn].reshape((-1,num_inputs))
