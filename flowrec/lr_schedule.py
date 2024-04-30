@@ -5,9 +5,9 @@ from typing import Optional, Sequence
 
 def cyclic_cosine_decay_schedule(
         init_value: float,
-        lr_multiplier: Optional[Sequence], 
-        decay_steps:Optional[Sequence], 
-        alpha:Optional[Sequence], 
+        lr_multiplier:Sequence, 
+        decay_steps:Sequence, 
+        alpha:Sequence, 
         boundaries: Optional[Sequence] = None,
         exponents:Optional[Sequence] = None,
     ):
