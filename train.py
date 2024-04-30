@@ -329,7 +329,7 @@ def main(_):
     logger.info(f'Running case {cfg.case.values()}')
     logger.info('Loading data.')
     data, datainfo = cfg.case.dataloader()
-    logger.debug(f'Data dictionary has {[(k, data[k].shape) if data[k] is not None else (k, None) for k in data.keys()]}')
+    logger.debug(f'Data dictionary has {[(k, type(k)) if data[k] is not None else (k, None) for k in data.keys()]}')
     logger.debug(f'Datainfo is {datainfo}')
 
     logger.info('Taking observations.')

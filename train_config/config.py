@@ -1,5 +1,5 @@
 from ml_collections import config_dict
-from ml_collections.config_dict import placeholder
+from ml_collections.config_dict import placeholder, required_placeholder
 import numpy as np
 import warnings
 import train_config.train_options.dataloader as dataloaderoptions
@@ -125,21 +125,18 @@ def get_config(cfgstr:str = None):
         raise ValueError('Invalid dataloader option.')
 
 
-    if _observe == 'grid':
+    if _observe == 'grid' or _observe == 'grid_pin':
         cfg.data_config.update({
             'slice_grid_sensors': ((None,None,15), (None,None,5))
         }) # spatial slicing, the default is equivalent to np.s_[::15,::5] in x and y direction
-    elif _observe == 'grid_pin':
-        cfg.data_config.update({
-            'slice_grid_sensors': ((None,None,15), (None,None,5)),
-        })
-    elif _observe == 'sparse':
+    elif _observe == 'sparse' or _observe == 'sparse_pin':
         cfg.data_config.update({
             'sensor_index': placeholder(tuple)
         })
-    elif _observe == 'sparse_pin':
+    elif _observe == 'random_pin':
         cfg.data_config.update({
-            'sensor_index': placeholder(tuple)
+            'random_sensors': placeholder(tuple), # (random seed, number of sensors)
+            'sensor_index': placeholder(tuple),
         })
     else:
         raise ValueError('Invalid observe option.')
@@ -225,7 +222,7 @@ _default_mdlcfg_fc2branch = {
         'b2_filters': ((5,5),),
         'b3_filters': ((3,3),),
         'resize_method': 'linear',
-        'fft_branch': True
+        'fft_branch': False
     },
     '2dkol': {
         'img_shapes': ((64,64),(64,64),(32,32),(16,16),(32,32),(64,64),(128,128)),

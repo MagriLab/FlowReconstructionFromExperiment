@@ -14,3 +14,5 @@ system_config.yml
 err
 log
 util_scripts/kolsol_data_convergence.py
+test.py
+test.ipynb
