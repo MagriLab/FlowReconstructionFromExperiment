@@ -225,6 +225,8 @@ def fit(
                 'loss_val_div':l_val_div, 
                 'loss_val_momentum':l_val_mom, 
                 'loss_val_sensors':l_val_s,
+                'loss_total': loss_div[-1] + loss_momentum[-1] + loss_sensors[-1],
+                'loss_val_total': l_val_div + l_val_mom + l_val_s,
             })
 
         if l_val < min_loss:
