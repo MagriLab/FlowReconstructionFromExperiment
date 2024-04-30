@@ -1,4 +1,5 @@
 import itertools as it
+import numpy as np
 from ._typing import *
 from scipy import linalg
 from scipy.spatial import distance
