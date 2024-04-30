@@ -9,16 +9,15 @@ def loss3(casestr:str):
 
     if casestr == 'snr20':
         mdlcfg_update = {
-            'dropout_rate': 0.012,
-            'fft_branch': False,
+            'dropout_rate': 0.0048,
+            'fft_branch': True,
             }
         datacfg_update = {'normalise': False}
         traincfg_update = {
-            'learning_rate': 0.0068,
-            'nb_batches': 17,
-            'regularisation_strength': 0.003,
-            'weight_continuity': 1.0,
-            'lr_scheduler': "{'scheduler':'cyclic_cosine_decay_schedule','decay_steps':(800,1000,1200,1500,2000),'alpha':(0.3,0.3,0.38,0.38,0.38),'lr_multiplier':(1.0,1.0,1.0,0.7,0.5),'boundaries':(1000,2200,3600,5500,8000)}",
+            'learning_rate': 0.014,
+            'nb_batches': 16,
+            'regularisation_strength': 0.095,
+            'lr_scheduler': 'cyclic_decay_default'
         }
     elif casestr == 'snr10':
         mdlcfg_update = {
@@ -31,16 +30,20 @@ def loss3(casestr:str):
             'learning_rate': 0.0068,
             'nb_batches': 13,
             'regularisation_strength': 0.056,
-            'lr_scheduler': "{'scheduler':'cyclic_cosine_decay_schedule','decay_steps':(800,1000,1200,1500,2000),'alpha':(0.3,0.3,0.38,0.38,0.38),'lr_multiplier':(1.0,1.0,1.0,0.7,0.5),'boundaries':(1000,2200,3600,5500,8000)}",
+            'lr_scheduler': 'cyclic_decay_default'
         }
     elif casestr == 'snr5':
-        raise NotImplementedError
-        mdlcfg_update = {'dropout_rate': 0.02}
-        datacfg_update = {'normalise': True}
+        mdlcfg_update = {
+            'dropout_rate': 0.006,
+            'fft_branch': True,
+            'b1_channels': (1,),
+            }
+        datacfg_update = {'normalise': False}
         traincfg_update = {
-            'learning_rate': 0.0006,
-            'nb_batches': 20,
-            'regularisation_strength': 0.2
+            'learning_rate': 0.0088,
+            'nb_batches': 13,
+            'regularisation_strength': 0.07,
+            'lr_scheduler': 'cyclic_decay_default'
         }
     else:
         raise NotImplementedError
@@ -55,17 +58,18 @@ def lossclassic(casestr:str):
 
     if casestr == 'snr20':
         mdlcfg_update = {
-            'dropout_rate': 0.0011,
+            'dropout_rate': 0.0005,
             'fft_branch': False,
+            'b1_channels': (4,4),
             }
         datacfg_update = {'normalise': True}
         traincfg_update = {
-            'learning_rate': 0.0036,
-            'nb_batches': 8,
-            'regularisation_strength': 0.06,
-            'weight_continuity': 3.3,
-            'weight_sensors': 9.0,
-            'lr_scheduler': "{'scheduler':'cyclic_cosine_decay_schedule','decay_steps':(800,1000,1200,1500,2000),'alpha':(0.3,0.3,0.38,0.38,0.38),'lr_multiplier':(1.0,1.0,1.0,0.7,0.5),'boundaries':(1000,2200,3600,5500,8000)}",
+            'learning_rate': 0.0013,
+            'nb_batches': 13,
+            'regularisation_strength': 0.007,
+            'weight_continuity': 2.0,
+            'weight_sensors': 12.0,
+            'lr_scheduler': 'cyclic_decay_default'
         }
     elif casestr == 'snr10':
         mdlcfg_update = {
@@ -80,17 +84,22 @@ def lossclassic(casestr:str):
             'regularisation_strength': 0.05,
             'weight_continuity': 2.1,
             'weight_sensors': 1.05,
-            'lr_scheduler': "{'scheduler':'cyclic_cosine_decay_schedule','decay_steps':(800,1000,1200,1500,2000),'alpha':(0.3,0.3,0.38,0.38,0.38),'lr_multiplier':(1.0,1.0,1.0,0.7,0.5),'boundaries':(1000,2200,3600,5500,8000)}",
+            'lr_scheduler': 'cyclic_decay_default'
         }
     elif casestr == 'snr5':
-        raise NotImplementedError
-        mdlcfg_update = {'dropout_rate': 0.006}
-        datacfg_update = {'normalise': True}
+        mdlcfg_update = {
+            'dropout_rate': 0.0047,
+            'fft_branch': False,
+            'b1_channels': (4,4)
+            }
+        datacfg_update = {'normalise': False}
         traincfg_update = {
-            'learning_rate': 0.000146,
-            'nb_batches': 20,
-            'regularisation_strength': 0.05,
-            'weight_sensors': 1.0
+            'learning_rate': 0.0012,
+            'nb_batches': 9,
+            'regularisation_strength': 0.022,
+            'weight_continuity': 3.8,
+            'weight_sensors': 11,
+            'lr_scheduler': 'cyclic_decay_default'
         }
     else:
         raise NotImplementedError
@@ -105,20 +114,8 @@ def lossmean3(casestr:str):
     cfgstr = 'loss_fn@physicsreplacemean'
 
     if casestr == 'snr20':
-        mdlcfg_update = {
-            'dropout_rate': 0.002,
-            'fft_branch': False,
-            }
-        datacfg_update = {'normalise': False}
-        traincfg_update = {
-            'learning_rate': 0.0027,
-            'nb_batches': 12,
-            'regularisation_strength': 0.05,
-            'weight_continuity': 2.0,
-            'weight_sensors': 25.0,
-            'lr_scheduler': "{'scheduler':'cyclic_cosine_decay_schedule','decay_steps':(800,1000,1200,1500,2000),'alpha':(0.3,0.3,0.38,0.38,0.38),'lr_multiplier':(1.0,1.0,1.0,0.7,0.5),'boundaries':(1000,2200,3600,5500,8000)}",
-        }
-
+        raise NotImplementedError
+        # need to confirm with the new results
     elif casestr == 'snr10':
         mdlcfg_update = {
             'dropout_rate': 0.0025,
@@ -132,22 +129,22 @@ def lossmean3(casestr:str):
             'regularisation_strength': 0.09,
             'weight_continuity': 2.7,
             'weight_sensors': 48.5,
-            'lr_scheduler': "{'scheduler':'cyclic_cosine_decay_schedule','decay_steps':(800,1000,1200,1500,2000),'alpha':(0.3,0.3,0.38,0.38,0.38),'lr_multiplier':(1.0,1.0,1.0,0.7,0.5),'boundaries':(1000,2200,3600,5500,8000)}",
+            'lr_scheduler': 'cyclic_decay_default'
         }
     elif casestr == 'snr5':
-        raise NotImplementedError
         mdlcfg_update = {
-            'dropout_rate': 0.002,
+            'dropout_rate': 0.0097,
             'fft_branch': False,
+            'b1_channels': (8,)
             }
         datacfg_update = {'normalise': False}
         traincfg_update = {
-            'learning_rate': 0.002,
-            'nb_batches': 8,
-            'regularisation_strength': 0.015,
-            'weight_continuity': 1.09,
-            'weight_sensors': 5.0,
-            'lr_scheduler': "{'scheduler':'cyclic_cosine_decay_schedule','decay_steps':(800,1000,1200,1500,2000),'alpha':(0.3,0.3,0.38,0.38,0.38),'lr_multiplier':(1.0,1.0,1.0,0.7,0.5),'boundaries':(1000,2200,3600,5500,8000)}",
+            'learning_rate': 0.0046,
+            'nb_batches': 5,
+            'regularisation_strength': 0.042,
+            'weight_continuity': 2.6,
+            'weight_sensors': 24.0,
+            'lr_scheduler': 'cyclic_decay_default'
         }
     else:
         raise NotImplementedError
@@ -173,7 +170,7 @@ def clean_minimum(group):
             'nb_batches': 17,
             'learning_rate': 0.0023,
             'weight_sensors': 40.0,
-            'lr_scheduler': "{'scheduler':'cyclic_cosine_decay_schedule','decay_steps':(800,1000,1200,1500,2000),'alpha':(0.3,0.3,0.38,0.38,0.38),'lr_multiplier':(1.0,1.0,1.0,0.7,0.5),'boundaries':(1000,2200,3600,5500,8000)}",
+            'lr_scheduler': 'cyclic_decay_default'
         }
     elif group == '2dkol':
         raise NotImplementedError
