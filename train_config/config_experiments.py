@@ -73,7 +73,7 @@ def lossclassic(casestr:str):
         }
     elif casestr == 'snr10':
         mdlcfg_update = {
-            'dropout_rate': 0.0077,
+            'dropout_rate': 0.005,
             'fft_branch': False,
             'b1_channels': (4,4)
             }
@@ -83,7 +83,7 @@ def lossclassic(casestr:str):
             'nb_batches': 9,
             'regularisation_strength': 0.05,
             'weight_continuity': 2.1,
-            'weight_sensors': 1.05,
+            'weight_sensors': 11.0,
             'lr_scheduler': 'cyclic_decay_default'
         }
     elif casestr == 'snr5':
@@ -114,8 +114,6 @@ def lossmean3(casestr:str):
     cfgstr = 'loss_fn@physicsreplacemean'
 
     if casestr == 'snr20':
-        raise NotImplementedError
-        # Remove the error line after checking the new results
         mdlcfg_update = {
             'dropout_rate': 0.0022,
             'fft_branch': False,
