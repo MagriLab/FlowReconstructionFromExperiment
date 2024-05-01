@@ -115,7 +115,21 @@ def lossmean3(casestr:str):
 
     if casestr == 'snr20':
         raise NotImplementedError
-        # need to confirm with the new results
+        # Remove the error line after checking the new results
+        mdlcfg_update = {
+            'dropout_rate': 0.0022,
+            'fft_branch': False,
+            'b1_channels': (1,)
+            }
+        datacfg_update = {'normalise': False}
+        traincfg_update = {
+            'learning_rate': 0.003,
+            'nb_batches': 12,
+            'regularisation_strength': 0.076,
+            'weight_continuity': 2.5,
+            'weight_sensors': 31.5,
+            'lr_scheduler': 'cyclic_decay_default'
+        }
     elif casestr == 'snr10':
         mdlcfg_update = {
             'dropout_rate': 0.0025,
