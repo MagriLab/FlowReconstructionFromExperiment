@@ -199,7 +199,7 @@ def get_config(cfgstr:str):
     # objective@noise,group@10,case@1
 
     objectives = {
-        'noise-2dtriangle': 'dataloader@2dtriangle,model@fc2branch,observe@grid_pin,',
+        'noise-2dtriangle': 'dataloader@2dtriangle,model@fc2branch,observe@random_pin,',
         'clean_minimum': 'model@fc2branch,',
     }
 
@@ -220,9 +220,10 @@ def get_config(cfgstr:str):
         cfg = base_config.get_config(general_cfgstr)
 
         datacfg_update.update({
-            'slice_grid_sensors': ((1,None,18),(3,None,12)),
+#             'slice_grid_sensors': ((1,None,18),(3,None,12)),
             'randseed': 19070949,
-            'snr': float(experiment['group'])
+            'snr': float(experiment['group']),
+            'random_sensors':(136412,250),
         })
 
     elif experiment['objective'] == 'clean_minimum':
