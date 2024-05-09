@@ -9,7 +9,8 @@ from typing import Optional
 # user-defined color maps
 discrete_dict = {
     'defne': ["#03BDAB", "#FEAC16", "#5D00E6","#F2BCF3","#AFEEEE"],
-    'overleaf-earth': ['#1e446b','#3c5920','#26aa08','#bf9000','#ffc000'],
+    # 'overleaf-earth': ['#1e446b','#3c5920','#26aa08','#bf9000','#ffc000'],
+    'overleaf-earth': ['#1e446b','#26aa08','#bf9000','#ffc000'],
 }
 continuous_dict = {
     'defne': ["#03BDAB", "#FEAC16", "#5D00E6"],
