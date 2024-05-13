@@ -10,6 +10,7 @@ case_command = {
     'physicswithdata': "--cfg.train_config.lr_scheduler=cyclic_decay_default --wandbcfg.tags=('task:minimum_observation','milestone:2dkol') --cfg.model_config.b1_channels=(1,) --cfg.model_config.b1_filters=((5,5),) --cfg.model_config.b2_filters=((5,5,),) --cfg.model_config.fft_branch=true --cfg.train_config.learning_rate=0.0008 --cfg.train_config.nb_batches=38",
     'physicsnoreplace': "--cfg.train_config.lr_scheduler=cyclic_decay_default --wandbcfg.tags=('task:minimum_observation','milestone:2dkol') --cfg.model_config.b1_channels=(4,4) --cfg.model_config.b1_filters=((5,5),) --cfg.model_config.b2_filters=((5,5),) --cfg.model_config.fft_branch=false --cfg.train_config.learning_rate=0.004 --cfg.train_config.nb_batches=33 --cfg.train_config.weight_sensors=8.", 
 }
+datapath = './local_data/kolmogorov/dim2_re34_k32_f4_dt1_grid128_14635.h5'
 
 queue = mp.Queue()
 EXCEPTION_COUNT = 0
@@ -21,11 +22,12 @@ _randseed_sensors = 123489
 def job_reduce_input(save_to:str, epochs:int, loss_fn:str, num_sensors:int, num_input:int):
     folder_name = f'min_input-{num_input}-{num_sensors}'
     gpu_id = queue.get()
+    print(Path(datapath),Path(datapath).exists())
 
     result_dir = Path(save_to, folder_name)
     result_dir.mkdir()
-    base_command = f"python train.py --gpu_id {gpu_id} --result_dir {save_to} --result_folder_name {folder_name} --cfg train_config/config.py:observe@random_pin,dataloader@2dkol,loss_fn@{loss_fn} --wandb --wandbcfg train_config/config_wandb.py:observe@random_pin,dataloader@2dkol,loss_fn@{loss_fn} --wandbcfg.mode=offline --cfg.data_config.random_sensors=({_randseed_sensors},{num_sensors}) --cfg.data_config.random_input=({_randseed_input},{num_input}) --cfg.train_config.epochs={epochs} "
-    command = base_command + case_command[loss_fn]
+    base_command = f"python train.py --gpu_id {gpu_id} --result_dir {save_to} --result_folder_name {folder_name} --cfg train_config/config.py:observe@random_pin,dataloader@2dkol,loss_fn@{loss_fn} --wandb --wandbcfg train_config/config_wandb.py:observe@random_pin,dataloader@2dkol,loss_fn@{loss_fn} --wandbcfg.mode=offline --cfg.data_config.random_sensors=({_randseed_sensors},{num_sensors}) --cfg.data_config.random_input=({_randseed_input},{num_input}) --cfg.train_config.epochs={epochs} --cfg.data_config.data_dir={datapath}"
+    command = base_command + " " + case_command[loss_fn]
 
     print('Running command:   ')
     print(command)

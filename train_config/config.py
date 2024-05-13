@@ -185,7 +185,7 @@ _default_datacfg = {
         'train_test_split': (600,100,100)
     },
     '2dkol': {
-        'data_dir': './local_data/kolmogorov/dim2_re34_k32_f4_dt1_grid128_14635.h5',
+        'data_dir': './local_data/kolmogorov/dim2_re34_k32_f4_dt1_grid128_25619.h5',
         're': 34.0,
         'dt': 0.1,
         'dx': 2*np.pi/128,

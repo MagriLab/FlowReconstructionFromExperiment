@@ -97,7 +97,7 @@ def read_data_kolsol(data_path: path):
 
     data_path = Path(data_path)
     if not data_path.exists():
-        raise ValueError('Data path does not exist.')
+        raise ValueError(f"Data path '{data_path.absolute()}' does not exist.")
 
     with h5py.File(data_path) as hf:
         u_p = np.array(hf.get('state'))
