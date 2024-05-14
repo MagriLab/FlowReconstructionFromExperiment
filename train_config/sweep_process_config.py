@@ -10,13 +10,13 @@ def sweep_preprocess_cfg(cfg):
     # t2 = literal_eval(cfg._cnn_channels)
     # cfg.update({'cnn_channels':t2}, allow_val_change=True)
 
-    b1_channels = literal_eval(cfg._b1_channels)
-    b1_filters = literal_eval(cfg._b1_filters)
-    b2_filters = literal_eval(cfg._b1_filters)
+    # b1_channels = literal_eval(cfg._b1_channels)
+    # b1_filters = literal_eval(cfg._b1_filters)
+    b2_filters = literal_eval(cfg._b2_filters)
 
     cfg.update(
         {
-        'b1_channels': b1_channels,
+        'b2_filters': b2_filters,
         },
         allow_val_change=True
     )
