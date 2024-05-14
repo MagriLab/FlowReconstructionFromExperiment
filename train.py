@@ -322,8 +322,9 @@ def main(_):
 
     tmp_dir = Path(FLAGS.result_dir,FLAGS.result_folder_name)
     if not tmp_dir.is_dir():
-        logger.warning('Target directory for saving results does not exist yet. Creating new directory.')
         tmp_dir.mkdir(parents=True)
+    else:
+        raise ValueError('Experiment path exist, do not override.')
 
     # =================== pre-processing ================================
     

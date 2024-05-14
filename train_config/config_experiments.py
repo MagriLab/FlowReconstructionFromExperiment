@@ -165,7 +165,7 @@ def lossmean3(casestr:str):
 
 
 
-def clean_minimum(group):
+def clean_minimum(group, sensor_randseed=None, loss_fn=None):
 
     if group == '2dtriangle':
 
@@ -185,7 +185,53 @@ def clean_minimum(group):
             'lr_scheduler': 'cyclic_decay_default'
         }
     elif group == '2dkol':
-        raise NotImplementedError
+        randseed_in = int(sensor_randseed)
+        randseed_sensor = 10*int(sensor_randseed)+83
+        cfgstr = f'dataloader@2dkol,observe@random_pin,loss_fn@{loss_fn}'
+        datacfg_update = {
+            'random_sensors': (randseed_sensor, 150),
+            'random_input': (randseed_in, 80),
+        }
+        if loss_fn == 'physicsnoreplace':
+            mdlcfg_update = {
+                'b1_channels': (4,4),
+                'b1_filters': ((5,5),),
+                'b2_filters': ((5,5),),
+                'fft_branch': False,
+            }
+            traincfg_update = {
+                'lr_scheduler': 'cyclic_decay_default',
+                'learning_rate': 0.004,
+                'nb_batches': 33,
+                'weight_sensors': 8.0
+            }
+        elif loss_fn == 'physicsreplacemean':
+            mdlcfg_update = {
+                'b1_channels': (4,),
+                'b1_filters': ((5,5),),
+                'b2_filters': ((5,5),),
+                'fft_branch': False,
+            }
+            traincfg_update = {
+                'lr_scheduler': 'cyclic_decay_default',
+                'learning_rate': 0.0047,
+                'nb_batches': 10,
+                'weight_sensors': 64.0
+            }
+        elif loss_fn == 'physicswithdata':
+            mdlcfg_update = {
+                'b1_channels': (1,),
+                'b1_filters': ((5,5),),
+                'b2_filters': ((5,5),),
+                'fft_branch': True,
+            }
+            traincfg_update = {
+                'lr_scheduler': 'cyclic_decay_default',
+                'learning_rate': 0.0008,
+                'nb_batches': 38,
+            }
+        else:
+            raise NotImplementedError
     else:
         raise NotImplementedError
     return cfgstr, mdlcfg_update, datacfg_update, traincfg_update
@@ -220,7 +266,6 @@ def get_config(cfgstr:str):
         cfg = base_config.get_config(general_cfgstr)
 
         datacfg_update.update({
-#             'slice_grid_sensors': ((1,None,18),(3,None,12)),
             'randseed': 19070949,
             'snr': float(experiment['group']),
             'random_sensors':(136412,250),
@@ -233,7 +278,25 @@ def get_config(cfgstr:str):
             '1': '2dtriangle',
             '2': '2dkol'
         }
-        _cfgstr, mdlcfg_update, datacfg_update, traincfg_update = clean_minimum(testgroup[experiment['group']])
+
+        testcase = {
+            '1': 'physicsnoreplace',
+            '2': 'physicswithdata',
+            '3': 'physicsreplacemean'
+        }
+        
+        _fn_input = {'group':testgroup[experiment['group']]}
+        
+        if experiment['group'] == '2':
+            if 'case' not in experiment or 'sensor_randseed' not in experiment:
+                raise ValueError('Please provide the case number and sensor randseed for the test group you selected.')
+            _fn_input.update({'loss_fn': testcase[experiment['case']]})
+            _fn_input.update({'sensor_randseed': experiment['sensor_randseed']})
+        else:
+            if 'case' in experiment:
+                raise NotImplementedError
+
+        _cfgstr, mdlcfg_update, datacfg_update, traincfg_update = clean_minimum(**_fn_input)
 
         ## get general config
         general_cfgstr = general_cfgstr + _cfgstr

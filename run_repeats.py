@@ -8,11 +8,14 @@ from functools import partial
 
 queue = mp.Queue()
 
-def job(randseed:int, experiment:str, save_to:str, epochs:int, prefix:str):
+def job(randseeds:tuple, experiment:str, save_to:str, epochs:int, prefix:str):
+    """randseed = (weight, sensors)"""
 
     _experiment = dict([x.split('@') for x in experiment.split(',')])
     
-    folder_name = prefix + '-' + str(randseed)
+    folder_name = prefix + '-' + '-'.join([str(_s) for _s in randseeds if _s is not None])
+
+    rand_w, rand_s = randseeds
 
     gpu_id = queue.get()
     
@@ -20,8 +23,12 @@ def job(randseed:int, experiment:str, save_to:str, epochs:int, prefix:str):
     results_dir.mkdir()
     log = Path(results_dir,'log')
     err = Path(results_dir,'err')
+    
+    # extra things to pass to experiment config
+    if rand_s is not None:
+        experiment = experiment + "," + f"sensor_randseed@{rand_s}"
 
-    command = f"python train.py --gpu_id {gpu_id} --result_dir {save_to} --result_folder_name {folder_name} --wandb --wandbcfg.mode=offline --wandbcfg.group={_experiment['objective']} --cfg train_config/config_experiments.py:{experiment} --cfg.train_config.randseed={randseed} --cfg.train_config.epochs={epochs} --chatty"
+    command = f"python train.py --gpu_id {gpu_id} --result_dir {save_to} --result_folder_name {folder_name} --wandb --wandbcfg.mode=offline --wandbcfg.group={_experiment['objective']} --cfg train_config/config_experiments.py:{experiment} --cfg.train_config.randseed={rand_w} --cfg.train_config.epochs={epochs} --chatty"
 
     print('Running command: ')
     print(command)
@@ -38,11 +45,15 @@ def job(randseed:int, experiment:str, save_to:str, epochs:int, prefix:str):
 
 def main(args):
 
-    randseeds = args.randseeds
+    weight_seeds = args.randseeds
+    if args.sensor_randseeds is None:
+        args.sensor_randseeds = [None]*len(weight_seeds)
+    randseeds = zip(weight_seeds, args.sensor_randseeds)
     save_path = Path(args.save_to)
-    if save_path.exists():
-        raise ValueError('Experiment path exist, do not overwrite.')
-    save_path.mkdir()
+    if not save_path.exists():
+    #     raise ValueError('Experiment path exist, do not overwrite.')
+        print(f'Creating a new experiment directory {save_path}')
+        save_path.mkdir()
 
     wandb.require("service") # set up wandb for multiprocessing
     wandb.setup()
@@ -71,6 +82,7 @@ if __name__ == '__main__':
     parser.add_argument('--job_prefix', help='Prefix for each run', required=True)
     parser.add_argument('--epochs', type=int, default=20000, help='Number of epochs per run.')
     parser.add_argument('--numgpu', type=int, help='Number of gpus available.', required=True)
+    parser.add_argument('--sensor_randseeds', type=int, nargs='+',help="a list of random seeds for placing sensors using the observation option 'random_pin'", required=False)
     args = parser.parse_args()
 
 
