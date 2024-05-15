@@ -324,7 +324,7 @@ def main(_):
     if not tmp_dir.is_dir():
         tmp_dir.mkdir(parents=True)
     else:
-        raise ValueError('Experiment path exist, do not override.')
+        raise ValueError(f'Experiment path {tmp_dir.absolute()} exist, do not override.')
 
     # =================== pre-processing ================================
     
