@@ -322,9 +322,10 @@ def main(_):
 
     tmp_dir = Path(FLAGS.result_dir,FLAGS.result_folder_name)
     if not tmp_dir.is_dir():
+        logger.warning(f'Making a new target directory at {tmp_dir.absolute()}.')
         tmp_dir.mkdir(parents=True)
     else:
-        raise ValueError(f'Experiment path {tmp_dir.absolute()} exist, do not override.')
+        logger.warning(f'Writing into exisiting directory {tmp_dir.absolute()}.')
 
     # =================== pre-processing ================================
     

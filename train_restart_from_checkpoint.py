@@ -309,8 +309,10 @@ def main(_):
     
     tmp_dir = Path(FLAGS.run_path,'restart')
     if not tmp_dir.is_dir():
-        logger.warning('Target directory for saving results does not exist yet. Creating new directory.')
+        logger.warning(f'Making a new target directory at {tmp_dir.absolute()}.')
         tmp_dir.mkdir(parents=True)
+    else:
+        logger.warning(f'Writing into exisiting directory {tmp_dir.absolute()}.')
     save_config(cfg,tmp_dir)
 
 
