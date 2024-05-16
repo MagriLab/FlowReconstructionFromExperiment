@@ -498,7 +498,7 @@ def main(_):
         
         try: 
             logger.debug('Trying to save model as an artifact.')
-            if np.min(loss_dict['loss_val']) < best_run.summary['loss_val']:
+            if np.min(loss_dict['loss_total']) < best_run.summary['loss_total']:
                 logger.info('Best model so far, saving weights and configurations.')
                 artifact = wandb.Artifact(name=f'sweep_weights_{run.sweep_id}', type='model') 
                 artifact.add_dir(tmp_dir)
@@ -506,7 +506,9 @@ def main(_):
                 # run.finish_artifact(artifact) # only necessary for distributed runs
             else:
                 logger.info('Not the best model, skip saving weights.')
-            
+                artifact = wandb.Artifact(name=f'sweep_weights_{run.sweep_id}', type='model')
+                artifact.add_file(Path(tmp_dir,'config.yml'))
+                run.log_artifact(artifact)
                 for child in tmp_dir.iterdir(): 
                     child.unlink()
                 tmp_dir.rmdir()
