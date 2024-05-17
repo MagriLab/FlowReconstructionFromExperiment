@@ -93,6 +93,7 @@ def wandb_init(wandbcfg:config_dict.ConfigDict):
         wandbcfg.update({'name':FLAGS.result_folder_name})
 
     cfg_dict = wandbcfg.to_dict()
+    input_artifact = cfg_dict.pop('use_artifact')
     logger.debug(f'Arguments passed to wandb.init {cfg_dict}.')
 
     run = wandb.init(**cfg_dict)
@@ -102,6 +103,9 @@ def wandb_init(wandbcfg:config_dict.ConfigDict):
         return _pattern.match(path)
     
     run.log_code('.', exclude_fn=_ignore_files)
+    
+    if input_artifact is not None:
+        run.use_artifact(input_artifact)
     
     return run
 
@@ -307,6 +311,14 @@ def main(_):
         run = wandb_init(wandbcfg)
         # wandb.config.update({'percent_observed':percent_observed})
         logger.info('Successfully initialised weights and biases.')
+        try:
+            _datapath = Path(datacfg.data_dir)
+            _datatag = "$".join(_datapath.parts)
+            _art_name = str(cfg.case._case_dataloader) + ":" + _datatag
+            run.use_artifact(_art_name, type="DataPath")
+        except Exception as e:
+            logger.error(e)
+            logger.error("Skip logging DataPath artifact.")
 
         if FLAGS.wandb_sweep:
             sweep_params = sweep_preprocess_cfg(wandb.config)

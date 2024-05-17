@@ -61,6 +61,8 @@ def get_config(cfgstr:str = None):
     cfg.config.filter = placeholder(str)
     cfg.config.percent_observed = placeholder(float)
 
+    # not wandb init items
+    cfg.use_artifact = placeholder(str)
 
     if _mdl == 'ffcnn':
         cfg.config.mlp_layers = placeholder(tuple)

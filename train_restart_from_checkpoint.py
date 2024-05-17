@@ -88,9 +88,8 @@ def wandb_init(wandbcfg:config_dict.ConfigDict):
     if wandbcfg.id is None:
         raise ValueError('wandbcfg.id cannot be None when resuming.')
 
-
-
     cfg_dict = wandbcfg.to_dict()
+    input_artifact = cfg_dict.pop('use_artifact')
     logger.debug(f'Arguments passed to wandb.init {cfg_dict}.')
 
     run = wandb.init(**cfg_dict)
@@ -100,6 +99,9 @@ def wandb_init(wandbcfg:config_dict.ConfigDict):
         return _pattern.match(path)
     
     run.log_code('.', exclude_fn=_ignore_files)
+
+    if input_artifact is not None:
+        run.use_artifact(input_artifact)
     
     return run
 
