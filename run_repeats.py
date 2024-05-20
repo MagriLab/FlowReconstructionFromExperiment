@@ -8,7 +8,7 @@ from functools import partial
 
 queue = mp.Queue()
 
-def job(randseeds:tuple, experiment:str, save_to:str, epochs:int, prefix:str):
+def job(randseeds:tuple, experiment:str, save_to:str, epochs:int, prefix:str, use_artifact:str=None):
     """randseed = (weight, sensors)"""
 
     _experiment = dict([x.split('@') for x in experiment.split(',')])
@@ -27,8 +27,11 @@ def job(randseeds:tuple, experiment:str, save_to:str, epochs:int, prefix:str):
     # extra things to pass to experiment config
     if rand_s is not None:
         experiment = experiment + "," + f"sensor_randseed@{rand_s}"
-
+        
     command = f"python train.py --gpu_id {gpu_id} --result_dir {save_to} --result_folder_name {folder_name} --wandb --wandbcfg.mode=offline --wandbcfg.group={_experiment['objective']} --cfg train_config/config_experiments.py:{experiment} --cfg.train_config.randseed={rand_w} --cfg.train_config.epochs={epochs} --chatty"
+
+    if use_artifact is not None:
+        command = command + " " + f"--wandbcfg.use_artifact{use_artifact}"
 
     print('Running command: ')
     print(command)
@@ -61,7 +64,7 @@ def main(args):
     for i in range(args.numgpu):
         queue.put(i)
     
-    run_job = partial(job, experiment=args.experiment, save_to=args.save_to, epochs=args.epochs, prefix=args.job_prefix)
+    run_job = partial(job, experiment=args.experiment, save_to=args.save_to, epochs=args.epochs, prefix=args.job_prefix, use_artifact=args.use_artifact)
 
     pool = mp.Pool(args.numgpu) # one job per device
     pool.map(run_job,randseeds)
@@ -83,6 +86,7 @@ if __name__ == '__main__':
     parser.add_argument('--epochs', type=int, default=20000, help='Number of epochs per run.')
     parser.add_argument('--numgpu', type=int, help='Number of gpus available.', required=True)
     parser.add_argument('--sensor_randseeds', type=int, nargs='+',help="a list of random seeds for placing sensors using the observation option 'random_pin'", required=False)
+    parser.add_argument('--use_artifact', help="name of the wandb artifact to use", required=False)
     args = parser.parse_args()
 
 
