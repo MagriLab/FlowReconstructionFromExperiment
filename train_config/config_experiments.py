@@ -237,6 +237,178 @@ def clean_minimum(group, sensor_randseed=None, loss_fn=None):
     return cfgstr, mdlcfg_update, datacfg_update, traincfg_update
     
 
+def noise_2dkol(testcase:str, snr:int, sensor_randseed:int):
+    randseed_in = sensor_randseed
+    randseed_sensor = 10*sensor_randseed + 83
+    datacfg_update = {
+        'random_sensors': (randseed_sensor, 150),
+        'random_input': (randseed_in, 80),
+    }
+    cfgstr = 'loss_fn@' + testcase
+    match testcase:
+        case 'physicsnoreplace': # physicsnoreplace, classic
+            if snr == 20:
+                # artifact 'yaxinm/FlowReconstruction/sweep_weights_d4ygq05m:v3'
+                # 'yaxinm/FlowReconstruction/run-nl5vcioh-history:v0'
+                mdlcfg_update = {
+                    'b1_channels': (4,4),
+                    'b1_filters': ((5,5),),
+                    'b2_filters': ((5,5),),
+                    'fft_branch': False,
+                }
+                traincfg_update = {
+                    'lr_scheduler': 'cyclic_decay_default',
+                    'learning_rate': 0.004,
+                    'nb_batches': 33,
+                    'weight_sensors': 8.0
+                }
+                datacfg_update.update({
+                    'normalise': True
+                })
+            elif snr == 10:
+                # artifact 'yaxinm/FlowReconstruction/sweep_weights_uulkhg5w:v2'
+                mdlcfg_update = {
+                    'b1_channels': (4,4),
+                    'b1_filters': ((5,5),),
+                    'fft_branch': False,
+                    'dropout_rate': 0.0024,
+                }
+                traincfg_update = {
+                    'lr_scheduler': 'cyclic_decay_default',
+                    'learning_rate': 0.00034,
+                    'nb_batches': 28,
+                    'weight_sensors': 26.1,
+                    'regularisation_strength': 0.0012,
+                }
+            elif snr == 5:
+                # artifact 'yaxinm/FlowReconstruction/sweep_weights_hisb655c:v8'
+                mdlcfg_update = {
+                    'b1_channels': (4,4),
+                    'b1_filters': ((5,5),),
+                    'fft_branch': False,
+                    'dropout_rate': 0.0061,
+                }
+                traincfg_update = {
+                    'lr_scheduler': 'cyclic_decay_default',
+                    'learning_rate': 0.00018,
+                    'nb_batches': 24,
+                    'weight_sensors': 7.6,
+                    'regularisation_strength': 0.0037,
+                }
+            else:
+                raise NotImplementedError
+        case 'physicswithdata': # physicswithdata, loss3
+            if snr == 20:
+                mdlcfg_update = {
+                    'b1_channels': (1,),
+                    'b1_filters': ((5,5),),
+                    'b2_filters': ((5,5),),
+                    'fft_branch': True,
+                }
+                traincfg_update = {
+                    'lr_scheduler': 'cyclic_decay_default',
+                    'learning_rate': 0.0008,
+                    'nb_batches': 38,
+                }
+            elif snr ==10:
+                # artifact 'sweep_weights_2n0251mx:v1'
+                mdlcfg_update = {
+                    'b1_channels': (1,),
+                    'b1_filters': ((5,5),),
+                    'b2_filters': ((5,5),),
+                    'fft_branch': True,
+                    'dropout_rate': 0.00585
+                }
+                traincfg_update = {
+                    'lr_scheduler': 'cyclic_decay_default',
+                    'learning_rate': 0.0028,
+                    'nb_batches': 28,
+                    'regularisation_strength': 0.008
+                }
+                datacfg_update.update({
+                    'normalise': True
+                })
+            elif snr == 5:
+                # artifact 'yaxinm/FlowReconstruction/sweep_weights_j9tcf74x:v1'
+                mdlcfg_update = {
+                    'b1_channels': (1,),
+                    'b1_filters': ((5,5),),
+                    'b2_filters': ((3,3),),
+                    'fft_branch': True,
+                    'dropout_rate': 0.00167
+                }
+                traincfg_update = {
+                    'lr_scheduler': 'cyclic_decay_default',
+                    'learning_rate': 0.00877,
+                    'nb_batches': 28,
+                    'regularisation_strength': 0.0056
+                }
+            else:
+                raise NotImplementedError
+        case 'physicsreplacemean': # physicsreplacemean, lossmean
+            if snr == 20:
+                # artifacts: 'yaxinm/FlowReconstruction/sweep_weights_7u2kjpr9:v5'
+                # 'yaxinm/FlowReconstruction/run-fhw70v4z-history:v0' 
+                mdlcfg_update = {
+                    'b1_channels': (4,),
+                    'b1_filters': ((5,5),),
+                    'b2_filters': ((5,5),),
+                    'fft_branch': False,
+                }
+                traincfg_update = {
+                    'lr_scheduler': 'cyclic_decay_default',
+                    'learning_rate': 0.0047,
+                    'nb_batches': 10,
+                    'weight_sensors': 64.0
+                }
+                datacfg_update.update({
+                    'normalise': False
+                })
+            elif snr ==10:
+                # artifact 'sweep_weights_h0mh8urd:v1'
+                mdlcfg_update = {
+                    'b1_channels': (4,),
+                    'b1_filters': ((5,5),),
+                    'b2_filters': ((3,3),),
+                    'fft_branch': False,
+                    'dropout_rate': 0.0021
+                }
+                traincfg_update = {
+                    'lr_scheduler': 'cyclic_decay_default',
+                    'learning_rate': 0.0013,
+                    'nb_batches': 7,
+                    'weight_sensors': 34.65,
+                    'regularisation_strength': 0.0007
+                }
+                datacfg_update.update({
+                    'normalise': False
+                })
+            elif snr == 5:
+                # artifact 'sweep_weights_grce0t1e:v7'
+                mdlcfg_update = {
+                    'b1_channels': (4,),
+                    'b1_filters': ((5,5),),
+                    'b2_filters': ((3,3),),
+                    'fft_branch': False,
+                    'dropout_rate': 0.0023
+                }
+                traincfg_update = {
+                    'lr_scheduler': 'cyclic_decay_default',
+                    'learning_rate': 0.0032,
+                    'nb_batches': 5,
+                    'weight_sensors': 5.9,
+                    'regularisation_strength': 0.0039
+                }
+                datacfg_update.update({
+                    'normalise': False
+                })
+            else:
+                raise NotImplementedError
+        case _:
+            raise NotImplementedError
+
+    return cfgstr, mdlcfg_update, datacfg_update, traincfg_update
+
 
 
 def get_config(cfgstr:str):
@@ -244,67 +416,88 @@ def get_config(cfgstr:str):
     experiment = dict([x.split('@') for x in cfgstr.split(',')])
     # objective@noise,group@10,case@1
 
-    objectives = {
+    objective_config_str = {
         'noise-2dtriangle': 'dataloader@2dtriangle,model@fc2branch,observe@random_pin,',
         'clean_minimum': 'model@fc2branch,',
+        'noise-2dkol': 'dataloader@2dkol,model@fc2branch,observe@random_pin,'
     }
 
-    general_cfgstr = objectives[experiment['objective']]
+    objective = experiment['objective']
+    general_cfgstr = objective_config_str[objective]
 
-    if experiment['objective'] == 'noise-2dtriangle':
-        print("running experiment 'noise-2dtriangle'")
+    match objective:
+        case 'noise-2dtriangle':
+            print("running experiment 'noise-2dtriangle'")
 
-        testcase = {
-            '1': lossclassic,
-            '2': loss3,
-            '3': lossmean3
-        }
+            testcase = {
+                '1': lossclassic,
+                '2': loss3,
+                '3': lossmean3
+            }
 
-        _cfgstr, mdlcfg_update, datacfg_update, traincfg_update = testcase[experiment['case']]('snr'+experiment['group'])
-        
-        general_cfgstr = general_cfgstr + _cfgstr
-        cfg = base_config.get_config(general_cfgstr)
+            _cfgstr, mdlcfg_update, datacfg_update, traincfg_update = testcase[experiment['case']]('snr'+experiment['group'])
+            
+            datacfg_update.update({
+                'randseed': 19070949,
+                'snr': float(experiment['group']),
+                'random_sensors':(136412,250),
+            })
 
-        datacfg_update.update({
-            'randseed': 19070949,
-            'snr': float(experiment['group']),
-            'random_sensors':(136412,250),
-        })
+        case 'noisy-2dkol':
+            print("running experiment 'noise-2dkol'")
 
-    elif experiment['objective'] == 'clean_minimum':
-        print("running experiment 'clean_repeat'")
+            testcase = {
+                '1': 'physicsnoreplace',
+                '2': 'physicswithdata',
+                '3': 'physicsreplacemean'
+            }
 
-        testgroup = {
-            '1': '2dtriangle',
-            '2': '2dkol'
-        }
+            _cfgstr, mdlcfg_update, datacfg_update, traincfg_update = noise_2dkol(
+                testcase=testcase[experiment['case']],
+                snr=int(experiment['group']),
+                sensor_randseed=int(experiment['sensor_randseed'])
+            )
 
-        testcase = {
-            '1': 'physicsnoreplace',
-            '2': 'physicswithdata',
-            '3': 'physicsreplacemean'
-        }
-        
-        _fn_input = {'group':testgroup[experiment['group']]}
-        
-        if experiment['group'] == '2':
-            if 'case' not in experiment or 'sensor_randseed' not in experiment:
-                raise ValueError('Please provide the case number and sensor randseed for the test group you selected.')
-            _fn_input.update({'loss_fn': testcase[experiment['case']]})
-            _fn_input.update({'sensor_randseed': experiment['sensor_randseed']})
-        else:
-            if 'case' in experiment:
-                raise NotImplementedError
+            datacfg_update.update({
+                'randseed': 157759,
+                'snr': float(experiment['group']),
+            })
 
-        _cfgstr, mdlcfg_update, datacfg_update, traincfg_update = clean_minimum(**_fn_input)
+        case 'clean_minimum':
+            print("running experiment 'clean_repeat'")
 
-        ## get general config
-        general_cfgstr = general_cfgstr + _cfgstr
-        cfg = base_config.get_config(general_cfgstr)
+            testgroup = {
+                '1': '2dtriangle',
+                '2': '2dkol'
+            }
 
-    else:
-        raise NotImplementedError
+            testcase = {
+                '1': 'physicsnoreplace',
+                '2': 'physicswithdata',
+                '3': 'physicsreplacemean'
+            }
+            
+            _fn_input = {'group':testgroup[experiment['group']]}
+            
+            if experiment['group'] == '2':
+                if 'case' not in experiment or 'sensor_randseed' not in experiment:
+                    raise ValueError('Please provide the case number and sensor randseed for the test group you selected.')
+                _fn_input.update({'loss_fn': testcase[experiment['case']]})
+                _fn_input.update({'sensor_randseed': experiment['sensor_randseed']})
+            else:
+                if 'case' in experiment:
+                    raise NotImplementedError
 
+            _cfgstr, mdlcfg_update, datacfg_update, traincfg_update = clean_minimum(**_fn_input)
+
+        case _:
+            raise NotImplementedError
+
+
+    ## get general config
+    general_cfgstr = general_cfgstr + _cfgstr
+    cfg = base_config.get_config(general_cfgstr)
+    
     ## update configs
     cfg.model_config.update(mdlcfg_update)
     cfg.data_config.update(datacfg_update)
