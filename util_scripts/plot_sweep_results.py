@@ -76,10 +76,10 @@ def get_summary_onecase(d:Path):
     pred_train = []
     for inn in inn_train_batched:
         pred_train.append(
-            mdl.apply(state.params, rng, inn, TRAINING=False)
+            mdl.predict(state.params, inn)
         )
     pred_train = np.concatenate(pred_train)
-    pred_val = mdl.apply(state.params,rng,data['inn_val'],TRAINING=False)
+    pred_val = mdl.predict(state.params, data['inn_val'])
 
     if cfg.data_config.normalise:
         pred_train = data_utils.unnormalise_group(pred_train, train_minmax, axis_data=-1, axis_range=0)
