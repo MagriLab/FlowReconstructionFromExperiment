@@ -443,7 +443,7 @@ def get_config(cfgstr:str):
                 'random_sensors':(136412,250),
             })
 
-        case 'noisy-2dkol':
+        case 'noise-2dkol':
             print("running experiment 'noise-2dkol'")
 
             testcase = {
