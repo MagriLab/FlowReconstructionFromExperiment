@@ -282,7 +282,7 @@ def dissipation(
     
     dui_dxj_T = _didj(v_derivative1, u) # [j,i,t,x,y,z]
 
-    d = jnp.sqrt(jnp.einsum('jit... -> t...', dui_dxj_T**2)) / re # [t,x,y,z]
+    d = jnp.einsum('jit... -> t...', dui_dxj_T**2) / re # [t,x,y,z]
 
     return d
  
