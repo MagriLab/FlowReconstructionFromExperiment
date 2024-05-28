@@ -111,13 +111,25 @@ def fourier_to_physical(args):
         dt = float(hf['dt'][()])
         ndim = int(hf['ndim'][()])
         state_hat = np.array(hf.get('state_hat'))
+    print('   :: Finished loading raw data.')
 
     physical_data_path = Path(args.physical_data_path)
     setup_directory(physical_data_path)
 
-    print(f'02 :: Move data to physical domain with {args.ngrid} grid points.')
+#     print(f'02 :: Moving data to physical domain with {args.ngrid} grid points.')
+    nt = state_hat.shape[0]
+    batch = 500
+    nb_batch = int(nt/batch)
+    if (nt % batch) != 0:
+        nb_batch = nb_batch + 1
+    msg = '02 :: Moving data to physical domain with {args.ngrid} grid points.'
     ks = KolSol(nk=nk, nf=nf, re=re, ndim=ndim)
-    state = ks.fourier_to_phys(state_hat, nref=args.ngrid)
+    state = []
+    for i in tqdm.trange(nb_batch, desc=msg):
+        state.append(ks.fourier_to_phys(state_hat[i*batch:(i+1)*batch,...], nref=args.ngrid))
+    state = np.concatenate(state, axis=0)
+
+#     state = ks.fourier_to_phys(state_hat, nref=args.ngrid)
 
     data_dict = {
         'state': state[::args.save_frequency,...],
