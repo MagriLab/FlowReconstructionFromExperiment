@@ -55,8 +55,8 @@ def job_reduce_sensors(save_to:str, epochs:int, loss_fn:str, num_input:int, num_
 
     result_dir = Path(save_to, folder_name)
     result_dir.mkdir()
-    base_command = f"python train.py --gpu_id {gpu_id} --result_dir {save_to} --result_folder_name {folder_name} --cfg train_config/config.py:observe@random_pin,dataloader@2dkol,loss_fn@{loss_fn} --wandb --wandbcfg train_config/config_wandb.py:observe@random_pin,dataloader@2dkol,loss_fn@{loss_fn} --wandbcfg.mode=offline --cfg.data_config.random_sensors=({_randseed_sensors},{num_sensors}) --cfg.data_config.random_input=({_randseed_input},{num_input}) --cfg.train_config.epochs={epochs} "
-    command = base_command + case_command[loss_fn]
+    base_command = f"python train.py --gpu_id {gpu_id} --result_dir {save_to} --result_folder_name {folder_name} --cfg train_config/config.py:observe@random_pin,dataloader@2dkol,loss_fn@{loss_fn} --wandb --wandbcfg train_config/config_wandb.py:observe@random_pin,dataloader@2dkol,loss_fn@{loss_fn} --wandbcfg.mode=offline --cfg.data_config.random_sensors=({_randseed_sensors},{num_sensors}) --cfg.data_config.random_input=({_randseed_input},{num_input}) --cfg.train_config.epochs={epochs} --cfg.data_config.data_dir={datapath}"
+    command = base_command + " " + case_command[loss_fn]
 
     print('Running command:   ')
     print(command)
