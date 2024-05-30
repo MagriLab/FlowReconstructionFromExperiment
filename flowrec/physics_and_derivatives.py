@@ -2,7 +2,7 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 import chex
-from typing import Union, Optional, Callable
+from typing import Union, Optional, Callable, Tuple
 import logging
 logger = logging.getLogger(f'fr.{__name__}')
 
@@ -324,3 +324,28 @@ def vorticity(u:Array, datainfo:ClassDataMetadata) -> Array:
         vort = vort + (dui_dxj_T[1,2] - dui_dxj_T[2,1]) + (dui_dxj_T[2,0]-dui_dxj_T[0,2])
 
     return vort
+
+
+
+def count_extreme_events(global_dissipation: Array, threshold: Scalar) -> Tuple[list, int]:
+    """Count the number of extreme events
+    -------------------------- 
+    Count the number time the global dissipation passes the threshold of extreme events
+    ### Arguments:
+        - Global dissipation: 1D array of volume averaged dissipation over time.
+        - Threshold: the value that defines an extreme event (mean(global_di)+2*std).
+    ### Outputs:
+        - Array indices of the start of every extreme events.
+        - Number of extreme events.
+    """
+    binary_array = global_dissipation >= threshold
+    start = binary_array[0]
+    change_idx = list(np.where(np.diff(binary_array))[0])
+    if start:
+        event_start_idx = [0]
+        event_start_idx.extend(change_idx[1::2]) # change_idx[0] is the end of an extreme event
+    else:
+        event_start_idx = change_idx[::2]
+        
+    return event_start_idx, len(event_start_idx)
+    
