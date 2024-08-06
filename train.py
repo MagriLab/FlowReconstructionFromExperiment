@@ -17,7 +17,7 @@ from flowrec._typing import *
 from flowrec.training_and_states import save_trainingstate, TrainingState, generate_update_fn
 from flowrec.losses import loss_mse
 from flowrec.utils.py_helper import update_matching_keys
-from flowrec.utils.system import temporary_fix_absl_logging
+from flowrec.utils.system import temporary_fix_absl_logging, set_gpu
 from train_config.sweep_process_config import sweep_preprocess_cfg
 from train_config.option_codes import code
 from train_config.train_options.optimizer import get_optimizer
@@ -282,8 +282,9 @@ def main(_):
 
     # ===================== setting up system ==========================
     if FLAGS.gpu_id:
-        jax.config.update("jax_default_device", jax.devices()[FLAGS.gpu_id])
-    os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = str(FLAGS.gpu_mem)
+        set_gpu(FLAGS.gpu_id, FLAGS.gpu_mem)
+    #     jax.config.update("jax_default_device", jax.devices()[FLAGS.gpu_id])
+    # os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = str(FLAGS.gpu_mem)
     
     if not FLAGS.result_folder_name:
         _folder = code(cfg.case)

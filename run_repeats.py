@@ -1,6 +1,7 @@
-import multiprocessing as mp
+import os
 import wandb
 import subprocess
+import multiprocessing as mp
 
 from argparse import ArgumentParser
 from pathlib import Path
@@ -61,12 +62,14 @@ def main(args):
     wandb.require("service") # set up wandb for multiprocessing
     wandb.setup()
 
-    for i in range(args.numgpu):
-        queue.put(i)
+    gpustr = os.environ['CUDA_VISIBLE_DEVICES']
+    gpulst = gpustr.split(",")
+    for gpu_id in gpulst:
+        queue.put(int(gpu_id))
     
     run_job = partial(job, experiment=args.experiment, save_to=args.save_to, epochs=args.epochs, prefix=args.job_prefix, use_artifact=args.use_artifact)
 
-    pool = mp.Pool(args.numgpu) # one job per device
+    pool = mp.Pool(len(gpulst)) # one job per device
     pool.map(run_job,randseeds)
 
     pool.close()
@@ -84,7 +87,7 @@ if __name__ == '__main__':
     parser.add_argument('--randseeds', type=int, nargs='+',help='a list of random seeds for weight initialisation', required=True)
     parser.add_argument('--job_prefix', help='Prefix for each run', required=True)
     parser.add_argument('--epochs', type=int, default=20000, help='Number of epochs per run.')
-    parser.add_argument('--numgpu', type=int, help='Number of gpus available.', required=True)
+    # parser.add_argument('--numgpu', type=int, help='Number of gpus available.', required=True)
     parser.add_argument('--sensor_randseeds', type=int, nargs='+',help="a list of random seeds for placing sensors using the observation option 'random_pin'", required=False)
     parser.add_argument('--use_artifact', help="name of the wandb artifact to use", required=False)
     args = parser.parse_args()
