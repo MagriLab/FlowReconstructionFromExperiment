@@ -1,7 +1,6 @@
 from ml_collections import config_flags, config_dict
 from absl import app, flags
 import sys
-import os
 import re
 from pathlib import Path
 from typing import Sequence, Callable, Optional
@@ -18,7 +17,7 @@ from flowrec._typing import *
 from flowrec.training_and_states import save_trainingstate, TrainingState, generate_update_fn, restore_trainingstate
 from flowrec.losses import loss_mse
 from flowrec.utils.py_helper import update_matching_keys
-from flowrec.utils.system import temporary_fix_absl_logging
+from flowrec.utils.system import temporary_fix_absl_logging, set_gpu
 from train_config.train_options.optimizer import get_optimizer
 
 import logging
@@ -45,7 +44,7 @@ flags.DEFINE_integer('epochs',5000,'Number of epochs to run.')
 flags.DEFINE_bool('wandb',False,'Use --wandb to log the experiment to wandb.')
 flags.DEFINE_multi_string('debug',None,'Run these scripts in debug mode.')
 flags.DEFINE_integer('gpu_id',None,'Which gpu use.')
-flags.DEFINE_float('gpu_mem',0.3,'Fraction of gpu memory to use.')
+flags.DEFINE_float('gpu_mem',0.9,'Fraction of gpu memory to use.')
 flags.DEFINE_string('run_path',None,'The path to the folder that contains the checkpoint.')
 flags.DEFINE_bool('chatty',False,'Print information on where the program is at now.')
 
@@ -282,8 +281,7 @@ def main(_):
 
     # ===================== setting up system ==========================
     if FLAGS.gpu_id:
-        jax.config.update("jax_default_device", jax.devices()[FLAGS.gpu_id])
-    os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = str(FLAGS.gpu_mem)
+        set_gpu(FLAGS.gpu_id, FLAGS.gpu_mem)
     
 
     if FLAGS.chatty:
