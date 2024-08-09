@@ -87,7 +87,6 @@ if __name__ == '__main__':
     parser.add_argument('--randseeds', type=int, nargs='+',help='a list of random seeds for weight initialisation', required=True)
     parser.add_argument('--job_prefix', help='Prefix for each run', required=True)
     parser.add_argument('--epochs', type=int, default=20000, help='Number of epochs per run.')
-    # parser.add_argument('--numgpu', type=int, help='Number of gpus available.', required=True)
     parser.add_argument('--sensor_randseeds', type=int, nargs='+',help="a list of random seeds for placing sensors using the observation option 'random_pin'", required=False)
     parser.add_argument('--use_artifact', help="name of the wandb artifact to use", required=False)
     args = parser.parse_args()

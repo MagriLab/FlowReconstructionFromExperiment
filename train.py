@@ -283,8 +283,6 @@ def main(_):
     # ===================== setting up system ==========================
     if FLAGS.gpu_id:
         set_gpu(FLAGS.gpu_id, FLAGS.gpu_mem)
-    #     jax.config.update("jax_default_device", jax.devices()[FLAGS.gpu_id])
-    # os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = str(FLAGS.gpu_mem)
     
     if not FLAGS.result_folder_name:
         _folder = code(cfg.case)

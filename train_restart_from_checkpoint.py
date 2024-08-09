@@ -1,7 +1,6 @@
 from ml_collections import config_flags, config_dict
 from absl import app, flags
 import sys
-import os
 import re
 from pathlib import Path
 from typing import Sequence, Callable, Optional
@@ -283,8 +282,6 @@ def main(_):
     # ===================== setting up system ==========================
     if FLAGS.gpu_id:
         set_gpu(FLAGS.gpu_id, FLAGS.gpu_mem)
-    #     jax.config.update("jax_default_device", jax.devices()[FLAGS.gpu_id])
-    # os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = str(FLAGS.gpu_mem)
     
 
     if FLAGS.chatty:
