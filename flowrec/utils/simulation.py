@@ -1,10 +1,10 @@
 import numpy as np
 import h5py
-from pathlib import Path
 import warnings
+import logging
+from pathlib import Path
 from typing import Union, Optional
 
-import logging
 
 path = Union[str,Path]
 number = Union[float, int, np.number]

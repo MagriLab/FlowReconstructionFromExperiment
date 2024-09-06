@@ -4,7 +4,7 @@ font.size: 12
 
 figure.figsize: 7,4
 figure.titleweight: bold
-figure.autolayout: True # uncomment for tight layout instead of constrained 
+# figure.autolayout: True # uncomment for tight layout instead of constrained 
 # figure.constrained_layout.use: True
 savefig.format: pdf
 
