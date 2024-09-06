@@ -2,10 +2,8 @@ import numpy as np
 import h5py
 import warnings
 import logging
-import jax.numpy as jnp
 from pathlib import Path
 from typing import Union, Optional
-from scipy.interpolate import RBFInterpolator
 
 
 path = Union[str,Path]
@@ -90,63 +88,6 @@ def take_measurement_base(data:np.ndarray,
 
 
 
-def interpolate_2dtriangle(u, pb, case_observe, datacfg):
-    """Interpolate a 2dtraingle dataset from random sensors.
-    
-    --------------------------
-    u: the training dataset, clean or noisy \n
-    pb: inlet pressure taken from the same dataset \n
-    case_observe: config.case.observe function \n
-    datacfg: config.data_config \n
-    """
-    take_observation, insert_observation = case_observe(datacfg, example_pred_snapshot=u[0,...],example_pin_snapshot=pb[0,...])
-    observed = take_observation(u)
-    temp_observed = np.empty_like(u)
-    temp_observed.fill(np.nan) #this is noisy
-    temp_observed = insert_observation(jnp.asarray(temp_observed),jnp.asarray(observed)) # observed_test is noisy if
-
-    # get sensor coordinates
-    sensors_empty = np.empty_like(u[[0],...])
-    sensors_empty.fill(np.nan)
-
-    grid_x,grid_y = np.mgrid[0:u[...,0].shape[1], 0:u[...,0].shape[2]]
-
-    gridx1 = np.repeat(grid_x[None,:,:,None],3,axis=3)
-    gridy1 = np.repeat(grid_y[None,:,:,None],3,axis=3)
-
-    idx_x = take_observation(gridx1)
-    idx_y = take_observation(gridy1)
-
-    idx_x = insert_observation(jnp.asarray(sensors_empty),jnp.asarray(idx_x))[0,...]
-    sensors_loc_x = []
-    for i in range(idx_x.shape[-1]):
-        sensors_loc_x.append(idx_x[...,i][~np.isnan(idx_x[...,i])])
-
-    idx_y = insert_observation(jnp.asarray(sensors_empty),jnp.asarray(idx_y))[0,...]
-    sensors_loc_y = []
-    for i in range(idx_y.shape[-1]):
-        sensors_loc_y.append(idx_y[...,i][~np.isnan(idx_y[...,i])])
-
-
-    compare_interp = list([])
-    nt = u.shape[0]
-    _locs = np.stack((grid_x.flatten(),grid_y.flatten()),axis=-1)
-
-    print('Starting interpolation')
-    for i in range(3):
-        sensors_loc = np.stack((sensors_loc_x[i].flatten(),sensors_loc_y[i].flatten()),axis=-1)
-        for j in range(nt):
-            temp_measurement = temp_observed[j,...,i][~np.isnan(temp_observed[j,...,i])]
-            rbf = RBFInterpolator(sensors_loc,temp_measurement.flatten(),kernel='thin_plate_spline')
-            _interp = rbf(_locs).reshape(grid_x.shape)
-            compare_interp.append(_interp)
-    compare_interp = np.array(compare_interp)
-    compare_interp = np.stack((compare_interp[:nt,...],compare_interp[nt:2*nt,...],compare_interp[2*nt:3*nt,...]),axis=-1)
-
-    return compare_interp, temp_observed
-
-
-
 # ===================== Kolmogorov flow =========================
 
 def read_data_kolsol(data_path: path):
@@ -171,10 +112,3 @@ def kolsol_forcing_term(k:float, ngrid: int, dim:int) -> np.array:
     f = np.tile(f_single_line.reshape((1,-1)),[ngrid,1])
     f = np.stack([f,np.zeros_like(f)],axis=0).reshape((dim,1,ngrid,ngrid))
     return -f
-
-
-
-
-class Interpolator():
-    def __init__():
-        pass
