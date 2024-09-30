@@ -19,11 +19,17 @@ def _empty_fun(x):
     return x
 
 
-def _test_cnn_filters(cnn_filters,cnn_channels):
+def _test_cnn_filters(cnn_filters,cnn_channels,nspace):
     """Make cnn filters from user input. If only one filter size is given, then the same filter size will be applied to all layers."""
     if len(cnn_filters) == 1:
         logger.info('Received only one convolution filter size, use the same size filter for all layers.')
-        return [cnn_filters[0] for _ in range(len(cnn_channels))]
+        if len(cnn_filters[0]) == nspace:
+            return [cnn_filters[0] for _ in range(len(cnn_channels))]
+        elif len(cnn_filters[0]) == 1:
+            logger.debug(f'Creating square filters of side {cnn_filters[0]}')
+            return [cnn_filters[0]*nspace for _ in range(len(cnn_channels))]
+        else:
+            raise ValueError(f'Filter size {len(cnn_filters[0])} does not match the number of spatial dimensions {nspace}.')
     elif len(cnn_filters) != len(cnn_channels):
         logger.error(f'Received {len(cnn_filters)} filter size for {len(cnn_channels)} layers. Cannot generate network.')
         raise ValueError('Number of filters do not match the number of layers.')
@@ -60,9 +66,9 @@ class Fourier2Branch(hk.Module):
             b1_channels:Sequence[int],
             b2_channels:Sequence[int],
             b3_channels:Sequence[int],
-            b1_filters:List[Tuple[int, ...]] = [(3,3),],
-            b2_filters:List[Tuple[int, ...]] = [(3,3),],
-            b3_filters:List[Tuple[int, ...]] = [(3,3),],
+            b1_filters:List[Tuple[int, ...]] = [(3,),],
+            b2_filters:List[Tuple[int, ...]] = [(3,),],
+            b3_filters:List[Tuple[int, ...]] = [(3,),],
             activation:Callable[[jnp.ndarray],jnp.ndarray] = jax.nn.tanh,
             w_init:Optional[hk.initializers.Initializer]=hk.initializers.VarianceScaling(1.0,"fan_avg","uniform"),
             resize_method:str = 'linear',
@@ -104,11 +110,6 @@ class Fourier2Branch(hk.Module):
         """
         super().__init__(name)
 
-        if 'b0_filter' in kwargs:
-            b0_filter = kwargs['b0_filter']
-        else:
-            b0_filter = (3,3)
-
         try:
             assert isinstance(img_shapes[0], (tuple,list))
             assert len(img_shapes) > 2
@@ -116,9 +117,6 @@ class Fourier2Branch(hk.Module):
             logger.error("Wrong user value for 'img_shapes'.")
             logger.debug(f"The provided img_shapes has length {len(img_shapes)} and the first entry is {img_shapes[0]} of type {type(img_shapes[0])}.")
             raise e
-        fb1 = _test_cnn_filters(b1_filters, b1_channels)
-        fb2 = _test_cnn_filters(b2_filters, b2_channels)
-        fb3 = _test_cnn_filters(b3_filters, b3_channels)
         self.act = activation
         self.dropout_rate = dropout_rate
         self.b0_shape = tuple(img_shapes[0])
@@ -129,28 +127,48 @@ class Fourier2Branch(hk.Module):
         assert isinstance(self.b1_shape[0],int)
         self.output_shape = img_shapes[-1]
         assert isinstance(self.output_shape[0],int)
+        nspace = len(self.output_shape)
+        logger.debug(f'This network expects for {nspace}D data.')
+        fb1 = _test_cnn_filters(b1_filters, b1_channels, nspace)
+        fb2 = _test_cnn_filters(b2_filters, b2_channels, nspace)
+        fb3 = _test_cnn_filters(b3_filters, b3_channels, nspace)
         if len(self.b2_shapes) != len(fb2):
             print(len(self.b2_shapes),len(fb2))
             raise ValueError("The expected number of layers in branch 2 is different when calculating from 'image_shapes' and 'b2_channels'.")
         self.output_dim = b3_channels[-1]
         logger.debug(f'Output will have {self.output_dim} variables.')
         
+        if 'small_mlp' in kwargs and kwargs['small_mlp'] is True:
+            logger.debug('Using a small MLP for upsampling to save memory.')
+            nmlp = np.asarray(self.b0_shape+(1,))
+            self._pre_b0_shape = (-1,)+self.b0_shape+(1,)
+        else:
+            nmlp = np.asarray(self.b0_shape+(self.output_dim,))
+            self._pre_b0_shape = (-1,)+self.b0_shape+(self.output_dim,)
+        if 'b0_filter' in kwargs:
+            b0_filter = kwargs['b0_filter']
+        else:
+            b0_filter = tuple([3]*nspace)
+        if 'ffft_time' in kwargs and kwargs['ffft_time'] is True:
+            fft_axes = list(range(0, len(self.output_shape)+1))
+        else:
+            fft_axes = list(range(1, len(self.output_shape)+1))
+
         # define functions for later
         v_resize = jax.vmap(Partial(jax.image.resize,method=resize_method),(-1,None),-1)
         self.vv_resize = jax.vmap(v_resize,(0,None),0)
 
         ## DEFINE NETWORK
         # define mlp network
-        mlp_size = np.prod(np.asarray(self.b0_shape+(self.output_dim,))).astype('int16')
+        mlp_size = np.prod(nmlp).astype('int16')
         self._mlp = MLP([mlp_size], activation=self.act, w_init=w_init, dropout_rate=self.dropout_rate, **mlp_kwargs)
 
         # branch 0: first convolution
-        self._b0conv = hk.Conv2D(self.output_dim, b0_filter, w_init=w_init, name='branch0_conv',**conv_kwargs)
+        self._b0conv = hk.ConvND(nspace, self.output_dim, b0_filter, w_init=w_init, name='branch0_conv',**conv_kwargs)
 
         # branch 1: image does not change size, fourier if requested
         b1 = []
         if fft_branch:
-            fft_axes = list(range(0, len(self.output_shape)+1))
             self._fft = Partial(jnp.fft.rfftn, axes=fft_axes, **fft_kwargs)
             self._ifft = Partial(jnp.fft.irfftn, axes=fft_axes, **fft_kwargs)
             logger.debug(f'Branch 1 is the Fourier branch. Creating FFT and inverse FFT function. Taking fourier transform over axes {fft_axes}')
@@ -161,7 +179,7 @@ class Fourier2Branch(hk.Module):
 
         for i, (c,f) in enumerate(zip(b1_channels, fb1)):
             b1.append(
-                hk.Conv2D(c, f, name=f'branch1_conv_{i}', **conv_kwargs)
+                hk.ConvND(nspace, c, f, name=f'branch1_conv_{i}', **conv_kwargs)
             )
         logger.info("'w_init' is not specified in branch 1.")
         self.b1 = tuple(b1)
@@ -170,7 +188,7 @@ class Fourier2Branch(hk.Module):
         b2 = []
         for i, (c,f) in enumerate(zip(b2_channels, fb2)):
             b2.append(
-                hk.Conv2D(c, f, w_init=w_init, name=f'branch2_conv_{i}', **conv_kwargs)
+                hk.ConvND(nspace, c, f, w_init=w_init, name=f'branch2_conv_{i}', **conv_kwargs)
             )
         self.b2 = tuple(b2)
 
@@ -178,7 +196,7 @@ class Fourier2Branch(hk.Module):
         b3 = []
         for i, (c,f) in enumerate(zip(b3_channels, fb3)):
             b3.append(
-                hk.Conv2D(c, f, w_init=w_init, name=f'branch3_conv_{i}', **conv_kwargs)
+                hk.ConvND(nspace, c, f, w_init=w_init, name=f'branch3_conv_{i}', **conv_kwargs)
             )
         self.b3 = tuple(b3)
         logger.info(f'Branch 1 has {len(self.b1)} layers, branch 2 has {len(self.b2)} layers, Branch 3 (after merging has) {len(self.b3)} layers.')
@@ -192,7 +210,7 @@ class Fourier2Branch(hk.Module):
             logger.info('Model is called in prediction mode.')
 
         # branch 0
-        x = self._mlp(x,TRAINING).reshape((-1,)+self.b0_shape+(self.output_dim,))
+        x = self._mlp(x,TRAINING).reshape(self._pre_b0_shape)
         logger.debug(f'First reshape to {x.shape}')
         x = self.act(x)
         x = self._b0conv(x)
@@ -260,10 +278,11 @@ class Model(BaseModel):
         b1_channels:Sequence[int],
         b2_channels:Sequence[int],
         b3_channels:Sequence[int],
-        b1_filters:List[Tuple[int, ...]] = [(3,3),],
-        b2_filters:List[Tuple[int, ...]] = [(3,3),],
-        b3_filters:List[Tuple[int, ...]] = [(3,3),],
+        b1_filters:List[Tuple[int, ...]] = [(3,),],
+        b2_filters:List[Tuple[int, ...]] = [(3,),],
+        b3_filters:List[Tuple[int, ...]] = [(3,),],
         dropout_rate:Optional[float] = None,
+        ffft_time = False,
         **kwargs,
     ) -> None:
         super().__init__()
@@ -278,6 +297,7 @@ class Model(BaseModel):
                 b2_filters=b2_filters,
                 b3_filters=b3_filters,
                 dropout_rate=dropout_rate,
+                ffft_time=ffft_time,
                 **kwargs
             )
             return mdl(x, TRAINING)
