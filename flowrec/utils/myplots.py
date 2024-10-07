@@ -9,12 +9,21 @@ from typing import Optional
 # user-defined color maps
 discrete_dict = {
     'defne': ["#03BDAB", "#FEAC16", "#5D00E6","#F2BCF3","#AFEEEE"],
-    # 'overleaf-earth': ['#1e446b','#3c5920','#26aa08','#bf9000','#ffc000'],
     'overleaf-earth': ['#1e446b','#26aa08','#bf9000','#ffc000'],
+    'dunlop-etal-2024': ['#FAF3DD', '#B9D5BA', '#467F79', '#2E4F4A', '#F8DDDA', '#E1D7D0'],
+    'cervia-etal-2024': ['#f7a24f', '#c6133b', '#90162d', '#93a5cb'],
+    'wang-etal-2024': ['#7e4909', '#e5cc8f', '#0e8585', '#cce5e5', '#830783', '#e5cce5'],
+    'bubblegum': [[87./256,212./256,254./256], [255./256,222./256,117./256], [225./256,178./256,239./256], [196./256,224./256,178./256], [255./256,188./256,193./256]],
+    'trafficlight': ['#f18c25', '#d8614f', '#716ea9', '#6a9ace', '#1eb03d'],
+    'trafficlight-pale': ['#faeca8', '#fdd5c0', '#cac0e1', '#abdaec', '#97d1a0'],
 }
 continuous_dict = {
     'defne': ["#03BDAB", "#FEAC16", "#5D00E6"],
     'overleaf-earth': ['#1e446b','#26aa08','#bf9000','#ffc000'],
+    'cervia-etal-2024': ['#f7a24f', '#c6133b', '#90162d', '#93a5cb'],
+    'pastel-blue': ['#bee8e8', '#4c9be6', '#4d4d9f'],
+    'pastel-red': ['#f5dfd8', '#edb8b0', '#e69191', '#c25759'],
+    'bubblegum': [[87./256,212./256,254./256], [255./256,222./256,117./256]],
 }
 
 
