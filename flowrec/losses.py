@@ -21,7 +21,7 @@ def loss_mse(apply_fn:Callable,
             rng:jax.random.PRNGKey, 
             x:Array, 
             y:Array,
-            apply_kwargs:dict,
+            apply_kwargs:dict = {},
             **kwargs) -> float:
     '''Mean squared error for use as loss in training.
     
@@ -48,7 +48,7 @@ def loss_mae(apply_fn:Callable,
             rng:jax.random.PRNGKey, 
             x:Array, 
             y:Array,
-            apply_kwargs:dict,
+            apply_kwargs:dict = {},
             **kwargs) -> float:
     '''Mean absolute error for use as loss in training.
     
