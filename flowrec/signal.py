@@ -1,6 +1,7 @@
 import logging
 logger = logging.getLogger(f'fr.{__name__}')
 import numpy as np
+import jax.numpy as jnp
 
 from scipy.signal import butter, filtfilt
 
@@ -76,6 +77,7 @@ def estimate_noise_floor(
         f1=None, 
         window_fn='hanning',
         convergence='movemean',
+        return_full=False,
         **kwargs
     ) -> Tuple[Scalar, Array]: 
     '''Estimate the power of the white noise.
@@ -86,9 +88,10 @@ def estimate_noise_floor(
         f1: lowest expected noise frequency.\n
         window_fn: window function for use in fft.\n
         convergence: 'standard'-using fft power without futher processing. 'movemean'-using running average to improve convergence.\n
+        return_full: return the frequency range over which the noise floor is calculated in addition to other return values.
         **kwargs: kwargs for use in convergence functions.\n
     Returns:\n
-        estimated_noise_floor, power spectrum of the signal
+        estimated_noise_floor, power spectrum of the signal (if return_full is True, then also returns [frequency lower bound, frequency upper bound])
     '''
 
     dt = 1/fs
@@ -100,14 +103,14 @@ def estimate_noise_floor(
         nfft = ls
 
     if window_fn == 'hanning':
-        window = np.hanning(ls)
+        window = jnp.hanning(ls)
     else:
         raise NotImplementedError
 
-    fftfreq = np.fft.fftfreq(nfft,dt)
+    fftfreq = jnp.fft.fftfreq(nfft,dt)
     df = fs/nfft
-    power = np.abs(
-        np.fft.fft(signal*window, nfft)
+    power = jnp.abs(
+        jnp.fft.fft(signal*window, nfft)
     )**2 
 
     if convergence == 'movemean':
@@ -120,10 +123,13 @@ def estimate_noise_floor(
     f2 = 0.5*fs - df
     if not f1:
         f1 = 0.46*(fs/2) # this is the value given in the paper
-    idx_lower = (np.abs(fftfreq - f1)).argmin()
-    idx_upper = (np.abs(fftfreq - f2)).argmin()
+    idx_lower = (jnp.abs(fftfreq - f1)).argmin()
+    idx_upper = (jnp.abs(fftfreq - f2)).argmin()
 
-    return np.mean(power[idx_lower:idx_upper]), power
+    if return_full:
+        return jnp.mean(power[idx_lower:idx_upper]), power, [f1, f2]
+    else:    
+        return jnp.mean(power[idx_lower:idx_upper]), power
 
 
 def estimate_noise_cutoff_frequency(
