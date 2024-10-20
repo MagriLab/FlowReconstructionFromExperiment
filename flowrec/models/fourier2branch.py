@@ -10,6 +10,7 @@ import numpy as np
 from .feedforward import MLP
 from ._general import BaseModel
 from .._typing import *
+from ..signal import rfftn_filter
 
 from typing import Optional, Callable, Sequence, List, Tuple
 from jax.tree_util import Partial
@@ -78,6 +79,7 @@ class Fourier2Branch(hk.Module):
             fft_kwargs:dict = {},
             mlp_kwargs:dict = {},
             name:Optional[str] = None,
+            fftmask:Optional[str] = None,
             **kwargs
     ) -> None:
         """Initialise with
@@ -153,6 +155,8 @@ class Fourier2Branch(hk.Module):
             fft_axes = list(range(0, len(self.output_shape)+1))
         else:
             fft_axes = list(range(1, len(self.output_shape)+1))
+        if fftmask is None:
+            fftmask = 'no_change'
 
         # define functions for later
         v_resize = jax.vmap(Partial(jax.image.resize,method=resize_method),(-1,None),-1)
@@ -171,10 +175,18 @@ class Fourier2Branch(hk.Module):
         if fft_branch:
             self._fft = Partial(jnp.fft.rfftn, axes=fft_axes, **fft_kwargs)
             self._ifft = Partial(jnp.fft.irfftn, axes=fft_axes, **fft_kwargs)
+            self.mask = rfftn_filter(
+                np.ones(((1,) + tuple(self.b1_shape) + (1,))), 
+                list(range(1,len(self.b1_shape)+1)),
+                fftmask,
+                0.1,
+                value_k0=0.0
+                )
             logger.debug(f'Branch 1 is the Fourier branch. Creating FFT and inverse FFT function. Taking fourier transform over axes {fft_axes}')
         else:
             self._fft = _empty_fun
             self._ifft = _empty_fun
+            self.mask = _empty_fun
             logger.debug('No Fourier branch.')
 
         for i, (c,f) in enumerate(zip(b1_channels, fb1)):
@@ -223,6 +235,7 @@ class Fourier2Branch(hk.Module):
         x1 = self.vv_resize(x, self.b1_shape)
         x1 = self._fft(x1)
         logger.debug(f'Output shape of the FFT is {x1.shape}')
+        x1 = x1 * self.mask
         for layer in self.b1:
             x1 = layer(x1)
             x1 = self.dropout(x1, TRAINING, self.dropout_rate)

@@ -5,7 +5,7 @@ import jax.numpy as jnp
 
 from scipy.signal import butter, filtfilt
 
-from typing import Tuple
+from typing import Tuple, Sequence
 from ._typing import *
 
 
@@ -151,3 +151,32 @@ def estimate_noise_cutoff_frequency(
     '''
 
     return np.argmax(power < noise_estimate) * df + slack 
+
+
+def rfftn_filter(a:Array, axes:Sequence, function:str, *args, value_k0:float = 0.):
+    _shape = np.array(a.shape)
+    nx = _shape[axes]
+    fftfreq = []
+    for i in range(len(nx)-1):
+        fftfreq.append(
+            np.fft.fftfreq(nx[i], d=1/nx[i])
+        )
+    fftfreq.append(
+        np.fft.rfftfreq(nx[-1], d=1/nx[-1])
+    )
+    kgrid = np.meshgrid(*fftfreq, indexing='ij')
+    kgrid = np.array(kgrid)
+    kgrid_magnitude = np.sqrt(np.einsum('n... -> ...', kgrid**2))
+    
+    filter_functions = {
+        'exponential_decay': lambda x: 1 / (np.exp(x*args[0])+1),
+        'no_change': lambda x: np.ones_like(x),
+        'polynomial_decay': lambda x: 1/(x**args[0])
+    }
+    mask = np.where(kgrid_magnitude==0, value_k0, filter_functions[function](kgrid_magnitude))
+
+    expanded_shape = np.ones(len(a.shape), dtype=int)
+    expanded_shape[axes] = mask.shape
+    mask = np.reshape(mask, expanded_shape)
+    
+    return mask
