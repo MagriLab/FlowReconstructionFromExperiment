@@ -321,7 +321,7 @@ def main(_):
     logger.info(f'Running case {cfg.case.values()}')
     # data has u_train, u_val, inn_train, inn_val [t, space..., 3] or [t, len]
     logger.info('Loading data.')
-    data, datainfo = cfg.case.dataloader()
+    data, datainfo = cfg.case.dataloader(datacfg)
     logger.debug(f'Data dictionary has {data.keys()}')
     logger.debug(f'Datainfo is {datainfo}')
 
