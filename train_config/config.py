@@ -234,6 +234,5 @@ _default_mdlcfg_fc2branch = {
         'b3_filters': ((3,3),),
         'resize_method': 'linear',
         'fft_branch': True,
-        'fftmask': 'exponential_decay'
     }
 }
