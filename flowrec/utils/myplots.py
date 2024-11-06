@@ -92,3 +92,6 @@ def create_custom_colormap(map_name:str = 'defne',type:str = 'discrete', colors:
     cmap_fn = function_dict[type]
     cmap = cmap_fn(colors_hex, map_name)
     return cmap
+
+
+truegrey = '#808080'
