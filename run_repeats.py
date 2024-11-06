@@ -82,7 +82,7 @@ if __name__ == '__main__':
 
 
     parser = ArgumentParser(description='Run repeats of the same experiments.')
-    parser.add_argument('--experiment', help="The config str to identify this experiment. This is passed to config_experiments.py", required=True)
+    parser.add_argument('experiment', help="The config str to identify this experiment. This is passed to config_experiments.py")
     parser.add_argument('--save_to', help='path to the result folder', required=True)
     parser.add_argument('--randseeds', type=int, nargs='+',help='a list of random seeds for weight initialisation', required=True)
     parser.add_argument('--job_prefix', help='Prefix for each run', required=True)

@@ -326,6 +326,14 @@ def vorticity(u:Array, datainfo:ClassDataMetadata) -> Array:
     return vort
 
 
+def extreme_dissipation_threshold(global_dissipation: Array):
+    """
+    Calculate the threshold of extreme events.
+    -----------------------------------------
+    *Farazmand, Mohammad, and Themistoklis P. Sapsis. ‘A Variational Approach to Probing Extreme Events in Turbulent Dynamical Systems’. Science Advances, vol. 3, no. 9, Sept. 2017, p. e1701533. DOI.org (Crossref), https://doi.org/10.1126/sciadv.1701533.*
+    """
+    return np.mean(global_dissipation) + 2*np.std(global_dissipation)
+
 
 def count_extreme_events(global_dissipation: Array, threshold: Scalar) -> Tuple[list, int]:
     """Count the number of extreme events
@@ -349,3 +357,41 @@ def count_extreme_events(global_dissipation: Array, threshold: Scalar) -> Tuple[
         
     return event_start_idx, len(event_start_idx)
     
+
+
+def get_tke(ufluc:Array, datainfo:ClassDataMetadata) -> tuple[Array, Array, Array]:
+    """Calculate the turbulent kinetic energy
+    ==================================
+
+    - ufluc: velocities, must be shape [t,x,y,u] or [t,x,y,z,u].
+    - datainfo: an instance of DataMetadata.
+
+    return
+    - spectrum: the turbulent kinetic energy sorted by wavenumber.
+    - kbins: a length nbins array of corresponding wavenumbers 
+
+    """
+    _shape = np.array(ufluc.shape)
+    nx = _shape[1:-1]
+    dx = datainfo.discretisation[1:]
+    fftfreq = []
+    dk = 2*np.pi/np.array(dx)
+    for i in range(len(nx)):
+        _k = np.fft.fftfreq(nx[i])*dk[i]
+        fftfreq.append(_k)
+    
+    kgrid = np.meshgrid(*fftfreq, indexing='ij')
+    kgrid = np.array(kgrid)
+    kgrid_magnitude = np.sqrt(np.einsum('n... -> ...', kgrid**2))
+    kgrid_magnitude_int = kgrid_magnitude.astype('int')
+    kmax = np.max(kgrid_magnitude_int)
+    kbins = np.arange(kmax).astype('int')
+
+    u_fft = np.fft.fftn(ufluc,axes=list(range(1,len(dx)+1)))
+    ke_fft = np.sum(u_fft * np.conj(u_fft),axis=-1).real * 0.5
+    ke_avg = np.mean(ke_fft,axis=0)
+    spectrum = np.zeros_like(kbins).astype('float32')
+    for i in kbins:
+        spectrum[i] += 0.5*np.sum(ke_avg[kgrid_magnitude_int==i])
+    
+    return spectrum, kbins
