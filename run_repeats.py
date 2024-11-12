@@ -65,7 +65,7 @@ def main(args):
     gpustr = os.environ['CUDA_VISIBLE_DEVICES']
     gpulst = gpustr.split(",")
     for gpu_id in gpulst:
-        queue.put(int(gpu_id))
+        queue.put(gpu_id)
     
     run_job = partial(job, experiment=args.experiment, save_to=args.save_to, epochs=args.epochs, prefix=args.job_prefix, use_artifact=args.use_artifact)
 
