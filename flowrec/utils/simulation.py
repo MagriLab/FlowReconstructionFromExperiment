@@ -112,3 +112,47 @@ def kolsol_forcing_term(k:float, ngrid: int, dim:int) -> np.array:
     f = np.tile(f_single_line.reshape((1,-1)),[ngrid,1])
     f = np.stack([f,np.zeros_like(f)],axis=0).reshape((dim,1,ngrid,ngrid))
     return -f
+
+
+
+# ======================= Volvo =================================
+
+def read_data_volvo(data_path: path, nondimensional = True):
+    """Read the volvorig data."""
+
+    data_path = Path(data_path)
+    if not data_path.exists():
+        raise ValueError(f"Data path '{data_path.absolute()}' does not exist.")
+
+    data_dict = np.load(Path(data_path, 'data.npz'))
+    u_p = data_dict['data']
+    density = data_dict['density']
+    x = data_dict['x']
+    dx = x[1]-x[0]
+    y = data_dict['y']
+    dy = y[1]-y[0]
+    z = data_dict['z']
+    dz = z[1]-z[0]
+    t = data_dict['t']
+    dt = t[1]-t[0]
+
+    # for non dimensionalisation
+    if nondimensional:
+        l0 = 0.04 #m
+        p0 = 101325
+        density = density.mean()
+        mu = 17.88e-6
+        viscosity = mu/density
+
+        if data_path.name == 'u166':
+            u0 = 16.6 #m/s
+        
+        re = u0*l0/viscosity
+        t0 = l0/u0
+
+        u_p[...,:-1] = u_p[...,:-1]/u0
+        u_p[...,-1] = u_p[...,-1]/p0
+
+        return u_p, [dt/t0, dx/l0, dy/l0, dz/l0], re, density
+    else:
+        return u_p, [dt, dx, dy, dz], re, density
