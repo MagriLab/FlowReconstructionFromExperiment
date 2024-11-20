@@ -410,6 +410,35 @@ def noise_2dkol(testcase:str, snr:int, sensor_randseed:int):
     return cfgstr, mdlcfg_update, datacfg_update, traincfg_update
 
 
+def extreme_events(num_sensors:int, snr:int, sensor_randseed:int):
+    datacfg_update = {
+        'random_sensors': (sensor_randseed, num_sensors),
+        'pressure_inlet_slice': ((8,None,16),(8,None,16)),
+        'data_dir': "./local_data/kolmogorov/dim2_re40_k32_dt1_T800_grid128_586178_short.h5",
+        'train_test_split': (6000,200,200),
+        'randseed': 93658,
+        'snr': snr,
+        're': 40,
+    }
+
+    match snr:
+        case 10:
+            mdlcfg_update = {
+                'b1_channels': (1,),
+                'dropout_rate': 0.001,
+                'fft_branch': True,
+                'b2_filters': ((5,5),),
+            }
+            traincfg_update ={
+                'nb_batches': 30,
+                'learning_rate': 0.001,
+                'regularisation_strength': 0.0005,
+                'lr_scheduler': 'cyclic_decay_default',
+            }
+        case _:
+            raise ValueError
+    
+    return '', mdlcfg_update, datacfg_update, traincfg_update
 
 def get_config(cfgstr:str):
 
@@ -419,7 +448,8 @@ def get_config(cfgstr:str):
     objective_config_str = {
         'noise-2dtriangle': 'dataloader@2dtriangle,model@fc2branch,observe@random_pin,',
         'clean_minimum': 'model@fc2branch,',
-        'noise-2dkol': 'dataloader@2dkol,model@fc2branch,observe@random_pin,'
+        'noise-2dkol': 'dataloader@2dkol,model@fc2branch,observe@random_pin,',
+        'extreme-events': 'dataloader@2dkol,model@fc2branch,observe@random_pin',
     }
 
     objective = experiment['objective']
@@ -489,6 +519,17 @@ def get_config(cfgstr:str):
                     raise NotImplementedError
 
             _cfgstr, mdlcfg_update, datacfg_update, traincfg_update = clean_minimum(**_fn_input)
+
+        case 'extreme-events':
+            print("running experiment 'extreme-events'")
+
+            testcase = {} # case: number of sensors
+            testgroup = {} # signal to noise ratio
+            _cfgstr, mdlcfg_update, datacfg_update, traincfg_update = extreme_events(
+                num_sensors=int(experiment['case']), 
+                snr=int(experiment['group']), 
+                sensor_randseed=int(experiment['sensor_randseed'])
+            )
 
         case _:
             raise NotImplementedError

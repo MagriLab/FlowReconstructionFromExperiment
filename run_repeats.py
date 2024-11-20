@@ -65,7 +65,7 @@ def main(args):
     gpustr = os.environ['CUDA_VISIBLE_DEVICES']
     gpulst = gpustr.split(",")
     for gpu_id in gpulst:
-        queue.put(int(gpu_id))
+        queue.put(gpu_id)
     
     run_job = partial(job, experiment=args.experiment, save_to=args.save_to, epochs=args.epochs, prefix=args.job_prefix, use_artifact=args.use_artifact)
 
@@ -82,7 +82,7 @@ if __name__ == '__main__':
 
 
     parser = ArgumentParser(description='Run repeats of the same experiments.')
-    parser.add_argument('--experiment', help="The config str to identify this experiment. This is passed to config_experiments.py", required=True)
+    parser.add_argument('experiment', help="The config str to identify this experiment. This is passed to config_experiments.py")
     parser.add_argument('--save_to', help='path to the result folder', required=True)
     parser.add_argument('--randseeds', type=int, nargs='+',help='a list of random seeds for weight initialisation', required=True)
     parser.add_argument('--job_prefix', help='Prefix for each run', required=True)

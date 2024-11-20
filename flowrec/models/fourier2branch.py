@@ -157,6 +157,8 @@ class Fourier2Branch(hk.Module):
             fft_axes = list(range(1, len(self.output_shape)+1))
         if fftmask is None:
             fftmask = 'no_change'
+        else:
+            raise NotImplementedError
 
         # define functions for later
         v_resize = jax.vmap(Partial(jax.image.resize,method=resize_method),(-1,None),-1)
@@ -186,7 +188,7 @@ class Fourier2Branch(hk.Module):
         else:
             self._fft = _empty_fun
             self._ifft = _empty_fun
-            self.mask = _empty_fun
+            self.mask = jnp.ones(((1,) + tuple(self.b1_shape) + (1,)))
             logger.debug('No Fourier branch.')
 
         for i, (c,f) in enumerate(zip(b1_channels, fb1)):
