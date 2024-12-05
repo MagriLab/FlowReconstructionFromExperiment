@@ -230,6 +230,19 @@ def clean_minimum(group, sensor_randseed=None, loss_fn=None):
                 'learning_rate': 0.0008,
                 'nb_batches': 38,
             }
+        elif loss_fn == 'physicsnoreplace_mae':
+            mdlcfg_update = {
+                'b1_channels': (4,4),
+                'b1_filters': ((5,5),),
+                'b2_filters': ((5,5),),
+                'fft_branch': False,
+            }
+            traincfg_update = {
+                'lr_scheduler': 'cyclic_decay_default',
+                'learning_rate': 0.004,
+                'nb_batches': 33,
+                'weight_sensors': 8.0
+            }
         else:
             raise NotImplementedError
     else:
@@ -504,7 +517,8 @@ def get_config(cfgstr:str):
             testcase = {
                 '1': 'physicsnoreplace',
                 '2': 'physicswithdata',
-                '3': 'physicsreplacemean'
+                '3': 'physicsreplacemean',
+                '4': 'physicsnoreplace_mae',
             }
             
             _fn_input = {'group':testgroup[experiment['group']]}
