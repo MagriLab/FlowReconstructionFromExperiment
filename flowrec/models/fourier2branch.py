@@ -188,7 +188,7 @@ class Fourier2Branch(hk.Module):
         else:
             self._fft = _empty_fun
             self._ifft = _empty_fun
-            self.mask = jnp.ones(((1,) + tuple(self.b1_shape) + (1,)))
+            self.mask = 1.
             logger.debug('No Fourier branch.')
 
         for i, (c,f) in enumerate(zip(b1_channels, fb1)):

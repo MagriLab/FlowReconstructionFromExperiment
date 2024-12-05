@@ -194,7 +194,10 @@ _default_datacfg = {
         'random_input': placeholder(tuple), # (randseed, number of pressure sensors)
         'forcing_frequency': 4,
         'train_test_split': (6000,500,500)
-    }
+    },
+    '3dvolvo': {
+        'data_dir': './local_data/volvorig/u166/',
+    },
 }
 
 

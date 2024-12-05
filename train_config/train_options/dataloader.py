@@ -292,7 +292,7 @@ def _load_kolsol(cfg:ConfigDict, dim:int) -> tuple[dict, ClassDataMetadata]:
     return data, datainfo
 
 
-def dataloader_2dkol(cfg:ConfigDict = None) -> tuple[dict,ClassDataMetadata]:
+def dataloader_2dkol(cfg:ConfigDict|None = None) -> tuple[dict,ClassDataMetadata]:
     '''Load 2D Kolmogorov flow generated with KolSol.'''
     if not cfg:
         cfg = FLAGS.cfg.data_config
@@ -305,4 +305,34 @@ def dataloader_2dkol(cfg:ConfigDict = None) -> tuple[dict,ClassDataMetadata]:
     ngrid = data['u_val'].shape[datainfo.axx]
     f = simulation.kolsol_forcing_term(cfg.forcing_frequency,ngrid,2)
     data.update({'forcing': f})
+    return data, datainfo
+
+
+def dataloader_3dvolvo(cfg:ConfigDict|None = None) -> tuple[dict,ClassDataMetadata]:
+    if not cfg:
+        cfg = FLAGS.cfg.data_config
+    if cfg.remove_mean:
+        warnings.warn('Method of removing mean from the Kolmogorov data has not been implemented. Ignoring remove_mean in configs.')
+
+    data = {}
+    
+    x, d, re, rho = simulation.read_data_volvo(cfg.data_dir, nondimensional=True)
+    if not cfg.randseed:
+        randseed = np.random.randint(1,10000)
+        cfg.update({'randseed':randseed})
+        logger.info('Make a new random key for loading data.')
+    else:
+        randseed = cfg.randseed
+    rng = np.random.default_rng(randseed)
+    cfg.update({'re':re, 'dt':d[0], 'dx':d[1], 'dy':d[2], 'dz':d[3]})
+    
+    datainfo = DataMetadata(
+        re=re,
+        discretisation=d,
+        axis_index=[0,1,2,3],
+        problem_2d=False
+    ).to_named_tuple()
+    logger.debug(f'Datainfo is {datainfo}.')
+
+    raise NotImplementedError
     return data, datainfo
