@@ -334,5 +334,38 @@ def dataloader_3dvolvo(cfg:ConfigDict|None = None) -> tuple[dict,ClassDataMetada
     ).to_named_tuple()
     logger.debug(f'Datainfo is {datainfo}.')
 
-    raise NotImplementedError
+    if cfg.snr:
+        raise NotImplementedError("Noise is not implemented yet for volvorig.")
+    else:
+        data.update({
+            'u_train_clean': None,
+            'u_val_clean': None
+        })
+    
+    logger.info("Pre-process data that will be used for training")   
+    [u_train, u_val, _], _ = data_partition(
+        x, 
+        axis=0, 
+        partition=cfg.train_test_split,
+        REMOVE_MEAN=cfg.remove_mean,
+        randseed=randseed,
+        SHUFFLE=cfg.shuffle
+    )
+
+    ## get inputs
+    inn_loc = slice_from_tuple(cfg.pressure_inlet_slice)
+    s_pressure = (np.s_[:],) + inn_loc + (np.s_[-1],)
+    logger.info(f'Taking input preessure measurememts at {s_pressure}.')
+
+    inn_train = u_train[s_pressure].reshape((cfg.train_test_split[0],-1))
+    inn_val = u_val[s_pressure].reshape((cfg.train_test_split[1],-1)) # [t,len]
+    data.update({
+        'u_train': u_train, # [t,x,y,4]
+        'u_val': u_val, # [t,x,y,4]
+        'inn_train': inn_train, 
+        'inn_val': inn_val
+    })
+
+    logger.debug(f'Shape of the training set:{u_train.shape}, shape of the inputs:{inn_train.shape}')
+
     return data, datainfo

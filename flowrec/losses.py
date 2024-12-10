@@ -93,7 +93,7 @@ def mse(pred:Array,true:Optional[Array] = None) -> float:
         try:
             chex.assert_equal_shape((pred, true))
         except AssertionError as err:
-            logger.error('Cannot calculate mean squared error, input shape mismatch.')
+            logger.error(f'Cannot calculate mean squared error, input shape mismatch. Prediction has shape {pred.shape}, true has shape {true.shape}.')
             raise err
         loss = jnp.mean((pred-true)**2)
     else:
