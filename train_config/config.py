@@ -251,5 +251,6 @@ _default_mdlcfg_fc2branch = {
         'b3_channels': (4,),
         'resize_method': 'linear',
         'fft_branch': False,
+        'small_mlp': False,
     }
 }
