@@ -130,7 +130,7 @@ class Fourier2Branch(hk.Module):
         self.output_shape = img_shapes[-1]
         assert isinstance(self.output_shape[0],int)
         nspace = len(self.output_shape)
-        logger.debug(f'This network expects for {nspace}D data.')
+        logger.debug(f'This network expects {nspace}D data.')
         fb1 = _test_cnn_filters(b1_filters, b1_channels, nspace)
         fb2 = _test_cnn_filters(b2_filters, b2_channels, nspace)
         fb3 = _test_cnn_filters(b3_filters, b3_channels, nspace)
@@ -141,9 +141,9 @@ class Fourier2Branch(hk.Module):
         logger.debug(f'Output will have {self.output_dim} variables.')
         
         if 'small_mlp' in kwargs and kwargs['small_mlp'] is True:
-            logger.debug('Using a small MLP for upsampling to save memory.')
             nmlp = np.asarray(self.b0_shape+(1,))
             self._pre_b0_shape = (-1,)+self.b0_shape+(1,)
+            logger.debug(f'Using a small MLP for upsampling to save memory. Reshaping to {self._pre_b0_shape} before the first convolution.')
         else:
             nmlp = np.asarray(self.b0_shape+(self.output_dim,))
             self._pre_b0_shape = (-1,)+self.b0_shape+(self.output_dim,)
@@ -167,6 +167,7 @@ class Fourier2Branch(hk.Module):
         ## DEFINE NETWORK
         # define mlp network
         mlp_size = np.prod(nmlp).astype('int16')
+        logger.debug(f'Create a dense layer of size {mlp_size}, to be reshaped into domain of size {nmlp}.')
         self._mlp = MLP([mlp_size], activation=self.act, w_init=w_init, dropout_rate=self.dropout_rate, **mlp_kwargs)
 
         # branch 0: first convolution
@@ -188,7 +189,7 @@ class Fourier2Branch(hk.Module):
         else:
             self._fft = _empty_fun
             self._ifft = _empty_fun
-            self.mask = jnp.ones(((1,) + tuple(self.b1_shape) + (1,)))
+            self.mask = 1.
             logger.debug('No Fourier branch.')
 
         for i, (c,f) in enumerate(zip(b1_channels, fb1)):
@@ -224,6 +225,7 @@ class Fourier2Branch(hk.Module):
             logger.info('Model is called in prediction mode.')
 
         # branch 0
+        logger.debug(f'Received input with shape {x.shape}')
         x = self._mlp(x,TRAINING).reshape(self._pre_b0_shape)
         logger.debug(f'First reshape to {x.shape}')
         x = self.act(x)

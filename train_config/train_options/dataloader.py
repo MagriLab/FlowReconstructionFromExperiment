@@ -292,7 +292,7 @@ def _load_kolsol(cfg:ConfigDict, dim:int) -> tuple[dict, ClassDataMetadata]:
     return data, datainfo
 
 
-def dataloader_2dkol(cfg:ConfigDict = None) -> tuple[dict,ClassDataMetadata]:
+def dataloader_2dkol(cfg:ConfigDict|None = None) -> tuple[dict,ClassDataMetadata]:
     '''Load 2D Kolmogorov flow generated with KolSol.'''
     if not cfg:
         cfg = FLAGS.cfg.data_config
@@ -305,4 +305,67 @@ def dataloader_2dkol(cfg:ConfigDict = None) -> tuple[dict,ClassDataMetadata]:
     ngrid = data['u_val'].shape[datainfo.axx]
     f = simulation.kolsol_forcing_term(cfg.forcing_frequency,ngrid,2)
     data.update({'forcing': f})
+    return data, datainfo
+
+
+def dataloader_3dvolvo(cfg:ConfigDict|None = None) -> tuple[dict,ClassDataMetadata]:
+    if not cfg:
+        cfg = FLAGS.cfg.data_config
+    if cfg.remove_mean:
+        warnings.warn('Method of removing mean from the Kolmogorov data has not been implemented. Ignoring remove_mean in configs.')
+
+    data = {}
+    
+    x, d, re, rho = simulation.read_data_volvo(cfg.data_dir, nondimensional=True)
+    if not cfg.randseed:
+        randseed = np.random.randint(1,10000)
+        cfg.update({'randseed':randseed})
+        logger.info('Make a new random key for loading data.')
+    else:
+        randseed = cfg.randseed
+    rng = np.random.default_rng(randseed)
+    cfg.update({'re':re, 'dt':d[0], 'dx':d[1], 'dy':d[2], 'dz':d[3]})
+    
+    datainfo = DataMetadata(
+        re=re,
+        discretisation=d,
+        axis_index=[0,1,2,3],
+        problem_2d=False
+    ).to_named_tuple()
+    logger.debug(f'Datainfo is {datainfo}.')
+
+    if cfg.snr:
+        raise NotImplementedError("Noise is not implemented yet for volvorig.")
+    else:
+        data.update({
+            'u_train_clean': None,
+            'u_val_clean': None
+        })
+    
+    logger.info("Pre-process data that will be used for training")   
+    [u_train, u_val, _], _ = data_partition(
+        x, 
+        axis=0, 
+        partition=cfg.train_test_split,
+        REMOVE_MEAN=cfg.remove_mean,
+        randseed=randseed,
+        SHUFFLE=cfg.shuffle
+    )
+
+    ## get inputs
+    inn_loc = slice_from_tuple(cfg.pressure_inlet_slice)
+    s_pressure = (np.s_[:],) + inn_loc + (np.s_[-1],)
+    logger.info(f'Taking input preessure measurememts at {s_pressure}.')
+
+    inn_train = u_train[s_pressure].reshape((cfg.train_test_split[0],-1))
+    inn_val = u_val[s_pressure].reshape((cfg.train_test_split[1],-1)) # [t,len]
+    data.update({
+        'u_train': u_train, # [t,x,y,4]
+        'u_val': u_val, # [t,x,y,4]
+        'inn_train': inn_train, 
+        'inn_val': inn_val
+    })
+
+    logger.debug(f'Shape of the training set:{u_train.shape}, shape of the inputs:{inn_train.shape}')
+
     return data, datainfo

@@ -12,6 +12,7 @@ from ml_collections.config_dict import ConfigDict
 code_dataloader = {
     '2dtriangle': 't2',
     '2dkol': 'k2',
+    '3dvolvo': 'tv',
 }
 code_observe = {
     'grid': 'gd',

@@ -129,6 +129,10 @@ def get_config(cfgstr:str = None):
         cfg.data_config.update({
             'slice_grid_sensors': ((None,None,15), (None,None,5))
         }) # spatial slicing, the default is equivalent to np.s_[::15,::5] in x and y direction
+        if _dataloader == '3dvolvo':
+            cfg.data_config.update({
+                'slice_grid_sensors': ((None,None,None), (None,None,None),(10,11,None))
+            }) # spatial slicing, the default is equivalent to np.s_[:,:,
     elif _observe == 'sparse' or _observe == 'sparse_pin':
         cfg.data_config.update({
             'sensor_index': placeholder(tuple)
@@ -194,7 +198,12 @@ _default_datacfg = {
         'random_input': placeholder(tuple), # (randseed, number of pressure sensors)
         'forcing_frequency': 4,
         'train_test_split': (6000,500,500)
-    }
+    },
+    '3dvolvo': {
+        'data_dir': './local_data/volvorig/u166/',
+        'pressure_inlet_slice': ((0,1,None),(None,None,2),(None,None,None)), # sensors at x=0, a slice at each z, sensor at every other y
+        'train_test_split': (450, 40, 3)
+    },
 }
 
 
@@ -234,5 +243,14 @@ _default_mdlcfg_fc2branch = {
         'b3_filters': ((3,3),),
         'resize_method': 'linear',
         'fft_branch': True,
+    },
+    '3dvolvo': {
+        'img_shapes': ((20,10,10),(10,10,10),(5,5,5),(10,10,10),(40,20,20)),
+        'b1_channels': (1,),
+        'b2_channels': (8,16,8),
+        'b3_channels': (4,),
+        'resize_method': 'linear',
+        'fft_branch': False,
+        'small_mlp': False,
     }
 }

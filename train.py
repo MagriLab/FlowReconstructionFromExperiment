@@ -369,7 +369,7 @@ def main(_):
 
     percent_observed = 100*(observed_train.size/data['u_train'].size)
     if run:
-        run.config.update({'percent_observed':percent_observed},allow_val_change=True)
+        run.config.update({'percent_observed':percent_observed, 're':cfg.data_config.re}, allow_val_change=True)
 
     # ==================== set up model ==============================
     if traincfg.randseed:

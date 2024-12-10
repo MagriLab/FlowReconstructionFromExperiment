@@ -96,6 +96,7 @@ def loss_fn_physicswithdata(cfg,**kwargs):
             logger.debug('Un-normalise before calculating loss.')
 
         pred_observed = take_observation(pred)
+        logger.debug(f'Prediction from the network {pred.shape}, after taking observations {pred_observed.shape}')
         loss_sensor = data_loss_fn(pred_observed, y)
 
         pred_new = insert_observation(pred,y)
@@ -222,7 +223,7 @@ def loss_fn_physicsandmean(cfg, **kwargs):
     wmom = cfg.train_config.weight_momentum
     ws = cfg.train_config.weight_sensors
     
-    logger.warn("This loss function is not in active use, are you looking for 'physicsreplacemean'")
+    logger.warning("This loss function is not in active use, are you looking for 'physicsreplacemean'")
 
     data_loss_fn, div_loss_fn, momentum_loss_fn = _use_mae(**kwargs)
     f = _is_forced(**kwargs)

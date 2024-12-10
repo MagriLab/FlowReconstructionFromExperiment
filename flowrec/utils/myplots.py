@@ -66,8 +66,19 @@ def create_continuous_colormap(colors:list, name:str = 'custom_colormap', N:int 
 
 def create_custom_colormap(map_name:str = 'defne',type:str = 'discrete', colors:Optional[list] = None, N:int = 256):
     """Create a custom colormap.
+    =========================================
+    Choose from an exisiting colourmap or define a new colourmap.
 
-    This function creates either a discrete or continuous colormap based on the given parameters.
+    ## To choose from existing colourmap
+    ``` my_cmap = create_custom_colormap(map_name='available_map_name', type='discrete or continous')
+
+    Avaliable maps
+    - discrete: 'defne', 'overleaf'-earth', dunlop-etal-2024', 'cervia-etal-2024', 'wang-etal-2024', 'bubblegum', 'trafficlight', 'trafficlight-pale'
+    - continuous: 'defne', 'overleaf-earth', 'cervia-etal-2024', 'pastel-blue', 'pastel-red', 'bubblegum'
+
+    ## To define a new custom map
+    ``` my_cmap = create_custom_colormap(map_name='my_new_map', type='discrete or continous', colors=[c1, c2, ...])
+    
 
     Args:
         map_name (str, optional): Name of the custom colormap. Defaults to 'defne'.
