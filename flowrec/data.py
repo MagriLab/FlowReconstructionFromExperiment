@@ -249,8 +249,8 @@ class DataMetadata():
         if self.problem_2d:
             return _Metadata2d(
                 self.re,
-                self.discretisation,
-                self.axis_index,
+                tuple(self.discretisation),
+                tuple(self.axis_index),
                 self.axt,
                 self.axx,
                 self.axy,
@@ -261,8 +261,8 @@ class DataMetadata():
         else:
             return _Metadata3d(
                 self.re,
-                self.discretisation,
-                self.axis_index,
+                tuple(self.discretisation),
+                tuple(self.axis_index),
                 self.axt,
                 self.axx,
                 self.axy,

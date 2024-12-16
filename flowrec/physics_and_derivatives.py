@@ -249,7 +249,7 @@ def dissipation(
     u: Array, 
     datainfo: ClassDataMetadata
     ) -> Array:
-    """Calculate dissipation from velocity
+    """Calculate dissipation from velocity for non-dimensional flows viscosity = 1/Re.
     
     Arguments:\n
         u: [...,u], last dimension must be velocity.\n
@@ -281,14 +281,14 @@ def dissipation(
         return didj_T # for de_fun = v_derivative1 and inn=u -> [j,i,t,x,y,z]
     
     dui_dxj_T = _didj(v_derivative1, u) # [j,i,t,x,y,z]
-
-    d = jnp.einsum('jit... -> t...', dui_dxj_T**2) / re # [t,x,y,z]
+    dijsumdji = jnp.einsum('ji... -> ij...', dui_dxj_T) + dui_dxj_T # [i,j,t,x,y,z]
+    d = jnp.einsum('ijt... -> t...', dijsumdji**2) / re # [t,x,y,z]
 
     return d
  
 
 
-
+@jax.tree_util.Partial(jax.jit,static_argnames=('datainfo'))
 def vorticity(u:Array, datainfo:ClassDataMetadata) -> Array:
     """Calculate vorticity field.\n
     
@@ -316,14 +316,19 @@ def vorticity(u:Array, datainfo:ClassDataMetadata) -> Array:
             )
         return didj_T # for de_fun = v_derivative1 and inn=u -> [j,i,t,x,y,z]
     
-    dui_dxj_T = _didj(v_derivative1, u) # [j,i,t,x,y,z]
+    dui_dxj = jnp.einsum('jit... -> ijt...', _didj(v_derivative1, u)) # [i,j,t,x,y,z]
 
-    vort = dui_dxj_T[0,1,...] - dui_dxj_T[1,0,...]
+    vort = dui_dxj[1,0,...] - dui_dxj[0,1,...]
+    if len(axis_space) == 2:
+        return vort
+    elif len(axis_space) == 3:
+        vort2 = vort
+        vort0 = dui_dxj[2,1,...] - dui_dxj[1,2,...]
+        vort1 = dui_dxj[0,2,...] - dui_dxj[2,0,...]
+        return jnp.stack([vort0,vort1,vort2], )
+    else:
+        raise ValueError
 
-    if len(axis_space) == 3:
-        vort = vort + (dui_dxj_T[1,2] - dui_dxj_T[2,1]) + (dui_dxj_T[2,0]-dui_dxj_T[0,2])
-
-    return vort
 
 
 def extreme_dissipation_threshold(global_dissipation: Array):

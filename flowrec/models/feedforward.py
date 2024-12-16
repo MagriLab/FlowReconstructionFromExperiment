@@ -31,15 +31,15 @@ class MLP(hk.Module):
                 w_init:Optional[hk.initializers.Initializer]=None,
                 activation:Callable[[jnp.ndarray],jnp.ndarray]=None,
                 b_init:Optional[hk.initializers.Initializer]=None,
-                HAS_BIAS:bool=True,
+                has_bias:bool=True,
                 dropout_rate:Optional[float] = None,
                 name:Optional[str] = None):
         super().__init__(name=name)
         self.w_init = w_init
         self.b_init = b_init
         self.act = activation
-        self.HAS_BIAS = HAS_BIAS
-        logger.info('MLP has no bias.') if not HAS_BIAS else None
+        self.has_bias = has_bias
+        logger.info('MLP has no bias.') if not has_bias else None
         
         # add layers
         layers = []
@@ -49,7 +49,7 @@ class MLP(hk.Module):
                 hk.Linear(output_size=output_size,
                             w_init=w_init,
                             b_init=b_init,
-                            with_bias = HAS_BIAS,
+                            with_bias = has_bias,
                             name=f'linear_{index}')
             )
         self.layers = tuple(layers)
