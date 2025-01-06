@@ -166,7 +166,7 @@ class Fourier2Branch(hk.Module):
 
         ## DEFINE NETWORK
         # define mlp network
-        mlp_size = np.prod(nmlp).astype('int16')
+        mlp_size = np.prod(nmlp)
         logger.debug(f'Create a dense layer of size {mlp_size}, to be reshaped into domain of size {nmlp}.')
         self._mlp = MLP([mlp_size], activation=self.act, w_init=w_init, dropout_rate=self.dropout_rate, **mlp_kwargs)
 

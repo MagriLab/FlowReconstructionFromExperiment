@@ -109,8 +109,13 @@ def read_data_kolsol(data_path: path):
 def kolsol_forcing_term(k:float, ngrid: int, dim:int) -> np.array:
     x = np.linspace(0, 2*np.pi, ngrid+1)[:-1]
     f_single_line = np.sin(k*x)
-    f = np.tile(f_single_line.reshape((1,-1)),[ngrid,1])
-    f = np.stack([f,np.zeros_like(f)],axis=0).reshape((dim,1,ngrid,ngrid))
+    shape = [1]*dim
+    shape[1] = -1
+    f = np.broadcast_to(f_single_line.reshape(tuple(shape)), [ngrid]*dim) # expand in all dimension but y. 
+    f = f.reshape((1,)+f.shape)
+    zeros = np.zeros((dim-1,)+f.shape)
+    f = f.reshape((1,)+ f.shape)
+    f = np.concatenate([f,zeros],axis=0)
     return -f
 
 
@@ -137,19 +142,19 @@ def read_data_volvo(data_path: path, nondimensional = True):
     dt = t[1]-t[0]
 
     # for non dimensionalisation
+    l0 = 0.04 #m
+    p0 = 101325 #air
+    density = density.mean()
+    mu = 17.88e-6
+    viscosity = mu/density
+
+    if data_path.name == 'u166':
+        u0 = 16.6 #m/s
+    
+    re = u0*l0/viscosity
+    t0 = l0/u0
+
     if nondimensional:
-        l0 = 0.04 #m
-        p0 = 101325
-        density = density.mean()
-        mu = 17.88e-6
-        viscosity = mu/density
-
-        if data_path.name == 'u166':
-            u0 = 16.6 #m/s
-        
-        re = u0*l0/viscosity
-        t0 = l0/u0
-
         u_p[...,:-1] = u_p[...,:-1]/u0
         u_p[...,-1] = u_p[...,-1]/p0
 

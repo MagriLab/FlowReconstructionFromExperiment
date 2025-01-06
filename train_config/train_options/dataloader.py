@@ -252,8 +252,10 @@ def _load_kolsol(cfg:ConfigDict, dim:int) -> tuple[dict, ClassDataMetadata]:
 
     ## get inputs
     logger.info('Generating inputs')
+    if sum([hasattr(cfg, 'random_input'),hasattr(cfg,'pressure_inlet_slice')]) > 1:
+        raise ValueError("Please only specify one between 'random_input' and 'pressure_inlet_slice")
 
-    if (cfg.random_input) and (not cfg.pressure_inlet_slice):
+    if hasattr(cfg, 'random_input'):
         sensor_seed, num_inputs = cfg.random_input
         logger.info(f'{num_inputs} random pressure inputs generated using random key specified by the user.')
         observation_rng  = np.random.default_rng(sensor_seed)
@@ -270,7 +272,7 @@ def _load_kolsol(cfg:ConfigDict, dim:int) -> tuple[dict, ClassDataMetadata]:
         inn_val = u_val[slice_inn].reshape((-1,num_inputs))
         data.update({'_slice_inn': slice_inn})
 
-    elif (not cfg.random_input) and (cfg.pressure_inlet_slice):
+    elif hasattr(cfg, 'pressure_inlet_slice'):
         inn_loc = slice_from_tuple(cfg.pressure_inlet_slice)
         s_pressure = (np.s_[:],) + inn_loc + (np.s_[-1],)
         inn_train = u_train[s_pressure].reshape((cfg.train_test_split[0],-1))
@@ -304,6 +306,21 @@ def dataloader_2dkol(cfg:ConfigDict|None = None) -> tuple[dict,ClassDataMetadata
 
     ngrid = data['u_val'].shape[datainfo.axx]
     f = simulation.kolsol_forcing_term(cfg.forcing_frequency,ngrid,2)
+    data.update({'forcing': f})
+    return data, datainfo
+
+def dataloader_3dkol(cfg:ConfigDict|None = None) -> tuple[dict,ClassDataMetadata]:
+    '''Load 3D Kolmogorov flow generated with KolSol.'''
+    if not cfg:
+        cfg = FLAGS.cfg.data_config
+    if cfg.remove_mean:
+        warnings.warn('Method of removing mean from the Kolmogorov data has not been implemented. Ignoring remove_mean in configs.')
+    
+    data, datainfo = _load_kolsol(cfg,3)
+
+
+    ngrid = data['u_val'].shape[datainfo.axx]
+    f = simulation.kolsol_forcing_term(cfg.forcing_frequency,ngrid,3)
     data.update({'forcing': f})
     return data, datainfo
 

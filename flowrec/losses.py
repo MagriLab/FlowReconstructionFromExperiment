@@ -197,8 +197,8 @@ def momentum_loss(
 
 
 def relative_error(pred,true):
-    err = np.sqrt(
-        np.sum((pred-true)**2)
-        / np.sum(true**2)
+    err = jnp.sqrt(
+        jnp.sum((pred-true)**2)
+        / jnp.sum(true**2)
     )
     return err

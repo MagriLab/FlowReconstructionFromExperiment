@@ -270,11 +270,13 @@ def observe_sparse_pin(data_config:ConfigDict,
 
 
 # ====================== random sparse ================================
-def observe_random_pin(data_config:ConfigDict,
-                        *, 
-                        example_pred_snapshot:jax.Array, 
-                        example_pin_snapshot:jax.Array,
-                        **kwargs):
+def observe_random_pin(
+        data_config:ConfigDict,
+        *, 
+        example_pred_snapshot:jax.Array, 
+        example_pin_snapshot:jax.Array,
+        **kwargs
+):
     
     # dimensions of the problem
     gridsize_space = example_pred_snapshot.shape[:-1]
@@ -300,6 +302,82 @@ def observe_random_pin(data_config:ConfigDict,
     return observe_sparse_pin(data_config, example_pred_snapshot=example_pred_snapshot, example_pin_snapshot=example_pin_snapshot, **kwargs)
 
 
+# ===================== slice of velocities from a 3D domain ===============
+def observe_slice(
+        data_config:ConfigDict,
+        *,
+        example_pred_snapshot:jax.Array, 
+        example_pin_snapshot:jax.Array,
+        **kwargs
+):
+    # keep dimensions
+    grid_shape = example_pred_snapshot.shape[:-1]
+    dim = len(grid_shape)
+    if (data_config.dz is not None) and (dim != 3):
+        logger.warning(f'Expect 3D data, got grid size {grid_shape}.')
+    
+    x, y, z, num_components = data_config.measure_slice
+
+    _slice_index = np.s_[:,x,y,z,:num_components]
+    s = tuple([slice(None,None,None) if a is None else a for a in _slice_index])
+    slice_shape = example_pred_snapshot[s[1:]].shape
+    num_sensors = np.prod(slice_shape)
+    inn_loc, s_pressure = _make_pressure_index(data_config, **kwargs)
+    pressure_shape = example_pred_snapshot[inn_loc + (-1,)].shape
+    num_pressure = np.prod(pressure_shape)
+    if num_pressure != example_pin_snapshot.size:
+        warnings.warn(f'Expect {num_pressure} pressure measurement at inlet, received {example_pin_snapshot.size}. Is this intentional?')
+    
+    def take_observation(u:jax.Array, **kwargs) -> jax.Array:
+        us = u[s]
+        ps = u[s_pressure]
+
+
+        if ('init' in kwargs) and (kwargs['init'] is True):
+            if data_config.normalise:
+                # logger.info('Normalising observations')
+                num_dim = u.shape[-1]
+                components = np.squeeze(np.split(us, num_dim, axis=-1))
+                if num_dim == dim+1:
+                    # pressure and velocity are both on the slice
+                    components_u = components[:-1]
+                    _, r = normalise(*components_u)
+                    rp = [min(np.min(components[-1]),np.min(ps)), max(np.max(components[-1]),np.max(ps))]
+                    r.append(np.array(rp))
+                elif num_dim == dim:
+                    # only velocities (and all velocities compoenets) on the slice
+                    _, r = normalise(*components)
+                    r.append([ps.min(), ps.max()])
+                else:
+                    # one velocity is missing
+                    logger.error('Nomralisation is not defined when one or more velocity components are not measured.')
+                    r = None
+            else:
+                r = None
+
+            us = us.reshape((-1,num_sensors))
+            ps = ps.reshape((-1,num_pressure))
+            observed = jnp.concatenate((us,ps), axis=1)
+            return observed, r # observed has shape [t,number_of_all_observed]
+        
+        us = us.reshape((-1,num_sensors))
+        ps = ps.reshape((-1,num_pressure))
+        observed = jnp.concatenate((us,ps), axis=1)
+        return observed # observed has shape [t,number_of_all_observed]
+
+    def insert_obervation(pred:jax.Array, observed:jax.Array, **kwargs) -> jax.Array:
+
+        us_observed, ps_observed = jnp.array_split(observed,[num_sensors],axis=1)
+
+        us_observed = us_observed.reshape((-1,)+slice_shape)
+        ps_observed = ps_observed.reshape((-1,)+pressure_shape)
+
+        pred_new = pred.at[s].set(us_observed)
+        pred_new = pred_new.at[s_pressure].set(ps_observed)
+        return pred_new
+    
+    return take_observation, insert_obervation
+                    
 
 # =====================================================================
 
