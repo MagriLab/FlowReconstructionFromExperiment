@@ -61,7 +61,8 @@ def generate_data(args) -> None:
     nt_transients = transients_arange.shape[0]
 
     # setup recording arrays - only need to record fourier field
-    state_hat_arr = np.zeros(shape=(nt, cds.nk_grid, cds.nk_grid, args.ndim+1), dtype=np.complex128)
+    grid_repeat = [cds.nk_grid]*args.ndim
+    state_hat_arr = np.zeros(shape=(nt, *grid_repeat , args.ndim+1), dtype=np.complex128)
 
     # integrate over transients
     msg = '01 :: Integrating over transients.'
