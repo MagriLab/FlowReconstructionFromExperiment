@@ -258,6 +258,8 @@ def dissipation(
     Return:\n
         dissipation: of shape [t,x,y,z]
     """
+    logger.warning('Dissipation not normalised.')
+    # the calculated dissipation matches Elise's results in shape, but not magnitude. This dissipation is not normalised.
 
     step_space = datainfo.discretisation[1:]
     axis_space = datainfo.axis_index[1:]
