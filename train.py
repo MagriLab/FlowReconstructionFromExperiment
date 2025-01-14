@@ -42,7 +42,6 @@ print("Started at: ", time.asctime(time.localtime(time.time())))
 time_stamp = time.strftime("%y%m%d%H%M%S",time.localtime(time.time()))
 
 # ====================== system config ============================
-flags.DEFINE_bool('wandb',False,'Use --wandb to log the experiment to wandb.')
 flags.DEFINE_bool('wandb_sweep',False,'Run script in wandb sweep mode.')
 flags.DEFINE_multi_string('debug',None,'Run these scripts in debug mode.')
 flags.DEFINE_string('gpu_id',None,'Which gpu use.')
@@ -219,22 +218,23 @@ def fit(
         loss_val_sensors.append(float(l_val_s))
 
 
-        if FLAGS.wandb:
-            logger.debug('Logging with wandb.')
-            wandb_run.log({
-                'loss':loss_train[-1],
-                'loss_true':loss_true[-1],
-                'loss_div':loss_div[-1], 
-                'loss_momentum':loss_momentum[-1], 
-                'loss_sensors':loss_sensors[-1],
-                'loss_val':l_val,
-                'loss_val_true': l_val_true,
-                'loss_val_div':l_val_div, 
-                'loss_val_momentum':l_val_mom, 
-                'loss_val_sensors':l_val_s,
-                'loss_total': loss_div[-1] + loss_momentum[-1] + loss_sensors[-1],
-                'loss_val_total': l_val_div + l_val_mom + l_val_s,
-            })
+        if wandb_run is not None:
+            if i % wandb_run.config.log_frequency:
+                logger.debug(f'Logging with wandb every {wandb_run.config.log_frequency} epochs.')
+                wandb_run.log({
+                    'loss':loss_train[-1],
+                    'loss_true':loss_true[-1],
+                    'loss_div':loss_div[-1], 
+                    'loss_momentum':loss_momentum[-1], 
+                    'loss_sensors':loss_sensors[-1],
+                    'loss_val':l_val,
+                    'loss_val_true': l_val_true,
+                    'loss_val_div':l_val_div, 
+                    'loss_val_momentum':l_val_mom, 
+                    'loss_val_sensors':l_val_s,
+                    'loss_total': loss_div[-1] + loss_momentum[-1] + loss_sensors[-1],
+                    'loss_val_total': l_val_div + l_val_mom + l_val_s,
+                })
 
         if l < min_loss:
             best_state = state
@@ -274,6 +274,10 @@ def main(_):
     mdlcfg = FLAGS.cfg.model_config
     traincfg = FLAGS.cfg.train_config
     wandbcfg = FLAGS.wandbcfg
+    if wandbcfg.mode in ['online', 'offline']:
+        use_wandb = True
+    else:
+        use_wandb = False
     if FLAGS._experimentcfgstr:
         logger.warning('train.py is started with a pre-set experiment.')
         wandb_updatecfg = get_wandb_config_experiment(FLAGS._experimentcfgstr).config
@@ -297,10 +301,10 @@ def main(_):
         logger.info(f'Running these scripts in debug mode: {FLAGS.debug}.')
     
     if FLAGS.wandb_sweep:
-        FLAGS.wandb = True
+        use_wandb = True
  
     ## Initialise wandb
-    if FLAGS.wandb:
+    if use_wandb:
         logger.info('Updating wandb config with experiment config')
         update_matching_keys(wandbcfg.config, datacfg)
         update_matching_keys(wandbcfg.config, mdlcfg)
@@ -449,7 +453,7 @@ def main(_):
             normalise=datacfg.normalise,
             y_minmax=data['val_minmax']
         )
-    )
+    ) 
 
     save_config(cfg,tmp_dir)
 
@@ -531,7 +535,7 @@ def main(_):
             # run.finish_artifact(artifact)
     
     
-    if FLAGS.wandb:
+    if use_wandb:
         run.finish()
 
 

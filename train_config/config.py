@@ -208,13 +208,13 @@ _default_datacfg = {
     },
     '3dkol': {
         'data_dir': './local_data/kolmogorov/dim3_re34_k32_f4_dt01_grid64_189.h5',
-        'measure_slice': (None, None, 32, 3), # (x,y,z,num_components), default take the z=32 plane, all velocity components
         're': 34.0,
         'dt': 0.1,
         'dx': 2*np.pi/64,
         'dy': 2*np.pi/64,
         'dz': 2*np.pi/64,
         'pressure_inlet_slice': ((0,1,None),(None,None,None),(None,None,None)),
+        'measure_slice': (None, None, 32, 3), # (x,y,z,num_components), default take the z=32 plane, all velocity components
         'forcing_frequency': 4,
         'train_test_split': (800,100,100)
     }
