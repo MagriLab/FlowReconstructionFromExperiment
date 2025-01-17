@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Sequence, Callable, Optional
 import time
 import h5py
+import warnings
 
 import numpy as np
 import jax
@@ -158,6 +159,7 @@ def fit(
     # compile first
     _ = update(state, rng, x_train_batched[0], y_train_batched[0])
     logger.info('Successfully compiled the update function.')
+    error_logged = False
 
     for i in range(epochs):
         [rng] = jax.random.split(rng,1)
@@ -184,14 +186,21 @@ def fit(
             ## Calculate loss_true = loss_mse_of_all_clean_data+loss_physics
             if i == 0:
                 logger.debug('Calculating true loss using clean data.')
-            l_mse = eval_true_mse_train(
-                state.params,
-                None,
-                x_train_batched[b],
-                yfull_train_batched_clean[b]
-            )
-
-            loss_epoch_true.append(l_mse+l_div+l_mom)
+            try:
+                if not error_logged:
+                    l_mse = eval_true_mse_train(
+                        state.params,
+                        None,
+                        x_train_batched[b],
+                        yfull_train_batched_clean[b]
+                    )
+                    l_true = l_mse+l_div+l_mom
+            except Exception as e:
+                warnings.warn(f'True loss not available.')
+                logger.debug(f'True loss cannot be calculated due to {e}')
+                l_true = 0.0
+                error_logged = True
+            loss_epoch_true.append(l_true)
             
             if (b == 0 or b == n_batch-1) and i == 0:
                 logger.debug(f'batch {b} has size {x_train_batched[b].shape[0]}, loss: {l:.7f}.')
@@ -207,12 +216,21 @@ def fit(
         l_val, (l_val_div, l_val_mom, l_val_s) = mdl_validation_loss(state.params,None,x_val,y_val)
 
         logger.debug('Calculating true validation loss using clean data.')
-        l_val_mse = eval_true_mse_val(state.params,None,x_val,yfull_val_clean)
+        try:
+            if not error_logged:
+                l_val_mse = eval_true_mse_val(state.params,None,x_val,yfull_val_clean)
+                l_val_true = float(np.sum([l_val_div, l_val_mom, l_val_mse]))
+            else:
+                l_val_true = 0.0
+        except Exception as e:
+            warnings.warn('True loss not available.')
+            logger.debug(f'True loss cannot be calculated due to {e}')
+            l_val_true = 0.0
+            error_logged = True
 
-        l_val_true = float(np.sum([l_val_div, l_val_mom, l_val_mse]))
 
         loss_val.append(float(l_val))
-        loss_val_true.append(float(l_val_true))
+        loss_val_true.append(l_val_true)
         loss_val_div.append(float(l_val_div))
         loss_val_momentum.append(float(l_val_mom))
         loss_val_sensors.append(float(l_val_s))
@@ -463,6 +481,7 @@ def main(_):
     y_batched = batching(traincfg.nb_batches, data['y_train'])
     logger.info('Prepared data as required by the model selected and batched the data.')
     logger.debug(f'First batch of input data has shape {x_batched[0].shape}.')
+    logger.debug(f'First batch of reference data {y_batched[0].shape}.')
     logger.debug(f'First batch of output has shape {mdl.predict(state.params, x_batched[0]).shape}')
 
     if FLAGS._noisy:

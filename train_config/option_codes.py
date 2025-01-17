@@ -13,17 +13,21 @@ code_dataloader = {
     '2dtriangle': 't2',
     '2dkol': 'k2',
     '3dvolvo': 'tv',
+    '3dkol': 'k3',
 }
 code_observe = {
     'grid': 'gd',
     'grid_pin': 'gp',
     'sparse': 'sa',
     'sparse_pin': 'sp',
-    'random_pin': 'rp'
+    'random_pin': 'rp',
+    'slice': 'pl',
+    'slice_pin': 'pp',
 }
 code_model = {
     'ffcnn': 'fc',
     'fc2branch': 'b2',
+    'ff': 'ff',
 }
 code_loss = {
     'physicswithdata': 'pi3',
@@ -34,6 +38,7 @@ code_loss = {
     'physicsnoreplace_mae': 'pi1(1)',
     'physicsreplacemean_mae': 'pm3(1)',
     'physicsandmean_mae': 'pm1(1)',
+    'mse': 'mse',
 }
 
 

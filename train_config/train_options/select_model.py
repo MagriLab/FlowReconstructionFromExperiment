@@ -2,7 +2,7 @@ from flowrec._typing import *
 from ml_collections.config_dict import ConfigDict
 
 import flowrec.signal as flowsignal
-from flowrec.models import cnn, fourier2branch
+from flowrec.models import cnn, fourier2branch, feedforward#, slice_to_volume
 from flowrec.data import normalise
 
 
@@ -155,19 +155,7 @@ def select_model_ffcnn(**kwargs):
             
 
 #         if ('normalise' in kwargs) and kwargs['normalise'] is True:
-        if flag_norm:
-
-            r_train = data['train_minmax']
-            r_val = data['val_minmax']
-            
-            logger.info('Normalising inputs to the network.')
-            [new_train_inn, new_val_inn], _ = normalise(data['inn_train'], data['inn_val'], range=[r_train[-1],r_val[-1]])
-
-            data.update({
-                'inn_train': new_train_inn,
-                'inn_val': new_val_inn,
-            })
-            logger.debug('Update inputs to normalised inputs.')
+        data = _norm_inputs(flag_norm, data)
 
         return data
 
@@ -307,19 +295,8 @@ def select_model_fc2branch(**kwargs):
             logger.error('The requested filtering method is not implemented.')
             raise NotImplementedError
 
-#         if ('normalise' in kwargs) and kwargs['normalise'] is True:
-        if flag_norm:
-
-            r_train = data['train_minmax']
-            r_val = data['val_minmax']
-
-            [new_train_inn, new_val_inn], _ = normalise(data['inn_train'], data['inn_val'], range=[r_train[-1],r_val[-1]])
-
-            data.update({
-                'inn_train': new_train_inn,
-                'inn_val': new_val_inn,
-            })
-            logger.debug('Update inputs to normalised inputs.')
+#       if ('normalise' in kwargs) and kwargs['normalise'] is True:
+        data = _norm_inputs(flag_norm, data)
 
         return data
     
@@ -331,4 +308,94 @@ def select_model_fc2branch(**kwargs):
         return mdl
 
     return prep_data, make_model
+    
+
+def select_model_ff(**kwargs):
+    '''Simple feedforward model.\n
+    Pass select_model@ff to use this model.\n
+
+    Returns two functions -- prep_data and make_model.\n
+    1. prep_data: (data:dict -> data_new:dict).
+        Takes the data dictionary and performs data.update({'u_train':new_u_train,'inn_train':new_inn_train, 'u_val':new_u_val, 'inn_val':new_inn_val})
+    
+    2. make_model: (model_config -> BaseModel)
+        Make a model with parameters in model_config and returns that model.
+
+    '''
+
+    if 'datacfg' in kwargs:
+        flag_norm = kwargs['datacfg'].normalise
+        filter_type = kwargs['datacfg'].filter
+
+    def prep_data(data:dict, datainfo:DataMetadata, **kwargs) -> dict:
+        # make data into suitable form
+        if filter_type is not None:
+            logger.error('The requested filtering method is not implemented.')
+            raise NotImplementedError
+#       if ('normalise' in kwargs) and kwargs['normalise'] is True:
+        data = _norm_inputs(flag_norm, data)
+        for k in ['y_train', 'y_val']:
+            if data[k] is not None:
+                nt = data[k].shape[0]
+                data.update({k: data[k].reshape((nt,-1))})
+        for k in ['u_train_clean', 'u_val_clean', 'u_train', 'u_val']:
+            if data[k] is not None:
+                nt = data[k].shape[0]
+                data.update({k: data[k][...,:-1].reshape((nt,-1))})
+        return data
+    
+    def make_model(model_config:ConfigDict) -> BaseModel:
+        # mdl = 'a BaseModel createed with parameters in model_config'
+        # return mdl
+        mdl_config_dict = model_config.to_dict()
+        layers = mdl_config_dict.pop('mlp_layers')
+        mdl = feedforward.Model(layers=layers, **mdl_config_dict)
+        return mdl
+
+    return prep_data, make_model
         
+
+def select_model_addvariables(**kwargs):
+    '''Simple feedforward model.\n
+    Pass select_model@addvariables to use this model.\n
+
+    Returns two functions -- prep_data and make_model.\n
+    1. prep_data: (data:dict -> data_new:dict).
+        Takes the data dictionary and performs data.update({'u_train':new_u_train,'inn_train':new_inn_train, 'u_val':new_u_val, 'inn_val':new_inn_val})
+    
+    2. make_model: (model_config -> BaseModel)
+        Make a model with parameters in model_config and returns that model.
+
+    '''
+    raise NotImplementedError
+
+    def prep_data(data:dict) -> dict:
+        # make data into suitable form
+        return data
+    
+    def make_model(model_config:ConfigDict) -> BaseModel:
+        # mdl = 'a BaseModel createed with parameters in model_config'
+        # return mdl
+        pass
+
+    return prep_data, make_model
+        
+
+
+# =========== helper function ===================
+def _norm_inputs(flag_norm:bool, data:dict):
+    if flag_norm:
+
+        r_train = data['train_minmax']
+        r_val = data['val_minmax']
+        
+        logger.info('Normalising inputs to the network.')
+        [new_train_inn, new_val_inn], _ = normalise(data['inn_train'], data['inn_val'], range=[r_train[-1],r_val[-1]])
+
+        logger.debug('Update inputs to normalised inputs.')
+
+        data.update({
+            'inn_train': new_train_inn,
+            'inn_val': new_val_inn,
+        })
+    return data
