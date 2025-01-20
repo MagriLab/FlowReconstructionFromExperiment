@@ -3,6 +3,7 @@ import h5py
 import numpy as np
 import tqdm
 from argparse import ArgumentParser
+from datetime import datetime
 from typing import Any
 from pathlib import Path
 from kolsol.numpy.solver import KolSol
@@ -144,6 +145,7 @@ def fourier_to_physical(args):
 
 
 if __name__ == '__main__':
+	start_time = datetime.now()
 
     parser = ArgumentParser(
         prog = 'Generate Kolmogorov data',
@@ -230,4 +232,6 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
     args.func(args)
-
+	
+	end_time = datetime.now()
+	print(f'Time taken (hh:mm:ss.ms) {end_time-start_time}')
