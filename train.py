@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Sequence, Callable, Optional
 import time
 import h5py
+import warnings
 
 import numpy as np
 import jax
@@ -42,7 +43,6 @@ print("Started at: ", time.asctime(time.localtime(time.time())))
 time_stamp = time.strftime("%y%m%d%H%M%S",time.localtime(time.time()))
 
 # ====================== system config ============================
-flags.DEFINE_bool('wandb',False,'Use --wandb to log the experiment to wandb.')
 flags.DEFINE_bool('wandb_sweep',False,'Run script in wandb sweep mode.')
 flags.DEFINE_multi_string('debug',None,'Run these scripts in debug mode.')
 flags.DEFINE_string('gpu_id',None,'Which gpu use.')
@@ -159,6 +159,7 @@ def fit(
     # compile first
     _ = update(state, rng, x_train_batched[0], y_train_batched[0])
     logger.info('Successfully compiled the update function.')
+    error_logged = False
 
     for i in range(epochs):
         [rng] = jax.random.split(rng,1)
@@ -185,14 +186,21 @@ def fit(
             ## Calculate loss_true = loss_mse_of_all_clean_data+loss_physics
             if i == 0:
                 logger.debug('Calculating true loss using clean data.')
-            l_mse = eval_true_mse_train(
-                state.params,
-                None,
-                x_train_batched[b],
-                yfull_train_batched_clean[b]
-            )
-
-            loss_epoch_true.append(l_mse+l_div+l_mom)
+            try:
+                if not error_logged:
+                    l_mse = eval_true_mse_train(
+                        state.params,
+                        None,
+                        x_train_batched[b],
+                        yfull_train_batched_clean[b]
+                    )
+                    l_true = l_mse+l_div+l_mom
+            except Exception as e:
+                warnings.warn(f'True loss not available.')
+                logger.debug(f'True loss cannot be calculated due to {e}')
+                l_true = 0.0
+                error_logged = True
+            loss_epoch_true.append(l_true)
             
             if (b == 0 or b == n_batch-1) and i == 0:
                 logger.debug(f'batch {b} has size {x_train_batched[b].shape[0]}, loss: {l:.7f}.')
@@ -208,33 +216,43 @@ def fit(
         l_val, (l_val_div, l_val_mom, l_val_s) = mdl_validation_loss(state.params,None,x_val,y_val)
 
         logger.debug('Calculating true validation loss using clean data.')
-        l_val_mse = eval_true_mse_val(state.params,None,x_val,yfull_val_clean)
+        try:
+            if not error_logged:
+                l_val_mse = eval_true_mse_val(state.params,None,x_val,yfull_val_clean)
+                l_val_true = float(np.sum([l_val_div, l_val_mom, l_val_mse]))
+            else:
+                l_val_true = 0.0
+        except Exception as e:
+            warnings.warn('True loss not available.')
+            logger.debug(f'True loss cannot be calculated due to {e}')
+            l_val_true = 0.0
+            error_logged = True
 
-        l_val_true = float(np.sum([l_val_div, l_val_mom, l_val_mse]))
 
         loss_val.append(float(l_val))
-        loss_val_true.append(float(l_val_true))
+        loss_val_true.append(l_val_true)
         loss_val_div.append(float(l_val_div))
         loss_val_momentum.append(float(l_val_mom))
         loss_val_sensors.append(float(l_val_s))
 
 
-        if FLAGS.wandb:
-            logger.debug('Logging with wandb.')
-            wandb_run.log({
-                'loss':loss_train[-1],
-                'loss_true':loss_true[-1],
-                'loss_div':loss_div[-1], 
-                'loss_momentum':loss_momentum[-1], 
-                'loss_sensors':loss_sensors[-1],
-                'loss_val':l_val,
-                'loss_val_true': l_val_true,
-                'loss_val_div':l_val_div, 
-                'loss_val_momentum':l_val_mom, 
-                'loss_val_sensors':l_val_s,
-                'loss_total': loss_div[-1] + loss_momentum[-1] + loss_sensors[-1],
-                'loss_val_total': l_val_div + l_val_mom + l_val_s,
-            })
+        if wandb_run is not None:
+            if i % wandb_run.config.log_frequency:
+                logger.debug(f'Logging with wandb every {wandb_run.config.log_frequency} epochs.')
+                wandb_run.log({
+                    'loss':loss_train[-1],
+                    'loss_true':loss_true[-1],
+                    'loss_div':loss_div[-1], 
+                    'loss_momentum':loss_momentum[-1], 
+                    'loss_sensors':loss_sensors[-1],
+                    'loss_val':l_val,
+                    'loss_val_true': l_val_true,
+                    'loss_val_div':l_val_div, 
+                    'loss_val_momentum':l_val_mom, 
+                    'loss_val_sensors':l_val_s,
+                    'loss_total': loss_div[-1] + loss_momentum[-1] + loss_sensors[-1],
+                    'loss_val_total': l_val_div + l_val_mom + l_val_s,
+                })
 
         if l < min_loss:
             best_state = state
@@ -274,6 +292,10 @@ def main(_):
     mdlcfg = FLAGS.cfg.model_config
     traincfg = FLAGS.cfg.train_config
     wandbcfg = FLAGS.wandbcfg
+    if wandbcfg.mode in ['online', 'offline']:
+        use_wandb = True
+    else:
+        use_wandb = False
     if FLAGS._experimentcfgstr:
         logger.warning('train.py is started with a pre-set experiment.')
         wandb_updatecfg = get_wandb_config_experiment(FLAGS._experimentcfgstr).config
@@ -297,10 +319,10 @@ def main(_):
         logger.info(f'Running these scripts in debug mode: {FLAGS.debug}.')
     
     if FLAGS.wandb_sweep:
-        FLAGS.wandb = True
+        use_wandb = True
  
     ## Initialise wandb
-    if FLAGS.wandb:
+    if use_wandb:
         logger.info('Updating wandb config with experiment config')
         update_matching_keys(wandbcfg.config, datacfg)
         update_matching_keys(wandbcfg.config, mdlcfg)
@@ -449,7 +471,7 @@ def main(_):
             normalise=datacfg.normalise,
             y_minmax=data['val_minmax']
         )
-    )
+    ) 
 
     save_config(cfg,tmp_dir)
 
@@ -459,6 +481,7 @@ def main(_):
     y_batched = batching(traincfg.nb_batches, data['y_train'])
     logger.info('Prepared data as required by the model selected and batched the data.')
     logger.debug(f'First batch of input data has shape {x_batched[0].shape}.')
+    logger.debug(f'First batch of reference data {y_batched[0].shape}.')
     logger.debug(f'First batch of output has shape {mdl.predict(state.params, x_batched[0]).shape}')
 
     if FLAGS._noisy:
@@ -531,7 +554,7 @@ def main(_):
             # run.finish_artifact(artifact)
     
     
-    if FLAGS.wandb:
+    if use_wandb:
         run.finish()
 
 

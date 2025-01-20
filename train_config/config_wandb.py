@@ -11,7 +11,7 @@ def get_config(cfgstr:str = None):
         user = dict([x.split('@') for x in cfgstr.split(',')])
     else:
         user = {}
-        warnings.warn('No training case is selected, proceeds with the basic configuration. Are you sure this is not a mistake?')
+        # warnings.warn('No training case is selected, proceeds with the basic configuration. Are you sure this is not a mistake?')
 
     # Set up default options
     _mdl = 'fc2branch'
@@ -23,7 +23,7 @@ def get_config(cfgstr:str = None):
 
     cfg = config_dict.ConfigDict()
 
-    cfg.mode = 'online'
+    cfg.mode = 'disabled' # online, offline, or disabled. Disabled means no runs will be created.
     cfg.project = 'FlowReconstruction'
     cfg.entity = placeholder(str)
     cfg.group = placeholder(str)
@@ -39,6 +39,8 @@ def get_config(cfgstr:str = None):
 
     ## config to pass to wandbinit.config
     cfg.config = config_dict.ConfigDict()
+
+    cfg.config.log_frequency = 10 # must be an integer
 
     # training
     cfg.config.nb_batches = placeholder(int)

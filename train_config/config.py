@@ -50,6 +50,7 @@ def get_basic_config() -> config_dict.ConfigDict:
     cfg.model_config = config_dict.ConfigDict()
     
     cfg.model_config.dropout_rate = 0.0
+    cfg.model_config.name = placeholder(str)
     
 
     ## Training
@@ -121,9 +122,9 @@ def get_config(cfgstr:str = None):
         cfg.data_config.update({
             'slice_grid_sensors': ((None,None,15), (None,None,5))
         }) # spatial slicing, the default is equivalent to np.s_[::15,::5] in x and y direction
-        if _dataloader == '3dvolvo':
+        if _dataloader == '3dvolvo' or _dataloader == '3dkol':
             cfg.data_config.update({
-                'slice_grid_sensors': ((None,None,None), (None,None,None),(10,11,None))
+                'slice_grid_sensors': ((None,None,None), (None,None,None),(None,None,None))
             }) # spatial slicing, the default is equivalent to np.s_[:,:,
     elif _observe == 'sparse' or _observe == 'sparse_pin':
         cfg.data_config.update({
@@ -152,6 +153,8 @@ def get_config(cfgstr:str = None):
         cfg.model_config.update(_default_mdlcfg_ffcnn[_dataloader])
     elif _select_model == 'fc2branch':
         cfg.model_config.update(_default_mdlcfg_fc2branch[_dataloader])
+    elif _select_model == 'ff':
+        cfg.model_config.update(_default_mdlcfg_ff[_dataloader])
     else:
         raise ValueError('Invalid select_model option.')
 
@@ -170,7 +173,10 @@ def get_config(cfgstr:str = None):
             'weight_sensors': 10.0
         })
     else:
-        raise ValueError('Invalid loss_fn option.')
+        try:
+            hasattr(lossfnoptions, _loss_fn)
+        except AttributeError as e:
+            raise ValueError('Invalid loss_fn option.')
 
 
 
@@ -208,13 +214,13 @@ _default_datacfg = {
     },
     '3dkol': {
         'data_dir': './local_data/kolmogorov/dim3_re34_k32_f4_dt01_grid64_189.h5',
-        'measure_slice': (None, None, 32, 3), # (x,y,z,num_components), default take the z=32 plane, all velocity components
         're': 34.0,
         'dt': 0.1,
         'dx': 2*np.pi/64,
         'dy': 2*np.pi/64,
         'dz': 2*np.pi/64,
         'pressure_inlet_slice': ((0,1,None),(None,None,None),(None,None,None)),
+        'measure_slice': (None, None, 32, 3), # (x,y,z,num_components), default take the z=32 plane, all velocity components
         'forcing_frequency': 4,
         'train_test_split': (800,100,100)
     }
@@ -275,5 +281,10 @@ _default_mdlcfg_fc2branch = {
         'resize_method': 'linear',
         'fft_branch': False,
         'small_mlp': True,
+    }
+}
+_default_mdlcfg_ff = {
+    '3dkol': {
+        'mlp_layers': placeholder(tuple),
     }
 }

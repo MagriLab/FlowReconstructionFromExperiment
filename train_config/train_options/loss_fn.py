@@ -259,7 +259,6 @@ def loss_fn_physicsandmean(cfg, **kwargs):
     return Partial(loss_fn, normalise=cfg.data_config.normalise)
 
 
-
 # MAE losses
 def loss_fn_physicswithdata_mae(cfg, **kwargs):
     return loss_fn_physicswithdata(cfg, mae=True, **kwargs)
@@ -270,6 +269,22 @@ def loss_fn_physicsreplacemean_mae(cfg, **kwargs):
 def loss_fn_physicsandmean_mae(cfg, **kwargs):
     return loss_fn_physicsandmean(cfg, mae=True, **kwargs)
 
+
+# ================= simply ones ===============
+def loss_fn_mse(cfg, **kwargs):
+    # def loss_fn(apply_fn:Callable,
+    #             params:Params, 
+    #             rng:jax.random.PRNGKey, 
+    #             x:Sequence[jax.Array], 
+    #             y:Sequence[jax.Array],
+    #             normalise:bool, 
+    #             y_minmax:jax.Array = jnp.array([]),
+    #             apply_kwargs:dict = {}, 
+    #             **kwargs):
+    logger.warning('When using mse, the sensor loss, momentum loss and divergence loss are not calculated and will show as 0.0.')
+    def loss_fn(*args, **kwargs):
+        return losses.loss_mse(*args, **kwargs), (0,0,0)
+    return loss_fn
 
 # ========================================================================
 
