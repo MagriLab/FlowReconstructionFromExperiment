@@ -145,7 +145,8 @@ def fourier_to_physical(args):
 
 
 if __name__ == '__main__':
-	start_time = datetime.now()
+
+    start_time = datetime.now()
 
     parser = ArgumentParser(
         prog = 'Generate Kolmogorov data',
@@ -233,5 +234,5 @@ if __name__ == '__main__':
     args = parser.parse_args()
     args.func(args)
 	
-	end_time = datetime.now()
-	print(f'Time taken (hh:mm:ss.ms) {end_time-start_time}')
+    end_time = datetime.now()
+    print(f'Time taken (hh:mm:ss.ms) {end_time-start_time}')
