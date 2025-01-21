@@ -3,6 +3,7 @@ import h5py
 import numpy as np
 import tqdm
 from argparse import ArgumentParser
+# from sys import getsizeof
 from datetime import datetime
 from typing import Any
 from pathlib import Path
@@ -53,22 +54,34 @@ def generate_data(args) -> None:
 
     cds = KolSol(nk=args.nk, nf=args.nf, re=args.re, ndim=args.ndim) # type: ignore
     field_hat = cds.random_field(magnitude=10.0, sigma=1.2)
+    if args.restart_from is not None:
+        print(f'restarting from {args.restart_from}')
+        with h5py.File(args.restart_from) as hf:
+            field_hat = np.array(hf.get('state_hat')[-1, ..., :-1]) 
+            old_dt = float(hf.get('dt')[()])
+        if old_dt != args.dt:
+            raise ValueError('The provied dt does not match the checkpoint')
+        # print(f'The checkpoint takes up {getsizeof(field_hat)/1024/1024:.5f} MB.')
+    else:
+        field_hat = cds.random_field(magnitude=10.0, sigma=1.2)
+    
+    # only run transient if needed
+    if args.time_transient > 0.0:
+        transients_arange = np.arange(0.0, args.time_transient, args.dt)
+        nt_transients = transients_arange.shape[0]
+        # integrate over transients
+        msg = '01 :: Integrating over transients.'
+        for _ in tqdm.trange(nt_transients, desc=msg):
+            field_hat += args.dt * cds.dynamics(field_hat)
 
     # define time-arrays for simulation run
     t_arange = np.arange(0.0, args.time_simulation, args.dt)
-    transients_arange = np.arange(0.0, args.time_transient, args.dt)
-
     nt = t_arange.shape[0]
-    nt_transients = transients_arange.shape[0]
 
     # setup recording arrays - only need to record fourier field
     grid_repeat = [cds.nk_grid]*args.ndim
     state_hat_arr = np.zeros(shape=(nt, *grid_repeat , args.ndim+1), dtype=np.complex128)
 
-    # integrate over transients
-    msg = '01 :: Integrating over transients.'
-    for _ in tqdm.trange(nt_transients, desc=msg):
-        field_hat += args.dt * cds.dynamics(field_hat)
 
     # integrate over simulation domain
     msg = '02 :: Integrating over simulation domain'
@@ -204,6 +217,12 @@ if __name__ == '__main__':
         default=0.005,
         type=float,
         help='Time step.'
+    )
+    parser_g.add_argument(
+        '--restart_from', 
+        default=None,
+        type=str,
+        help='Restart from a file'
     )
     parser_g.set_defaults(func=generate_data)
 
