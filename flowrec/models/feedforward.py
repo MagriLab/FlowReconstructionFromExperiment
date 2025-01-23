@@ -21,10 +21,10 @@ class MLP(hk.Module):
         activation: activation function to apply between layers (not applied after the last layer).\n
         b_init: Initializer for bias.\n
         HAS_BIAS: if False, do not use bias. Default true.\n
-        dropout_rate: must be a floating point number between [0.,1.]. Dropout is not used if dropout_rate is None, or is the network is called with TRAINING=False.\n
+        dropout_rate: must be a floating point number between [0.,1.]. Dropout is not used if dropout_rate is None, or is the network is called with training=False.\n
         name: name of the network.\n
     
-    After transforming, has method apply(params,rng,inputs,TRAINING=).\n
+    After transforming, has method apply(params,rng,inputs,training=).\n
     '''
     def __init__(self, 
                 output_sizes:list, 
@@ -58,9 +58,9 @@ class MLP(hk.Module):
         self.dropout_rate = dropout_rate
         
 
-    def __call__(self,x,TRAINING):
-        '''Apply network to inputs x. No dropout if TRAINING is false.'''
-        if TRAINING:
+    def __call__(self,x,training):
+        '''Apply network to inputs x. No dropout if training is false.'''
+        if training:
             logger.info('MLP is called in training mode.')
         else:
             logger.info('MLP is called in prediction mode.')   
@@ -71,7 +71,7 @@ class MLP(hk.Module):
             out = layer(out)
             # dropout and activation is not applied after the last layer.
             if i < (num_layers - 1):                
-                if TRAINING and (self.dropout_rate is not None):
+                if training and (self.dropout_rate is not None):
                     logger.debug('Performing dropout.')
                     out = hk.dropout(hk.next_rng_key(), self.dropout_rate, out)
                 out = self.act(out)
@@ -108,20 +108,20 @@ class Model(BaseModel):
         self.layers = layers
 
 
-        def forward_fn(x,TRAINING=True):
+        def forward_fn(x,training=True):
             mlp = MLP(self.layers,
                         w_init=w_init,
                         activation=activation,
                         dropout_rate=dropout_rate,
                         **mlp_kwargs
                         )
-            return mlp(x,TRAINING=TRAINING)
+            return mlp(x,training=training)
         self.mdl = hk.transform(forward_fn)
 
-        self._apply = jax.jit(self.mdl.apply,static_argnames=['TRAINING'])
+        self._apply = jax.jit(self.mdl.apply,static_argnames=['training'])
         self._init = jax.jit(self.mdl.init)
 
-        self._predict = jax.jit(jax.tree_util.Partial(self.mdl.apply,TRAINING=False))
+        self._predict = jax.jit(jax.tree_util.Partial(self.mdl.apply,training=False))
 
         logger.info(f'Successfully created a MLP.')
     
