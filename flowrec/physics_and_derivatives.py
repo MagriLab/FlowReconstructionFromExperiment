@@ -366,12 +366,13 @@ def count_extreme_events(global_dissipation: Array, threshold: Scalar) -> Tuple[
     
 
 
-def get_tke(ufluc:Array, datainfo:ClassDataMetadata) -> tuple[Array, Array, Array]:
+def get_tke(ufluc:Array, datainfo:ClassDataMetadata, **kwargs) -> tuple[Array, Array, Array]:
     """Calculate the turbulent kinetic energy
     ==================================
 
     - ufluc: velocities, must be shape [t,x,y,u] or [t,x,y,z,u].
     - datainfo: an instance of DataMetadata.
+    - Available kwargs: kgrid_magnitude
 
     return
     - spectrum: the turbulent kinetic energy sorted by wavenumber.
@@ -381,16 +382,19 @@ def get_tke(ufluc:Array, datainfo:ClassDataMetadata) -> tuple[Array, Array, Arra
     _shape = np.array(ufluc.shape)
     nx = _shape[1:-1]
     dx = datainfo.discretisation[1:]
-    fftfreq = []
-    dk = 2*np.pi/np.array(dx)
-    for i in range(len(nx)):
-        _k = np.fft.fftfreq(nx[i])*dk[i]
-        fftfreq.append(_k)
-    
-    kgrid = np.meshgrid(*fftfreq, indexing='ij')
-    kgrid = np.array(kgrid)
-    kgrid_magnitude = np.sqrt(np.einsum('n... -> ...', kgrid**2))
-    kgrid_magnitude_int = kgrid_magnitude.astype('int')
+    if 'kgrid_magnitude' in kwargs.keys():
+        kgrid_magnitude_int = kwargs['kgrid_magnitude']
+    else:
+        fftfreq = []
+        dk = 2*np.pi/np.array(dx)
+        for i in range(len(nx)):
+            _k = np.fft.fftfreq(nx[i])*dk[i]
+            fftfreq.append(_k)
+        
+        kgrid = np.meshgrid(*fftfreq, indexing='ij')
+        kgrid = np.array(kgrid)
+        kgrid_magnitude = np.sqrt(np.einsum('n... -> ...', kgrid**2))
+        kgrid_magnitude_int = kgrid_magnitude.astype('int')
     kmax = np.max(kgrid_magnitude_int)
     kbins = np.arange(kmax).astype('int')
 
