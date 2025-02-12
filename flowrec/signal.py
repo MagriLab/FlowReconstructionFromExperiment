@@ -180,3 +180,13 @@ def rfftn_filter(a:Array, axes:Sequence, function:str, *args, value_k0:float = 0
     mask = np.reshape(mask, expanded_shape)
     
     return mask
+
+
+def autocorr(x:Array):
+    '''Autocorrelation of an input 1D array'''
+    x = np.squeeze(np.array(x))
+    if x.ndim != 1:
+        raise ValueError('Autocorrelation can only be calculated from a 1D array.')
+    x_fluc=x-np.mean(x)
+    corr=np.correlate(x_fluc,x_fluc,'full')/(np.var(x)*len(x))
+    return corr[len(x)-1:]

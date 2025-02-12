@@ -217,21 +217,21 @@ class Fourier2Branch(hk.Module):
         logger.info(f'Branch 1 has {len(self.b1)} layers, branch 2 has {len(self.b2)} layers, Branch 3 (after merging has) {len(self.b3)} layers.')
 
 
-    def __call__(self, x, TRAINING):
-        '''Apply network to x. No dropout if TRAINING is false. Activation function is not applied after the last layer.'''
-        if TRAINING:
+    def __call__(self, x, training):
+        '''Apply network to x. No dropout if training is false. Activation function is not applied after the last layer.'''
+        if training:
             logger.info('Model is called in training mode.')
         else:
             logger.info('Model is called in prediction mode.')
 
         # branch 0
         logger.debug(f'Received input with shape {x.shape}')
-        x = self._mlp(x,TRAINING).reshape(self._pre_b0_shape)
+        x = self._mlp(x,training).reshape(self._pre_b0_shape)
         logger.debug(f'First reshape to {x.shape}')
         x = self.act(x)
         x = self._b0conv(x)
         x = self.act(x)
-        x = self.dropout(x, TRAINING, self.dropout_rate)
+        x = self.dropout(x, training, self.dropout_rate)
         logger.debug(f'The inital branch (branch 0) produced an image shape {x.shape}')
 
         ## split branch here
@@ -242,7 +242,7 @@ class Fourier2Branch(hk.Module):
         x1 = x1 * self.mask
         for layer in self.b1:
             x1 = layer(x1)
-            x1 = self.dropout(x1, TRAINING, self.dropout_rate)
+            x1 = self.dropout(x1, training, self.dropout_rate)
             x1 = self.act(x1)
         x1 = self._ifft(x1)
         logger.debug(f'Branch 1 produced an image shape {x1.shape}')
@@ -251,12 +251,12 @@ class Fourier2Branch(hk.Module):
         x2 = self.vv_resize(x, self.b2_shapes[0])
         logger.debug(f'Branch 2 first resize to shape {x2.shape}')
         x2 = self.b2[0](x2)
-        x2 = self.dropout(x2,TRAINING, self.dropout_rate)
+        x2 = self.dropout(x2,training, self.dropout_rate)
         x2 = self.act(x2)
         for new_shape, conv in zip(self.b2_shapes[1:], self.b2[1:]):
             x2 = self.vv_resize(x2, new_shape)
             x2 = conv(x2)
-            x2 = self.dropout(x2,TRAINING, self.dropout_rate)
+            x2 = self.dropout(x2,training, self.dropout_rate)
             x2 = self.act(x2)
         
         ## Merge branch (branch 3)
@@ -265,16 +265,16 @@ class Fourier2Branch(hk.Module):
         logger.debug(f'Merging branch 1 and 2, and resizing to the output shape {self.output_shape}')
         for b3layer in self.b3[:-1]:
             x3 = b3layer(x3)
-            x3 = self.dropout(x3,TRAINING,self.dropout_rate)
+            x3 = self.dropout(x3,training,self.dropout_rate)
             x3 = self.act(x3)
         x3 = self.b3[-1](x3)
 
         return x3
         
     @staticmethod
-    def dropout(x, TRAINING:bool, dropout_rate:Optional[float]):
-        """Apply dropout with if TRAINING is True"""
-        if TRAINING and (dropout_rate is not None):
+    def dropout(x, training:bool, dropout_rate:Optional[float]):
+        """Apply dropout with if training is True"""
+        if training and (dropout_rate is not None):
             logger.debug('Doing dropout')
             return hk.dropout(hk.next_rng_key(), dropout_rate, x)
         else:
@@ -304,7 +304,7 @@ class Model(BaseModel):
     ) -> None:
         super().__init__()
 
-        def forward_fn(x, TRAINING=True):
+        def forward_fn(x, training=True):
             mdl = Fourier2Branch(
                 img_shapes=img_shapes,
                 b1_channels=b1_channels,
@@ -317,12 +317,12 @@ class Model(BaseModel):
                 ffft_time=ffft_time,
                 **kwargs
             )
-            return mdl(x, TRAINING)
+            return mdl(x, training)
         
         self.mdl = hk.transform(forward_fn)
-        self._apply = jax.jit(self.mdl.apply,static_argnames='TRAINING')
+        self._apply = jax.jit(self.mdl.apply,static_argnames='training')
         self._init = jax.jit(self.mdl.init)
-        self._predict = jax.jit(jax.tree_util.Partial(self.mdl.apply,TRAINING=False))
+        self._predict = jax.jit(jax.tree_util.Partial(self.mdl.apply,training=False))
         logger.info('Successfully created model.')
 
         

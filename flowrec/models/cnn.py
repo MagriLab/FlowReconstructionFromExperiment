@@ -28,7 +28,7 @@ class MLPWithCNN(hk.Module):
                 dropout_rate:Optional[float] = None,
                 mlp_kwargs:dict = {},
                 conv_kwargs:dict = {},
-                name: Optional[str] = None):
+                name: Optional[str] = 'ffcnn'):
         '''Initialise with:\n
             mlp_layers: list of output sizes of all layers in the MLP.\n
             output_shape: list of dimensions of the target output.\n
@@ -69,9 +69,9 @@ class MLPWithCNN(hk.Module):
         self.cnn_layers = tuple(cnn_layers)
     
 
-    def __call__(self,x,TRAINING):
-        '''Apply network to x. No dropout is TRAINING is false. Activation function is not applied after the last layer.'''
-        if TRAINING:
+    def __call__(self,x,training):
+        '''Apply network to x. No dropout is training is false. Activation function is not applied after the last layer.'''
+        if training:
             logger.info('Model is called in training mode.')
         else:
             logger.info('Model is called in prediction mode.')   
@@ -80,7 +80,7 @@ class MLPWithCNN(hk.Module):
         # logger.debug(f'Batch size {x.shape[0]} is determined by ')
 
 
-        out = self._mlp(x,TRAINING)
+        out = self._mlp(x,training)
         logger.debug(f'Output of the MLP has shape {out.shape}.')
         out = self.act(out)
 
@@ -90,7 +90,7 @@ class MLPWithCNN(hk.Module):
         for layer in self.cnn_layers[:-1]:
             out = layer(out)
             # apply dropout
-            if TRAINING and (self.dropout_rate is not None):
+            if training and (self.dropout_rate is not None):
                 logger.debug('Doing dropout.')
                 out = hk.dropout(hk.next_rng_key(), self.dropout_rate, out)
             out = self.act(out)
@@ -130,7 +130,7 @@ class Model(BaseModel):
 
         super().__init__()
 
-        def forward_fn(x,TRAINING=True):
+        def forward_fn(x,training=True):
             mdl = MLPWithCNN(mlp_layers,
                             output_shape,
                             cnn_channels,
@@ -138,14 +138,14 @@ class Model(BaseModel):
                             dropout_rate=dropout_rate,
                             mlp_kwargs=mlp_kwargs,
                             conv_kwargs=conv_kwargs)
-            return mdl(x,TRAINING)
+            return mdl(x,training)
         
         self.mdl = hk.transform(forward_fn)
-        self._apply = jax.jit(self.mdl.apply,static_argnames=['TRAINING'])
+        self._apply = jax.jit(self.mdl.apply,static_argnames=['training'])
         self._init = jax.jit(self.mdl.init)
 
         # every time jax.jit is called, the function recompiles.
-        self._predict = jax.jit(jax.tree_util.Partial(self.mdl.apply,TRAINING=False))
+        self._predict = jax.jit(jax.tree_util.Partial(self.mdl.apply,training=False))
 
 
         logger.info('Successfully created model.')

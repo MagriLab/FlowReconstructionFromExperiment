@@ -292,10 +292,10 @@ def main(_):
     mdlcfg = FLAGS.cfg.model_config
     traincfg = FLAGS.cfg.train_config
     wandbcfg = FLAGS.wandbcfg
-    if wandbcfg.mode in ['online', 'offline']:
-        use_wandb = True
-    else:
+    if wandbcfg.mode == 'disabled':
         use_wandb = False
+    else:
+        use_wandb = True
     if FLAGS._experimentcfgstr:
         logger.warning('train.py is started with a pre-set experiment.')
         wandb_updatecfg = get_wandb_config_experiment(FLAGS._experimentcfgstr).config
@@ -440,7 +440,7 @@ def main(_):
         jax.tree_util.Partial(
             loss_fn,
             mdl.apply,
-            apply_kwargs={'TRAINING':False},
+            apply_kwargs={'training':False},
             y_minmax=data['val_minmax']
         )
     )
@@ -458,7 +458,7 @@ def main(_):
         jax.tree_util.Partial(
             loss_mse,
             mdl.apply,
-            apply_kwargs={'TRAINING':False},
+            apply_kwargs={'training':False},
             normalise=datacfg.normalise,
             y_minmax=data['train_minmax']
         )
@@ -467,7 +467,7 @@ def main(_):
         jax.tree_util.Partial(
             loss_mse,
             mdl.apply,
-            apply_kwargs={'TRAINING':False},
+            apply_kwargs={'training':False},
             normalise=datacfg.normalise,
             y_minmax=data['val_minmax']
         )
