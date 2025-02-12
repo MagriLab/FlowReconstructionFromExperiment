@@ -8,7 +8,9 @@ from argparse import ArgumentParser
 from datetime import datetime
 from typing import Any
 from pathlib import Path
-from kolsol.numpy.solver import KolSol
+from kolsol.torch.solver import KolSol as torchKolSol
+from kolsol.numpy.solver import KolSol as numpyKolSol
+import torch
 
 def setup_directory(data_path) -> None:
 
@@ -53,12 +55,13 @@ def generate_data(args) -> None:
     data_path = Path(args.data_path)
     setup_directory(data_path)
 
-    cds = KolSol(nk=args.nk, nf=args.nf, re=args.re, ndim=args.ndim) # type: ignore
+    cds = torchKolSol(nk=args.nk, nf=args.nf, re=args.re, ndim=args.ndim) # type: ignore
     field_hat = cds.random_field(magnitude=10.0, sigma=1.2)
     if args.restart_from is not None:
         print(f'restarting from {args.restart_from}')
         with h5py.File(args.restart_from) as hf:
             field_hat = np.array(hf.get('state_hat')[-1, ..., :-1]) 
+            field_hat = torch.from_numpy(field_hat)
             old_dt = float(hf.get('dt')[()])
         if old_dt != args.dt:
             warnings.warn(f'The provied dt {args.dt} does not match the checkpoint dt {old_dt}')
@@ -141,7 +144,7 @@ def fourier_to_physical(args):
     nb_batch = int(nt/batch)
     if (nt % batch) != 0:
         nb_batch = nb_batch + 1
-    ks = KolSol(nk=nk, nf=nf, re=re, ndim=ndim)
+    ks = numpyKolSol(nk=nk, nf=nf, re=re, ndim=ndim)
     state = []
     for i in tqdm.trange(nb_batch, desc=msg):
         state.append(ks.fourier_to_phys(state_hat[i*batch:(i+1)*batch,...], nref=args.ngrid))
