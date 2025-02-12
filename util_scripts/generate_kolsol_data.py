@@ -2,6 +2,7 @@ import random
 import h5py
 import numpy as np
 import tqdm
+import warnings
 from argparse import ArgumentParser
 # from sys import getsizeof
 from datetime import datetime
@@ -60,7 +61,7 @@ def generate_data(args) -> None:
             field_hat = np.array(hf.get('state_hat')[-1, ..., :-1]) 
             old_dt = float(hf.get('dt')[()])
         if old_dt != args.dt:
-            raise ValueError('The provied dt does not match the checkpoint')
+            warnings.warn(f'The provied dt {args.dt} does not match the checkpoint dt {old_dt}')
         # print(f'The checkpoint takes up {getsizeof(field_hat)/1024/1024:.5f} MB.')
     else:
         field_hat = cds.random_field(magnitude=10.0, sigma=1.2)
@@ -75,32 +76,35 @@ def generate_data(args) -> None:
             field_hat += args.dt * cds.dynamics(field_hat)
 
     # define time-arrays for simulation run
-    t_arange = np.arange(0.0, args.time_simulation, args.dt)
-    nt = t_arange.shape[0]
+    t_generate = np.arange(0.0, args.time_simulation, args.dt)
+    t_save = np.arange(0.0, args.time_simulation, args.dt*args.save_frequency)
+    ntg = t_generate.shape[0]
+    nts = t_save.shape[0]
 
     # setup recording arrays - only need to record fourier field
     grid_repeat = [cds.nk_grid]*args.ndim
-    state_hat_arr = np.zeros(shape=(nt, *grid_repeat , args.ndim+1), dtype=np.complex128)
+    state_hat_arr = np.zeros(shape=(nts, *grid_repeat , args.ndim+1), dtype=np.complex128)
 
 
     # integrate over simulation domain
     msg = '02 :: Integrating over simulation domain'
-    for t in tqdm.trange(nt, desc=msg):
-
+    for t in tqdm.trange(ntg, desc=msg):
         # time integrate
         field_hat += args.dt * cds.dynamics(field_hat)
 
-        # record metrics
-        state_hat_arr[t, ..., :-1] = field_hat
-        state_hat_arr[t, ..., -1] = cds.pressure(field_hat)
+        if t % args.save_frequency == 0:
+            # record metrics
+            state_hat_arr[int(t/args.save_frequency), ..., :-1] = field_hat
+            state_hat_arr[int(t/args.save_frequency), ..., -1] = cds.pressure(field_hat)
 
     data_dict = {
         're': args.re,
-        'dt': args.dt,
+        'dt': args.dt*args.save_frequency, 
+        'dt_generate': args.dt,
         'nk': args.nk,
         'nf': args.nf,
         'ndim': args.ndim,
-        'time': t_arange,
+        'time': t_save,
         'random_seed': args.random_seed,
         'state_hat': state_hat_arr,
     }
@@ -223,6 +227,12 @@ if __name__ == '__main__':
         default=None,
         type=str,
         help='Restart from a file'
+    )
+    parser_g.add_argument(
+        '--save_frequency',
+        default=1,
+        type=int,
+        help='How often to write output. Default write all snapshots.'
     )
     parser_g.set_defaults(func=generate_data)
 
