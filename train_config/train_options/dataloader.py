@@ -322,6 +322,7 @@ def dataloader_3dkol(cfg:ConfigDict|None = None) -> tuple[dict,ClassDataMetadata
     ngrid = data['u_val'].shape[datainfo.axx]
     f = simulation.kolsol_forcing_term(cfg.forcing_frequency,ngrid,3)
     data.update({'forcing': f})
+    
     return data, datainfo
 
 
