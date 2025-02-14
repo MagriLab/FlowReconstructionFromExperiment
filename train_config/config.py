@@ -65,6 +65,8 @@ def get_basic_config() -> config_dict.ConfigDict:
     
     cfg.train_config.gradient_clip = placeholder(float)
     cfg.train_config.lr_scheduler = 'constant'
+    # cfg.train_config.restart = False
+    # cfg.train_config.opt_state = False
 
 
 
@@ -88,7 +90,7 @@ def get_config(cfgstr:str = None):
         warnings.warn('No training case is selected, proceeds with the basic configuration.\n Are you sure this is not a mistake?')
 
     # Set up default options
-    _dataloader = '2dtriangle'
+    _dataloader = '3dkol'
     _observe = 'grid_pin'
     _select_model = 'fc2branch'
     _loss_fn = 'physicswithdata'
@@ -286,5 +288,6 @@ _default_mdlcfg_fc2branch = {
 _default_mdlcfg_ff = {
     '3dkol': {
         'mlp_layers': placeholder(tuple),
+        'name': 'pretrain',
     }
 }

@@ -197,7 +197,7 @@ def fit(
                     l_true = l_mse+l_div+l_mom
             except Exception as e:
                 warnings.warn(f'True loss not available.')
-                logger.debug(f'True loss cannot be calculated due to {e}')
+                logger.warning(f'True loss cannot be calculated due to {e}')
                 l_true = 0.0
                 error_logged = True
             loss_epoch_true.append(l_true)
@@ -224,7 +224,7 @@ def fit(
                 l_val_true = 0.0
         except Exception as e:
             warnings.warn('True loss not available.')
-            logger.debug(f'True loss cannot be calculated due to {e}')
+            logger.warning(f'True loss cannot be calculated due to {e}')
             l_val_true = 0.0
             error_logged = True
 

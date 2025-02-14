@@ -114,3 +114,15 @@ def restore_trainingstate(ckpt_dir:Union[Path,str], f_name:str):
 
     return jax.tree_util.tree_unflatten(treedef, flat_state)
 
+
+def params_split(params:hk.Params, trainable_layer_names:list[str]) -> tuple[hk.Params, hk.Params]:
+    '''Split params into trainable and non_trainable.'''
+    trainable, non_trainable = hk.data_structures.partition(
+        lambda module_name, name, value: module_name in trainable_layer_names,
+        params
+    )
+    return trainable, non_trainable
+
+def params_merge(*params,**kwargs):
+    '''Alias for haiku.data_structure.merge'''
+    return hk.data_structures.merge(*params,**kwargs)

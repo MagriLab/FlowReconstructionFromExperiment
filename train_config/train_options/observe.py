@@ -323,11 +323,6 @@ def observe_slice(
     slice_shape = example_pred_snapshot[s[1:]].shape
     logger.debug(f'The slice has shape {slice_shape}, index {s}')
     num_sensors = np.prod(slice_shape)
-    # inn_loc, s_pressure = _make_pressure_index(data_config, **kwargs)
-    # pressure_shape = example_pred_snapshot[inn_loc + (-1,)].shape
-    # num_pressure = np.prod(pressure_shape)
-    # if num_pressure != example_pin_snapshot.size:
-        # warnings.warn(f'Expect {num_pressure} pressure measurement at inlet, received {example_pin_snapshot.size}. Is this intentional?')
     
     def take_observation(u:jax.Array, **kwargs) -> jax.Array:
         us = u[s]
@@ -356,25 +351,14 @@ def observe_slice(
             else:
                 r = None
 
-            # us = us.reshape((-1,num_sensors))
-            # ps = ps.reshape((-1,num_pressure))
-            # observed = jnp.concatenate((us,ps), axis=1)
             return us, r # observed has shape [t,number_of_all_observed]
         
-        # us = us.reshape((-1,num_sensors))
-        # ps = ps.reshape((-1,num_pressure))
-        # observed = jnp.concatenate((us,ps), axis=1)
         return us # observed has shape [t,number_of_all_observed]
 
     def insert_obervation(pred:jax.Array, observed:jax.Array, **kwargs) -> jax.Array:
 
-        # us_observed, ps_observed = jnp.array_split(observed,[num_sensors],axis=1)
-
-        # us_observed = us_observed.reshape((-1,)+slice_shape)
-        # ps_observed = ps_observed.reshape((-1,)+pressure_shape)
 
         pred_new = pred.at[s].set(observed)
-        # pred_new = pred_new.at[s_pressure].set(ps_observed)
         return pred_new
     
     return take_observation, insert_obervation

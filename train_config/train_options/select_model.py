@@ -2,7 +2,7 @@ from flowrec._typing import *
 from ml_collections.config_dict import ConfigDict
 
 import flowrec.signal as flowsignal
-from flowrec.models import cnn, fourier2branch, feedforward#, slice_to_volume
+from flowrec.models import cnn, fourier2branch, feedforward, slice_to_volume
 from flowrec.data import normalise
 
 
@@ -332,16 +332,12 @@ def select_model_ff(**kwargs):
         if filter_type is not None:
             logger.error('The requested filtering method is not implemented.')
             raise NotImplementedError
-#       if ('normalise' in kwargs) and kwargs['normalise'] is True:
         data = _norm_inputs(flag_norm, data)
-        for k in ['y_train', 'y_val']:
+        ## Flatten data for FF model
+        for k in ['y_train', 'y_val', 'u_train_clean', 'u_val_clean', 'u_train', 'u_val', 'inn_train', 'inn_val']:
             if data[k] is not None:
                 nt = data[k].shape[0]
                 data.update({k: data[k].reshape((nt,-1))})
-        for k in ['u_train_clean', 'u_val_clean', 'u_train', 'u_val']:
-            if data[k] is not None:
-                nt = data[k].shape[0]
-                data.update({k: data[k][...,:-1].reshape((nt,-1))})
         return data
     
     def make_model(model_config:ConfigDict) -> BaseModel:
@@ -355,9 +351,9 @@ def select_model_ff(**kwargs):
     return prep_data, make_model
         
 
-def select_model_addvariables(**kwargs):
-    '''Simple feedforward model.\n
-    Pass select_model@addvariables to use this model.\n
+def select_model_slice3d(**kwargs):
+    '''3D volume from 2D slice model.\n
+    Pass select_model@slice3d to use this model.\n
 
     Returns two functions -- prep_data and make_model.\n
     1. prep_data: (data:dict -> data_new:dict).
@@ -368,6 +364,12 @@ def select_model_addvariables(**kwargs):
 
     '''
     raise NotImplementedError
+    if 'datacfg' in kwargs:
+        flag_norm = kwargs['datacfg'].normalise
+        filter_type = kwargs['datacfg'].filter
+        if filter_type is not None:
+            logger.error('The requested filtering method is not implemented.')
+            raise NotImplementedError
 
     def prep_data(data:dict) -> dict:
         # make data into suitable form

@@ -79,6 +79,8 @@ def get_config(cfgstr:str = None):
         cfg.config.b2_filters = placeholder(tuple)
         cfg.config.b3_filters = placeholder(tuple)
         cfg.config.fft_branch = placeholder(bool)
+    elif _mdl == 'ff':
+        cfg.config.mlp_layers = placeholder(tuple)
     else:
         raise ValueError('Invalid model option for wandb configuration.')
 
