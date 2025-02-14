@@ -42,6 +42,10 @@ def write_h5(data: dict[str, Any], data_path) -> None:
 
 
 def generate_data(args) -> None:
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    print('Using device:', device)
+    print()
+    # raise NotImplementedError
 
     """Generate Kolmogorov Flow Data."""
 
@@ -55,7 +59,7 @@ def generate_data(args) -> None:
     data_path = Path(args.data_path)
     setup_directory(data_path)
 
-    cds = torchKolSol(nk=args.nk, nf=args.nf, re=args.re, ndim=args.ndim) # type: ignore
+    cds = torchKolSol(nk=args.nk, nf=args.nf, re=args.re, ndim=args.ndim, device=device) # type: ignore
     field_hat = cds.random_field(magnitude=10.0, sigma=1.2)
     if args.restart_from is not None:
         print(f'restarting from {args.restart_from}')
@@ -97,8 +101,8 @@ def generate_data(args) -> None:
 
         if t % args.save_frequency == 0:
             # record metrics
-            state_hat_arr[int(t/args.save_frequency), ..., :-1] = field_hat
-            state_hat_arr[int(t/args.save_frequency), ..., -1] = cds.pressure(field_hat)
+            state_hat_arr[int(t/args.save_frequency), ..., :-1] = field_hat.cpu().numpy()
+            state_hat_arr[int(t/args.save_frequency), ..., -1] = cds.pressure(field_hat).cpu().numpy()
 
     data_dict = {
         're': args.re,
