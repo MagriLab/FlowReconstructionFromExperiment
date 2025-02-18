@@ -14,6 +14,7 @@ code_dataloader = {
     '2dkol': 'k2',
     '3dvolvo': 'tv',
     '3dkol': 'k3',
+    '3dkolsets': 'km',
 }
 code_observe = {
     'grid': 'gd',

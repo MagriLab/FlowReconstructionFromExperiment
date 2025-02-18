@@ -1,5 +1,6 @@
 from flowrec._typing import *
 from ml_collections.config_dict import ConfigDict
+from pathlib import Path
 
 from flowrec.utils import simulation
 from flowrec.utils.py_helper import slice_from_tuple
@@ -157,7 +158,7 @@ def dataloader_2dtriangle(cfg:ConfigDict = None) -> tuple[dict, ClassDataMetadat
 
 
 
-def _load_kolsol(cfg:ConfigDict, dim:int) -> tuple[dict, ClassDataMetadata]:
+def _load_kolsol(cfg:ConfigDict, dim:int, multiplesets:bool = False) -> tuple[dict, ClassDataMetadata]:
     '''Load KolSol data, use dim=2 dor 2D simulation and dim=3 for 3D simulation.'''
 
     if cfg.remove_mean:
@@ -166,8 +167,42 @@ def _load_kolsol(cfg:ConfigDict, dim:int) -> tuple[dict, ClassDataMetadata]:
     data = {}
     logger.debug(f'Loading data with config file {cfg.to_dict()}')
 
-    x, re, dt = simulation.read_data_kolsol(cfg.data_dir)
-    logger.debug(f'The simulated kolmogorov flow has shape {x.shape}')
+    if multiplesets:
+        logger.info('Loading multiple sets of data.')
+        datapath = Path(cfg.data_dir)
+        parent_dir = datapath.parent
+        with open(datapath) as f:
+            datasets_path = [parent_dir/line.rstrip() for line in f]
+        _check_re = []
+        _check_dt = []
+        x = []
+        sets_index = []
+        for d in datasets_path:
+            if not d.exists():
+                raise ValueError(f'{d} does not exist.')
+        datasets_path = datasets_path[:-1] # keep the last set for testing
+        logger.info('Keep the last dataset unseen for testing.')
+        for d in datasets_path:
+            _x, re, dt = simulation.read_data_kolsol(d)
+            x.append(_x)
+            sets_index.append(_x.shape[0]) # keep the number of snapshots in each set
+            _check_dt.append(dt)
+            _check_re.append(re)
+            # check if the datasets are compatible
+            if len(set(_check_dt)) > 1 or len(set(_check_re)) > 1:
+                raise ValueError('Datasets must be generated with the same parameters.')
+        x = np.concatenate(x, axis=0) # build a large dataset
+        num_snapshots_lastset = sets_index[-1] - cfg.train_test_split[1]
+        if num_snapshots_lastset < 0:
+            raise ValueError('Validation data cannot be taken from more than one set of data')
+        else:
+            sets_index[-1] = num_snapshots_lastset
+            if num_snapshots_lastset == 0:
+                sets_index.pop()
+    else:    
+        x, re, dt = simulation.read_data_kolsol(cfg.data_dir)
+        logger.debug(f'The simulated kolmogorov flow has shape {x.shape}')
+        sets_index = None # only one set
     if re != cfg.re or dt!= cfg.dt:
         cfg.update({'re':re, 'dt':dt})
         logger.error('The provided Reynolds number or time step does not match the data')
@@ -288,6 +323,7 @@ def _load_kolsol(cfg:ConfigDict, dim:int) -> tuple[dict, ClassDataMetadata]:
         'u_val': u_val,
         'inn_train': inn_train,
         'inn_val': inn_val,
+        'sets_index': sets_index,
     })
 
 
@@ -318,6 +354,21 @@ def dataloader_3dkol(cfg:ConfigDict|None = None) -> tuple[dict,ClassDataMetadata
     
     data, datainfo = _load_kolsol(cfg,3)
 
+
+    ngrid = data['u_val'].shape[datainfo.axx]
+    f = simulation.kolsol_forcing_term(cfg.forcing_frequency,ngrid,3)
+    data.update({'forcing': f})
+    
+    return data, datainfo
+
+
+def dataloader_3dkolsets(cfg:ConfigDict|None = None) -> tuple[dict, ClassDataMetadata]:
+    if not cfg:
+        cfg = FLAGS.cfg.data_config
+    if cfg.remove_mean:
+        warnings.warn('Method of removing mean from the Kolmogorov data has not been implemented. Ignoring remove_mean in configs.')
+    
+    data, datainfo = _load_kolsol(cfg, 3, multiplesets=True)
 
     ngrid = data['u_val'].shape[datainfo.axx]
     f = simulation.kolsol_forcing_term(cfg.forcing_frequency,ngrid,3)
