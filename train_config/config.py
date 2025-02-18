@@ -90,7 +90,7 @@ def get_config(cfgstr:str = None):
         warnings.warn('No training case is selected, proceeds with the basic configuration.\n Are you sure this is not a mistake?')
 
     # Set up default options
-    _dataloader = '3dkol'
+    _dataloader = '3dkolsets'
     _observe = 'grid_pin'
     _select_model = 'fc2branch'
     _loss_fn = 'physicswithdata'
@@ -225,7 +225,19 @@ _default_datacfg = {
         'measure_slice': (None, None, 32, 3), # (x,y,z,num_components), default take the z=32 plane, all velocity components
         'forcing_frequency': 4,
         'train_test_split': (800,100,100)
-    }
+    },
+    '3dkolsets': {
+        'data_dir': './local_data/kolmogorov/dim3_datasets.txt',
+        're': 34.0,
+        'dt': 0.1,
+        'dx': 2*np.pi/64,
+        'dy': 2*np.pi/64,
+        'dz': 2*np.pi/64,
+        'pressure_inlet_slice': ((0,1,None),(None,None,None),(None,None,None)),
+        'measure_slice': (None, None, 32, 3), # (x,y,z,num_components), default take the z=32 plane, all velocity components
+        'forcing_frequency': 4,
+        'train_test_split': (2250,250,0)
+    },
 }
 
 
@@ -283,11 +295,15 @@ _default_mdlcfg_fc2branch = {
         'resize_method': 'linear',
         'fft_branch': False,
         'small_mlp': True,
-    }
+    },
 }
 _default_mdlcfg_ff = {
     '3dkol': {
         'mlp_layers': placeholder(tuple),
         'name': 'pretrain',
-    }
+    },
+    '3dkolsets':{
+        'mlp_layers': placeholder(tuple),
+        'name': 'pretrain',
+    },
 }

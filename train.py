@@ -35,7 +35,6 @@ logger.setLevel(logging.WARNING)
 temporary_fix_absl_logging()
 
 
-
 FLAGS = flags.FLAGS
 
 
@@ -47,7 +46,7 @@ flags.DEFINE_bool('wandb_sweep',False,'Run script in wandb sweep mode.')
 flags.DEFINE_multi_string('debug',None,'Run these scripts in debug mode.')
 flags.DEFINE_string('gpu_id',None,'Which gpu use.')
 flags.DEFINE_float('gpu_mem',0.9,'Fraction of gpu memory to use.')
-flags.DEFINE_string('result_dir','./local_results/','Path to a directory where the result will be saved.')
+flags.DEFINE_string('result_dir','./local_results/3dkol/','Path to a directory where the result will be saved.')
 flags.DEFINE_string('result_folder_name',None,'Name of the folder where all files from this run will save to. Default the time stamp.')
 flags.DEFINE_bool('chatty',False,'Print information on where the program is at now.')
 
@@ -70,9 +69,25 @@ def debugger(loggers:Sequence[str]):
         logging.getLogger(f'fr.{l}').setLevel(logging.DEBUG)
 
 
-def batching(nb_batches:int, data:jax.Array):
+def batching(nb_batches:int, data:jax.Array, sets_index:list[int] = None) -> list[Array]:
     '''Split data into nb_batches number of batches along axis 0.'''
-    return jnp.array_split(data,nb_batches,axis=0)
+    if sets_index is not None:
+        _index = np.cumsum(sets_index)
+        nt_per_batch = int(np.sum(sets_index)/nb_batches)
+        _index = np.insert(_index,0,0)
+        batched = []
+        for i in range(1,len(_index)):
+            n = int(sets_index[i-1]/nt_per_batch)
+            batched.extend(
+                jnp.array_split(
+                    data[_index[i-1]:_index[i],...], n,
+                    axis=0
+                )
+            )
+        logger.debug(f'Batch sizes are {[d.shape[0] for d in batched]}')
+        return batched
+    else:        
+        return jnp.array_split(data,nb_batches,axis=0)
 
 
 
@@ -474,11 +489,14 @@ def main(_):
     ) 
 
     save_config(cfg,tmp_dir)
+    # Save command to file
+    with open(Path(tmp_dir,"command.txt"), "w") as f:
+        f.write(" ".join(sys.argv))
 
     # ==================== start training ===========================
 
-    x_batched = batching(traincfg.nb_batches, data['inn_train'])
-    y_batched = batching(traincfg.nb_batches, data['y_train'])
+    x_batched = batching(traincfg.nb_batches, data['inn_train'], data['sets_index'])
+    y_batched = batching(traincfg.nb_batches, data['y_train'], data['sets_index'])
     logger.info('Prepared data as required by the model selected and batched the data.')
     logger.debug(f'First batch of input data has shape {x_batched[0].shape}.')
     logger.debug(f'First batch of reference data {y_batched[0].shape}.')
@@ -486,10 +504,10 @@ def main(_):
 
     if FLAGS._noisy:
         logger.debug('Batching clean data because training data is noisy.')
-        yfull_batched_clean = batching(traincfg.nb_batches, data['u_train_clean'])
+        yfull_batched_clean = batching(traincfg.nb_batches, data['u_train_clean'], data['sets_index'])
         yfull_val_clean = data['u_val_clean']
     else:
-        yfull_batched_clean = batching(traincfg.nb_batches, data['u_train'])
+        yfull_batched_clean = batching(traincfg.nb_batches, data['u_train'], data['sets_index'])
         yfull_val_clean = data['u_val']
 
 

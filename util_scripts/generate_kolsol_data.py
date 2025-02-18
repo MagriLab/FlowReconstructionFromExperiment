@@ -60,12 +60,11 @@ def generate_data(args) -> None:
     setup_directory(data_path)
 
     cds = torchKolSol(nk=args.nk, nf=args.nf, re=args.re, ndim=args.ndim, device=device) # type: ignore
-    field_hat = cds.random_field(magnitude=10.0, sigma=1.2)
     if args.restart_from is not None:
         print(f'restarting from {args.restart_from}')
         with h5py.File(args.restart_from) as hf:
             field_hat = np.array(hf.get('state_hat')[-1, ..., :-1]) 
-            field_hat = torch.from_numpy(field_hat)
+            field_hat = torch.from_numpy(field_hat).to(device)
             old_dt = float(hf.get('dt')[()])
         if old_dt != args.dt:
             warnings.warn(f'The provied dt {args.dt} does not match the checkpoint dt {old_dt}')
