@@ -2,7 +2,7 @@ from flowrec._typing import *
 from ml_collections.config_dict import ConfigDict
 
 import flowrec.signal as flowsignal
-from flowrec.models import cnn, fourier2branch, feedforward, slice_to_volume
+from flowrec.models import cnn, fourier2branch, feedforward, slice3d
 from flowrec.data import normalise
 
 

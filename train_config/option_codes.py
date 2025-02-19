@@ -29,6 +29,7 @@ code_model = {
     'ffcnn': 'fc',
     'fc2branch': 'b2',
     'ff': 'ff',
+    'slice3d': 's3',
 }
 code_loss = {
     'physicswithdata': 'pi3',

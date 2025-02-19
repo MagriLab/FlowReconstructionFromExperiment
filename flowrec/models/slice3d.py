@@ -137,10 +137,11 @@ class Model(BaseModel):
                 logger.debug(f'Loading weights from {k1}')
         return params
     
-    def params_split(self, params:hk.Params, trainable_layer_names:List[str]) -> tuple[hk.Params, hk.Params]:
+    def freeze_layers(self, params:hk.Params, frozen_layer_names:List[str]) -> tuple[hk.Params, hk.Params]:
         '''Split params into trainable and non-trainable.'''
-        layer_names = [f'{self.name}/~/' + layer for layer in trainable_layer_names]
-        return params_split_general(params, layer_names)
+        layer_names = [f'{self.name}/~/' + layer for layer in frozen_layer_names]
+        frozen_params, trainable_params = params_split_general(params, layer_names)
+        return frozen_params, trainable_params
 
     def set_nontrainable(self, non_trainable_params:hk.Params):
         '''Make the model remeber the non_trainable_params'''
