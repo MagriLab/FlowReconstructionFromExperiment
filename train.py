@@ -5,17 +5,18 @@ import os
 import re
 from pathlib import Path
 from typing import Sequence, Callable, Optional
+from timeit import timeit
 import time
 import h5py
 import warnings
 
-import numpy as np
+import wandb
 import jax
+import numpy as np
 import jax.numpy as jnp
 
-import wandb
 from flowrec._typing import *
-from flowrec.training_and_states import save_trainingstate, TrainingState, generate_update_fn
+from flowrec.training_and_states import save_trainingstate, TrainingState, generate_update_fn, restore_trainingstate
 from flowrec.losses import loss_mse
 from flowrec.utils.py_helper import update_matching_keys
 from flowrec.utils.system import temporary_fix_absl_logging, set_gpu
@@ -49,6 +50,8 @@ flags.DEFINE_float('gpu_mem',0.9,'Fraction of gpu memory to use.')
 flags.DEFINE_string('result_dir','./local_results/3dkol/','Path to a directory where the result will be saved.')
 flags.DEFINE_string('result_folder_name',None,'Name of the folder where all files from this run will save to. Default the time stamp.')
 flags.DEFINE_bool('chatty',False,'Print information on where the program is at now.')
+flags.DEFINE_bool('resume',False, "True for resuming an exisitng model using the same weights")
+flags.DEFINE_integer('print', 200, "How many epochs to print losses screen.")
 
 
 ## Define interal global variables
@@ -75,9 +78,12 @@ def batching(nb_batches:int, data:jax.Array, sets_index:list[int] = None) -> lis
         _index = np.cumsum(sets_index)
         nt_per_batch = int(np.sum(sets_index)/nb_batches)
         _index = np.insert(_index,0,0)
+        logger.debug(f'Dataset index {list(_index)}. The number of snapshots in total is {data.shape[0]}, {nt_per_batch} snapshots per batch.')
         batched = []
         for i in range(1,len(_index)):
             n = int(sets_index[i-1]/nt_per_batch)
+            if n == 0:
+                logger.critical(f'There are {sets_index[i-1]} snapshots in this dataset but the user asked for {nt_per_batch} snapshots per batch.')
             batched.extend(
                 jnp.array_split(
                     data[_index[i-1]:_index[i],...], n,
@@ -102,10 +108,14 @@ def save_config(config:config_dict.ConfigDict, tmp_dir:Path):
 
 
 
-def wandb_init(wandbcfg:config_dict.ConfigDict):
+def wandb_init(wandbcfg:config_dict.ConfigDict):    
 
     if not wandbcfg.name and not FLAGS.wandb_sweep:
         wandbcfg.update({'name':FLAGS.result_folder_name})
+    
+    ## If resuming from a previously logged run
+    if (wandbcfg.resume is not None) and (wandbcfg.id is None):
+        raise ValueError('wandbcfg.id cannot be None when resuming.')
 
     cfg_dict = wandbcfg.to_dict()
     input_artifact = cfg_dict.pop('use_artifact')
@@ -220,7 +230,8 @@ def fit(
             if (b == 0 or b == n_batch-1) and i == 0:
                 logger.debug(f'batch {b} has size {x_train_batched[b].shape[0]}, loss: {l:.7f}.')
 
-        loss_train.append(np.mean(loss_epoch))
+        l_epoch = np.mean(loss_epoch)
+        loss_train.append(l_epoch)
         loss_div.append(np.mean(loss_epoch_div))
         loss_momentum.append(np.mean(loss_epoch_mom))
         loss_sensors.append(np.mean(loss_epoch_s))
@@ -269,12 +280,12 @@ def fit(
                     'loss_val_total': l_val_div + l_val_mom + l_val_s,
                 })
 
-        if l < min_loss:
+        if l_epoch < min_loss:
             best_state = state
-            min_loss = l
+            min_loss = l_epoch
             save_trainingstate(tmp_dir,state,'state')
 
-        if i%200 == 0:
+        if i%FLAGS.print == 0:
             print(f'Epoch: {i}, loss: {loss_train[-1]:.7f}, validation_loss: {l_val:.7f}', flush=True)
             print(f'    For training, loss_div: {loss_div[-1]:.7f}, loss_momentum: {loss_momentum[-1]:.7f}, loss_sensors: {loss_sensors[-1]:.7f}')
             print(f'    True loss of training: {loss_true[-1]:.7f}, validation: {l_val_true:.7f}')
@@ -335,6 +346,8 @@ def main(_):
     
     if FLAGS.wandb_sweep:
         use_wandb = True
+    if FLAGS.resume:
+        wandbcfg.update({'resume': 'must',})
  
     ## Initialise wandb
     if use_wandb:
@@ -343,9 +356,7 @@ def main(_):
         update_matching_keys(wandbcfg.config, mdlcfg)
         update_matching_keys(wandbcfg.config, traincfg)
         update_matching_keys(wandbcfg.config, cfg.case)
-        # update_matching_keys(wandbcfg.config, {'percent_observed':percent_observed})
         run = wandb_init(wandbcfg)
-        # wandb.config.update({'percent_observed':percent_observed})
         logger.info('Successfully initialised weights and biases.')
         try:
             _datapath = Path(datacfg.data_dir)
@@ -430,13 +441,36 @@ def main(_):
     mdl = make_model(mdlcfg)
     logger.info('Made a model.')
 
-    params = mdl.init(rng,data['inn_val'][0,...])
+    params = mdl.init(rng,data['inn_train'][[0],...])
     logger.info('Initialised weights.')
+    logger.debug('Params shape')
     logger.debug(jax.tree_util.tree_map(lambda x: x.shape,params))
-    
+
+    # ==================== Optimizer ======================
     opt_state = optimizer.init(params)
     logger.info('Initialised optimiser.')
+
+    # ========= restore model weights and optimizer states if requested =======
+    if traincfg.load_state is not None:
+        state_old = restore_trainingstate(Path(traincfg.load_state), 'state')
     
+    if FLAGS.resume:
+        state = state_old
+
+    if traincfg.frozen_layers is not None: # Freeze some layers
+        params = mdl.load_pretrained_weights(params, state_old.params)
+        logger.debug(f'Model has these layers: {list(params)}')
+        logger.debug(f'Freezing these layers {traincfg.frozen_layers}')
+        params_frozen, params = mdl.freeze_layers(params, list(traincfg.frozen_layers))
+        if len(list(params_frozen)) < 1:
+            raise ValueError('No layers have been frozen. Double check the layer names or run in a different training mode.')
+        mdl.set_nontrainable(params_frozen)
+        apply_fn = mdl.apply_trainable
+        # reinitialize optimizer state to use only trainable weights
+        opt_state = optimizer.init(params)
+    else: # no layers are frozen, use normal apply
+        apply_fn = mdl.apply
+
     state = TrainingState(params, opt_state)
 
 
@@ -454,25 +488,24 @@ def main(_):
     mdl_validation_loss = jax.jit(
         jax.tree_util.Partial(
             loss_fn,
-            mdl.apply,
+            apply_fn,
             apply_kwargs={'training':False},
             y_minmax=data['val_minmax']
         )
     )
     update = generate_update_fn(
-        mdl.apply,
+        apply_fn,
         optimizer,
         loss_fn,
         kwargs_value_and_grad={'has_aux':True}, 
         kwargs_loss={'y_minmax':data['train_minmax']}
     ) # this update weights once.
 
-
     logger.info('MSE of the entire field is used to calculate true loss so we can have an idea of the true performance of the model. It is not used in training.')
     eval_mse_train = jax.jit(
         jax.tree_util.Partial(
             loss_mse,
-            mdl.apply,
+            apply_fn,
             apply_kwargs={'training':False},
             normalise=datacfg.normalise,
             y_minmax=data['train_minmax']
@@ -481,7 +514,7 @@ def main(_):
     eval_mse_val = jax.jit(
         jax.tree_util.Partial(
             loss_mse,
-            mdl.apply,
+            apply_fn,
             apply_kwargs={'training':False},
             normalise=datacfg.normalise,
             y_minmax=data['val_minmax']
@@ -500,7 +533,9 @@ def main(_):
     logger.info('Prepared data as required by the model selected and batched the data.')
     logger.debug(f'First batch of input data has shape {x_batched[0].shape}.')
     logger.debug(f'First batch of reference data {y_batched[0].shape}.')
-    logger.debug(f'First batch of output has shape {mdl.predict(state.params, x_batched[0]).shape}')
+    logger.debug(f'First batch of output has shape {apply_fn(state.params, None, x_batched[0], False).shape}')
+    _ = update(state,jax.random.PRNGKey(10),x_batched[0],y_batched[0])
+    logger.info(f"Time taken for each update step {timeit(lambda: update(state, None, x_batched[0], y_batched[0]), number=5)}")
 
     if FLAGS._noisy:
         logger.debug('Batching clean data because training data is noisy.')
@@ -574,6 +609,8 @@ def main(_):
     
     if use_wandb:
         run.finish()
+    
+    print("Finished at: ", time.asctime(time.localtime(time.time())))
 
 
 
@@ -583,4 +620,3 @@ if __name__ == '__main__':
 
     app.run(main)
 
-    print("Finished at: ", time.asctime(time.localtime(time.time())))

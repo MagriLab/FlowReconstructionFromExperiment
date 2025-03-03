@@ -63,6 +63,9 @@ def get_config(cfgstr:str = None):
     cfg.config.filter = placeholder(str)
     cfg.config.percent_observed = placeholder(float)
 
+    # model general
+    cfg.config.activation = placeholder(str)
+
     # not wandb init items
     cfg.use_artifact = placeholder(str)
 

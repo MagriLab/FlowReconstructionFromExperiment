@@ -27,9 +27,9 @@ class MLP(hk.Module):
     After transforming, has method apply(params,rng,inputs,training=).\n
     '''
     def __init__(self, 
-                output_sizes:list, 
+                mlp_layers:list, 
+                activation:str|Callable[[jnp.ndarray],jnp.ndarray]='tanh',
                 w_init:Optional[hk.initializers.Initializer]=None,
-                activation:Callable[[jnp.ndarray],jnp.ndarray]=None,
                 b_init:Optional[hk.initializers.Initializer]=None,
                 has_bias:bool=True,
                 dropout_rate:Optional[float] = None,
@@ -37,14 +37,17 @@ class MLP(hk.Module):
         super().__init__(name=name)
         self.w_init = w_init
         self.b_init = b_init
-        self.act = activation
+        if isinstance(activation,str):
+            self.act = getattr(jax.nn,activation)
+        else:
+            self.act = activation
         self.has_bias = has_bias
         logger.info('MLP has no bias.') if not has_bias else None
         
         # add layers
         layers = []
-        output_sizes = tuple(output_sizes)
-        for index, output_size in enumerate(output_sizes):
+        mlp_layers = tuple(mlp_layers)
+        for index, output_size in enumerate(mlp_layers):
             layers.append(
                 hk.Linear(output_size=output_size,
                             w_init=w_init,
@@ -53,7 +56,7 @@ class MLP(hk.Module):
                             name=f'linear_{index}')
             )
         self.layers = tuple(layers)
-        self.output_size = output_sizes[-1] if output_sizes else None
+        self.output_size = mlp_layers[-1] if mlp_layers else None
 
         self.dropout_rate = dropout_rate
         
@@ -90,8 +93,8 @@ class Model(BaseModel):
     ''' 
 
     def __init__(self, 
-                layers:list, 
-                activation:Callable[[jnp.ndarray],jnp.ndarray]=jax.nn.tanh,
+                mlp_layers:list, 
+                activation:str|Callable[[jnp.ndarray],jnp.ndarray]=jax.nn.tanh,
                 w_init:Optional[hk.initializers.Initializer]=hk.initializers.VarianceScaling(1.0,"fan_avg","uniform"),
                 dropout_rate:Optional[float]=None,
                 **mlp_kwargs) -> None:
@@ -105,7 +108,7 @@ class Model(BaseModel):
             mlp_kwargs: keyword arguments to be passed to haiku.nets.MLP.
         '''
         super().__init__()
-        self.layers = layers
+        self.layers = mlp_layers
 
 
         def forward_fn(x,training=True):

@@ -1,9 +1,13 @@
+import yaml
 from flowrec._typing import *
+from pathlib import Path
 from ml_collections.config_dict import ConfigDict
+from ast import literal_eval
 
 import flowrec.signal as flowsignal
 from flowrec.models import cnn, fourier2branch, feedforward, slice3d
 from flowrec.data import normalise
+from flowrec.training_and_states import restore_trainingstate
 
 
 import logging
@@ -26,7 +30,7 @@ def select_model_example(**kwargs):
 
     '''
 
-    def prep_data(data:dict) -> dict:
+    def prep_data(data:dict, datainfo:DataMetadata, **kwargs) -> dict:
         # make data into suitable form
         return data
     
@@ -50,6 +54,8 @@ def select_model_ffcnn(**kwargs):
     def prep_data(data:dict, datainfo:DataMetadata, **kwargs) -> dict:
         '''make data into suitable form
         data.update({'u_train':new_u_train,'inn_train':new_inn_train})'''
+
+        data = _flatten_inputs(data)
 
         if filter_type == 'lowpass':
             logger.info('Using the lowpass filter to de-noise.')
@@ -193,6 +199,7 @@ def select_model_fc2branch(**kwargs):
 
     def prep_data(data:dict, datainfo:DataMetadata, **kwargs) -> dict:
         # make data into suitable form
+        data = _flatten_inputs(data)        
         if filter_type == 'lowpass':
             logger.info('Using the lowpass filter to de-noise.')
             (nt_train, nin) = data['inn_train'].shape # always has shape [t,j]
@@ -343,9 +350,7 @@ def select_model_ff(**kwargs):
     def make_model(model_config:ConfigDict) -> BaseModel:
         # mdl = 'a BaseModel createed with parameters in model_config'
         # return mdl
-        mdl_config_dict = model_config.to_dict()
-        layers = mdl_config_dict.pop('mlp_layers')
-        mdl = feedforward.Model(layers=layers, **mdl_config_dict)
+        mdl = feedforward.Model(**model_config)
         return mdl
 
     return prep_data, make_model
@@ -363,22 +368,65 @@ def select_model_slice3d(**kwargs):
         Make a model with parameters in model_config and returns that model.
 
     '''
-    raise NotImplementedError
     if 'datacfg' in kwargs:
         flag_norm = kwargs['datacfg'].normalise
         filter_type = kwargs['datacfg'].filter
         if filter_type is not None:
             logger.error('The requested filtering method is not implemented.')
             raise NotImplementedError
+    if 'load_state' in kwargs['traincfg']:
+        load_state_from = Path(kwargs['traincfg']['load_state'])
+    else:
+        load_state_from = None
+    map_axis = kwargs['mdlcfg'].map_axis
 
-    def prep_data(data:dict) -> dict:
+    def prep_data(data:dict, datainfo:DataMetadata, **kwargs) -> dict:
         # make data into suitable form
+        new_inn = data['inn_train']
+        new_inn = np.squeeze(new_inn)
+        if map_axis[0] >= new_inn.ndim:
+            raise ValueError(f'Cannot map input axis {map_axis[0]} to output axis {map_axis[1]} because the input only have {new_inn.ndim} dimensions.')
+        new_inn_val = data['inn_val']
+        new_inn_val = np.squeeze(new_inn_val)
+        data.update({
+            'inn_train': new_inn,
+            'inn_val': new_inn_val,
+        })
         return data
     
     def make_model(model_config:ConfigDict) -> BaseModel:
-        # mdl = 'a BaseModel createed with parameters in model_config'
-        # return mdl
-        pass
+        
+        mdlcfg_dict = model_config.to_dict()
+        
+        model_options = {
+            'ffcnn': cnn.MLPWithCNN,
+            'ff': feedforward.MLP
+        }
+        if load_state_from is not None:
+            logger.info(f"Loading pretrained model config from {Path(load_state_from, 'config.yml')}")
+            with open(Path(load_state_from, 'config.yml'), 'r') as f:
+                old_config = yaml.load(f, Loader=yaml.UnsafeLoader)
+            pretrained_config = old_config.model_config.to_dict()
+            pretrained_model = model_options[old_config.case._case_select_model]
+            logger.debug(f'Pretrained model: \n        model: {old_config.case._case_select_model}\n        config: {pretrained_config}')
+        else:
+            pretrained_config = literal_eval(mdlcfg_dict['pretrained_config'])
+            pretrained_model = model_options[mdlcfg_dict['pretrained_model']]
+        newvar_model = model_options[mdlcfg_dict['newvar_model']]
+        newvar_config = literal_eval(mdlcfg_dict['newvar_config'])
+        logger.debug(f'Newvar model config: {newvar_config}')
+
+        for k in ['pretrained_config', 'pretrained_model', 'newvar_model', 'newvar_config']:
+            del mdlcfg_dict[k]
+
+        mdl = slice3d.Model(
+            pretrained_model = pretrained_model,
+            newvar_model = newvar_model,
+            pretrained_config = pretrained_config,
+            newvar_config = newvar_config,
+            **mdlcfg_dict
+        )
+        return mdl
 
     return prep_data, make_model
         
@@ -400,4 +448,9 @@ def _norm_inputs(flag_norm:bool, data:dict):
             'inn_train': new_train_inn,
             'inn_val': new_val_inn,
         })
+    return data
+
+def _flatten_inputs(data, input_keys = ['inn_train', 'inn_val']):
+    for k in input_keys:
+        data[k].update({data[k].reshape((data[k].shape[0],-1))})
     return data

@@ -22,24 +22,29 @@ class Slice3D(hk.Module):
             self,
             pretrained_model: hk.Module, # model
             newvar_model:hk.Module,
-            pretrained_config:dict = {}, 
-            newvar_config:dict = {},
-            reduce_layers:Sequence = [], # int for linear
-            map_axis:Tuple[int,int] = (2,3), # map which input axis to which output axis  
+            pretrained_config:dict, 
+            newvar_config:dict,
+            map_axis:Tuple[int,int], # map which input axis to which output axis 
+            reduce_layers:Sequence = [10,], # int for linear
             pretrain_shape:Tuple = (64,64,3), # The shape of output from pretrained_model
             newvar_shape:Tuple = (64,64,1), # The shape of the new variables to add to the output from pretrained_model, both shapes should be 2D with number of variables as the last number
-            activation=jax.nn.tanh,
+            activation:str|Callable[[jnp.ndarray],jnp.ndarray]=jax.nn.tanh,
             name:Optional[str] = 'slice3d',
+            dropout_rate:Optional[float] = None,
     ):
         super().__init__(name=name)
         self.pretrain_mdl = pretrained_model(**pretrained_config)
         self.newvar_mdl = newvar_model(**newvar_config)
-        self.act = activation
+        if isinstance(activation,str):
+            self.act = getattr(jax.nn,activation)
+        else:
+            self.act = activation
         self.map_axis = map_axis
         self.pretrain_shape = pretrain_shape
         self.newvar_shape = newvar_shape
         if len(newvar_shape) != len(pretrain_shape):
             raise ValueError('The pretrain and newvar shapes are not compatible') 
+        self.dropout_rate = dropout_rate
 
         # Define the layers used to reduce the pre-trained output to merge into the new branches
         self.reduce_layers = [hk.Linear(n, name=f'reduce{i}') for i,n in enumerate(reduce_layers)]
@@ -54,12 +59,11 @@ class Slice3D(hk.Module):
             out1_reduce = jnp.copy(out1)
             for l in self.reduce_layers:
                 out1_reduce = self.act(out1_reduce)
+                out1_reduce = self.dropout(out1_reduce, training, self.dropout_rate)
                 out1_reduce = l(out1_reduce)
             out2 = self.merge_layer(x1)
             out2 = out2 + out1_reduce
-            print(out2.shape)
             out2 = self.newvar_mdl(out2, training=training)
-            print(out2.shape)
             out1 = out1.reshape((-1,) + self.pretrain_shape)
             out2 = out2.reshape((-1,) + self.newvar_shape)
             return jnp.concatenate((out1,out2), axis=-1)
@@ -75,6 +79,7 @@ class Slice3D(hk.Module):
             return hk.dropout(hk.next_rng_key(), dropout_rate, x)
         else:
             return x
+
 
 
 
@@ -98,13 +103,19 @@ class Model(BaseModel):
 
     def __init__(self, name='slice3d', **kwargs):
         super().__init__()
-        self.name = name
+        if name is None:
+            logger.eror('Model name cannot be none. Setting it to slice3d.')
+            self.name = 'slice3d'
+        else:
+            self.name = name
 
         def forward(x,training=True):
             mdl = Slice3D(name=self.name,**kwargs)
             return mdl(x, training)
 
         self.mdl = hk.transform(forward)
+        self._pretrain_mdl = kwargs['pretrained_model']
+        self._pretrain_config = kwargs['pretrained_config']
 
         self._apply = jax.jit(self.mdl.apply,static_argnames=['training'])
         self._init = jax.jit(self.mdl.init)
@@ -138,8 +149,9 @@ class Model(BaseModel):
         return params
     
     def freeze_layers(self, params:hk.Params, frozen_layer_names:List[str]) -> tuple[hk.Params, hk.Params]:
-        '''Split params into trainable and non-trainable.'''
+        '''Split params into non-trainable and trainable.'''
         layer_names = [f'{self.name}/~/' + layer for layer in frozen_layer_names]
+        logger.debug(f'Freezeing layers {layer_names}')
         frozen_params, trainable_params = params_split_general(params, layer_names)
         return frozen_params, trainable_params
 
@@ -160,3 +172,10 @@ class Model(BaseModel):
     def predict(self,params:hk.Params,x,**kwargs):
         '''Same as apply, but Training flag is False and no randomness.'''
         return self._predict(params,None,x,**kwargs)
+    
+    @property
+    def get_pretrain_model(self):
+        def forward_pretrain(x,training=False):
+            mdl_pretrain = self._pretrain_mdl(**self._pretrain_config)
+            return mdl_pretrain(x, training)
+        return hk.transform(forward_pretrain)
