@@ -316,7 +316,7 @@ _default_mdlcfg = {
             'newvar_model': 'ff',
             'newvar_config': placeholder(str),
             'map_axis': (2,3),
-            'reduce_layers': (100,10),
+            'reduce_layers': (512,128),
             'pretrain_shape': (64,64,3),
             'newvar_shape': (64,64,1),
             'name': 'slice3d'

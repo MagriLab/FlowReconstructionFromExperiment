@@ -178,7 +178,6 @@ def fit(
     loss_val_momentum = []
     loss_val_sensors = []
 
-    best_state = state
     min_loss = np.inf
             
     # compile first
@@ -281,7 +280,6 @@ def fit(
                 })
 
         if l_epoch < min_loss:
-            best_state = state
             min_loss = l_epoch
             save_trainingstate(tmp_dir,state,'state')
 
@@ -289,7 +287,6 @@ def fit(
             print(f'Epoch: {i}, loss: {loss_train[-1]:.7f}, validation_loss: {l_val:.7f}', flush=True)
             print(f'    For training, loss_div: {loss_div[-1]:.7f}, loss_momentum: {loss_momentum[-1]:.7f}, loss_sensors: {loss_sensors[-1]:.7f}')
             print(f'    True loss of training: {loss_true[-1]:.7f}, validation: {l_val_true:.7f}')
-    state = best_state
 
 
     loss_dict = {
@@ -535,7 +532,7 @@ def main(_):
     logger.debug(f'First batch of reference data {y_batched[0].shape}.')
     logger.debug(f'First batch of output has shape {apply_fn(state.params, None, x_batched[0], False).shape}')
     _ = update(state,jax.random.PRNGKey(10),x_batched[0],y_batched[0])
-    logger.info(f"Time taken for each update step {timeit(lambda: update(state, None, x_batched[0], y_batched[0]), number=5)}")
+    logger.info(f"Time taken for each update step {timeit(lambda: update(state, jax.random.PRNGKey(10), x_batched[0], y_batched[0]), number=5)}")
 
     if FLAGS._noisy:
         logger.debug('Batching clean data because training data is noisy.')
