@@ -68,7 +68,7 @@ def generate_update_fn(apply_fn:Callable,
 
 # taken from https://github.com/deepmind/dm-haiku/issues/18
 def save_trainingstate(ckpt_dir:Union[Path,str], 
-                        state:TrainingState,
+                        state:NamedTuple,
                         f_name:str) -> None:
     '''Save the training state to file.
     

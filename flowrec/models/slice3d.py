@@ -136,13 +136,30 @@ class Model(BaseModel):
         '''
         return self._apply(params, rng, *args, **kwargs)
     
-    def load_pretrained_weights(self, params: hk.Params, pretrained_params: hk.Params) -> hk.Params:
-        '''Loading the pre-trained model weights into the new weights for layers with the same name.
+    def _check_layer_names(self, paramsnames, oldparamsnames):
+        noprefix_match = any(name in paramsnames for name in oldparamsnames)
+        prefix_match = any(f'{self.name}/~/{name}' in paramsnames for name in oldparamsnames)
+        if (noprefix_match and prefix_match):
+            raise ValueError('The Frozen layer names are not unique.')
+        if noprefix_match:
+            matching_param_names = oldparamsnames
+        else:
+            matching_param_names = [f'{self.name}/~/{name}' for name in oldparamsnames]
+
+        return prefix_match, matching_param_names
+
+    
+    def load_old_weights(self, params: hk.Params, old_params: hk.Params) -> hk.Params:
+        '''Loading the old model weights into the new weights for layers with the same name.
         ------------------------------
-        For example, if the pre-trained model has a layer 'linear0', and the new Slice3D model has a layers 'slice3d/\~/linear0' and 'slice3d/\~/linear1'. `self.load_pretrained_weights(params, pretrained_params)` will load the pre-trained 'linear0' into 'slice3d/\~/linear0'.
+        For example, if the old model has a layer 'linear0', and the new Slice3D model has a layers 'slice3d/\~/linear0' and 'slice3d/\~/linear1'. `self.load_pretrained_weights(params, pretrained_params)` will load the pre-trained 'linear0' into 'slice3d/\~/linear0'.
         '''
-        for k, layer in pretrained_params.items():
-            k1 = f'{self.name}/~/' + k
+        prefix_match, _ = self._check_layer_names(list(params), list(old_params))
+        for k, layer in old_params.items():
+            if prefix_match:
+                k1 = f'{self.name}/~/' + k
+            else:
+                k1 = k
             if k1 in params.keys():
                 params[k1].update(layer)
                 logger.debug(f'Loading weights from {k1}')
@@ -150,7 +167,7 @@ class Model(BaseModel):
     
     def freeze_layers(self, params:hk.Params, frozen_layer_names:List[str]) -> tuple[hk.Params, hk.Params]:
         '''Split params into non-trainable and trainable.'''
-        layer_names = [f'{self.name}/~/' + layer for layer in frozen_layer_names]
+        _, layer_names = self._check_layer_names(list(params), frozen_layer_names)
         logger.debug(f'Freezeing layers {layer_names}')
         frozen_params, trainable_params = params_split_general(params, layer_names)
         return frozen_params, trainable_params

@@ -16,7 +16,7 @@ import numpy as np
 import jax.numpy as jnp
 
 from flowrec._typing import *
-from flowrec.training_and_states import save_trainingstate, TrainingState, generate_update_fn, restore_trainingstate
+from flowrec.training_and_states import save_trainingstate, TrainingState, generate_update_fn, restore_trainingstate, params_merge
 from flowrec.losses import loss_mse
 from flowrec.utils.py_helper import update_matching_keys
 from flowrec.utils.system import temporary_fix_absl_logging, set_gpu
@@ -448,25 +448,48 @@ def main(_):
     logger.info('Initialised optimiser.')
 
     # ========= restore model weights and optimizer states if requested =======
-    if traincfg.load_state is not None:
-        state_old = restore_trainingstate(Path(traincfg.load_state), 'state')
-    
+    ## Load from load_state. This could be a pre-trained model or for resuming
     if FLAGS.resume:
-        state = state_old
+        load_params_from = Path(tmp_dir) # if resume load from current folder
+        logger.info('Resuming.')
+        tmp_dir = Path(tmp_dir,'resume')
+        tmp_dir.mkdir(parents=False,exist_ok=False)
+    elif traincfg.load_state is not None:
+        load_params_from = Path(traincfg.load_state) # if not resuming load from previous folder
+    else:
+        load_params_from = None
+        params_old = None
+        
+    if load_params_from is not None: 
+        logger.info(f'Loading training state from {load_params_from}.')
+        state_old = restore_trainingstate(load_params_from, 'state')
+        # override the new params and opt_state initialised above 
+        if Path(load_params_from, 'frozen_params.npy').exists():
+            logger.debug('Also loading frozen layers from the same folder.')
+            frozen_params = restore_trainingstate(load_params_from, 'frozen_params')
+            params_old = params_merge(frozen_params,state_old.params)
+        else:
+            params_old = state_old.params
 
     if traincfg.frozen_layers is not None: # Freeze some layers
-        params = mdl.load_pretrained_weights(params, state_old.params)
+        params = mdl.load_old_weights(params, params_old)
         logger.debug(f'Model has these layers: {list(params)}')
         logger.debug(f'Freezing these layers {traincfg.frozen_layers}')
         params_frozen, params = mdl.freeze_layers(params, list(traincfg.frozen_layers))
         if len(list(params_frozen)) < 1:
             raise ValueError('No layers have been frozen. Double check the layer names or run in a different training mode.')
+        save_trainingstate(tmp_dir, params_frozen, 'frozen_params') # save frozen params
         mdl.set_nontrainable(params_frozen)
         apply_fn = mdl.apply_trainable
         # reinitialize optimizer state to use only trainable weights
         opt_state = optimizer.init(params)
-    else: # no layers are frozen, use normal apply
+    else: # no layers are frozen, use normal apply and parameters
+        if params_old is not None:
+            params = params_old
         apply_fn = mdl.apply
+    
+    if params_old:
+        logger.error('Cannot load optimiser state when resuming for now, will fix this later.')
 
     state = TrainingState(params, opt_state)
 
