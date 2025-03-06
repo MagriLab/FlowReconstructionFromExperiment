@@ -366,13 +366,13 @@ def count_extreme_events(global_dissipation: Array, threshold: Scalar) -> Tuple[
     
 
 
-def get_tke(ufluc:Array, datainfo:ClassDataMetadata, **kwargs) -> tuple[Array, Array, Array]:
+def get_tke(ufluc:Array, datainfo:ClassDataMetadata, domain_size:Array|float = 2*np.pi, **kwargs) -> tuple[Array, Array, Array]:
     """Calculate the turbulent kinetic energy
     ==================================
 
     - ufluc: velocities, must be shape [t,x,y,u] or [t,x,y,z,u].
     - datainfo: an instance of DataMetadata.
-    - Available kwargs: kgrid_magnitude
+    - Available kwargs: kgrid_magnitude, domain_size
 
     return
     - spectrum: the turbulent kinetic energy sorted by wavenumber.
@@ -386,7 +386,7 @@ def get_tke(ufluc:Array, datainfo:ClassDataMetadata, **kwargs) -> tuple[Array, A
         kgrid_magnitude_int = kwargs['kgrid_magnitude']
     else:
         fftfreq = []
-        dk = 2*np.pi/np.array(dx)
+        dk = domain_size/np.array(dx)
         for i in range(len(nx)):
             _k = np.fft.fftfreq(nx[i])*dk[i]
             fftfreq.append(_k)

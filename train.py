@@ -224,7 +224,7 @@ def fit(
                 logger.warning(f'True loss cannot be calculated due to {e}')
                 l_true = 0.0
                 error_logged = True
-            loss_epoch_true.append(l_true)
+            loss_epoch_true.append(float(l_true))
             
             if (b == 0 or b == n_batch-1) and i == 0:
                 logger.debug(f'batch {b} has size {x_train_batched[b].shape[0]}, loss: {l:.7f}.')
@@ -454,14 +454,15 @@ def main(_):
         logger.info('Resuming.')
         tmp_dir = Path(tmp_dir,'resume')
         tmp_dir.mkdir(parents=False,exist_ok=False)
+        logger.info(f'Loading training state from {load_params_from}.')
     elif traincfg.load_state is not None:
         load_params_from = Path(traincfg.load_state) # if not resuming load from previous folder
+        logger.info(f'Loading training state from {load_params_from}.')
     else:
         load_params_from = None
         params_old = None
         
     if load_params_from is not None: 
-        logger.info(f'Loading training state from {load_params_from}.')
         state_old = restore_trainingstate(load_params_from, 'state')
         # override the new params and opt_state initialised above 
         if Path(load_params_from, 'frozen_params.npy').exists():
@@ -488,8 +489,21 @@ def main(_):
             params = params_old
         apply_fn = mdl.apply
     
-    if params_old:
-        logger.error('Cannot load optimiser state when resuming for now, will fix this later.')
+    if FLAGS.resume:
+        ## load old opt_state
+        logger.info('Getting ready to resume the run by loading the old optimiser state.')
+        tree_def_old, leafs_old = zip(*jax.tree_util.tree_leaves_with_path(state_old.opt_state))
+        tree_def_old = list(map(lambda x: jax.tree_util.keystr(x), tree_def_old))
+        # re.sub("(.*\[')(.*\[.*)", r"\mdl.name/~/\2", tree_key_str)
+        def load_optimiser_state(tree_def, leaf_new): # match names
+            defstr = jax.tree_util.keystr(tree_def)
+            for p, leaf_old in zip(tree_def_old, leafs_old):
+                if defstr.split(r'.')[1] == p.split(r'.')[1]:
+                    logger.debug(f"Loading optimiser state from {p.split(r'.')[1]}")
+                    return leaf_old
+            return leaf_new
+        opt_state = jax.tree_util.tree_map_with_path(load_optimiser_state, opt_state)
+
 
     state = TrainingState(params, opt_state)
 

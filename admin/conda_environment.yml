@@ -4,12 +4,12 @@ channels:
   - defaults
 dependencies:
   - python=3.11.2
-  - h5py=3.7.0
+  - h5py=3.9.0
   - pyyaml=6.0
   - pip=23.3.1
   - matplotlib=3.7.1
   - pip:
-      - dm-haiku==0.0.10
+      - dm-haiku==0.0.12
       - jax==0.4.20
       - jaxlib==0.4.20+cuda11.cudnn86
       - ml-collections==0.1.1
