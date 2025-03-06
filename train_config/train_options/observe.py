@@ -420,7 +420,7 @@ def observe_slice_pin(
                     r = None
             else:
                 r = None
-
+            
             us = us.reshape((-1,num_sensors))
             ps = ps.reshape((-1,num_pressure))
             observed = jnp.concatenate((us,ps), axis=1)

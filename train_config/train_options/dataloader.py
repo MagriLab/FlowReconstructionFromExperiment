@@ -173,17 +173,19 @@ def _load_kolsol(cfg:ConfigDict, dim:int, multiplesets:bool = False) -> tuple[di
         parent_dir = datapath.parent
         with open(datapath) as f:
             datasets_path = [parent_dir/line.rstrip() for line in f]
+        for d in datasets_path:
+            if not d.exists():
+                raise ValueError(f'{d} does not exist.')
+        logger.info('Keep the last dataset unseen for testing.')
+        datasets_path = datasets_path[:-1] # keep the last set for testing
         _check_re = []
         _check_dt = []
         x = []
         sets_index = []
-        for d in datasets_path:
-            if not d.exists():
-                raise ValueError(f'{d} does not exist.')
-        datasets_path = datasets_path[:-1] # keep the last set for testing
-        logger.info('Keep the last dataset unseen for testing.')
-        for d in datasets_path:
-            _x, re, dt = simulation.read_data_kolsol(d)
+        total_snapshots = int(np.sum(cfg.train_test_split[:-1]))
+        i = 0
+        while int(np.sum(sets_index)) < total_snapshots:
+            _x, re, dt = simulation.read_data_kolsol(datasets_path[i])
             x.append(_x)
             sets_index.append(_x.shape[0]) # keep the number of snapshots in each set
             _check_dt.append(dt)
@@ -191,8 +193,9 @@ def _load_kolsol(cfg:ConfigDict, dim:int, multiplesets:bool = False) -> tuple[di
             # check if the datasets are compatible
             if len(set(_check_dt)) > 1 or len(set(_check_re)) > 1:
                 raise ValueError('Datasets must be generated with the same parameters.')
-        x = np.concatenate(x, axis=0) # build a large dataset
-        num_snapshots_lastset = sets_index[-1] - cfg.train_test_split[1]
+            i += 1
+        x = np.concatenate(x, axis=0)[:total_snapshots,...] # build a large dataset
+        num_snapshots_lastset = total_snapshots-cfg.train_test_split[1]-int(np.sum(sets_index[:-1]))
         if num_snapshots_lastset < 0:
             raise ValueError('Validation data cannot be taken from more than one set of data')
         else:
@@ -209,6 +212,10 @@ def _load_kolsol(cfg:ConfigDict, dim:int, multiplesets:bool = False) -> tuple[di
         logger.debug(f'Data has Re={re}, dt={dt}')
         if cfg.re < 0.00001 or cfg.dt < 0.0000001:
             raise ValueError
+    logger.info('Cropping data as requested.')
+    crop_data = ((None,),) + cfg.crop_data + ((None,),) 
+    crop_data = slice_from_tuple(crop_data)
+    x = x[crop_data]
 
     if not cfg.randseed:
         randseed = np.random.randint(1,10000)
@@ -303,15 +310,15 @@ def _load_kolsol(cfg:ConfigDict, dim:int, multiplesets:bool = False) -> tuple[di
         logger.debug(f'Pressure input at grid points {tuple(inn_idx)}.')
         # slice data
         slice_inn = np.s_[:,*inn_idx,-1]
-        inn_train = u_train[slice_inn].reshape((-1,num_inputs))
-        inn_val = u_val[slice_inn].reshape((-1,num_inputs))
+        inn_train = u_train[slice_inn]
+        inn_val = u_val[slice_inn]
         data.update({'_slice_inn': slice_inn})
 
     elif hasattr(cfg, 'pressure_inlet_slice'):
         inn_loc = slice_from_tuple(cfg.pressure_inlet_slice)
         s_pressure = (np.s_[:],) + inn_loc + (np.s_[-1],)
-        inn_train = u_train[s_pressure].reshape((cfg.train_test_split[0],-1))
-        inn_val = u_val[s_pressure].reshape((cfg.train_test_split[1],-1))
+        inn_train = u_train[s_pressure] # has shape [nt, x, y, z]
+        inn_val = u_val[s_pressure]
 
     else:
         logger.critical('Pressure input is not defined in config. Please define inputs.')
@@ -372,7 +379,7 @@ def dataloader_3dkolsets(cfg:ConfigDict|None = None) -> tuple[dict, ClassDataMet
 
     ngrid = data['u_val'].shape[datainfo.axx]
     f = simulation.kolsol_forcing_term(cfg.forcing_frequency,ngrid,3)
-    data.update({'forcing': f})
+    data.update({'forcing': f[:,:,:,:,0:1]})
     
     return data, datainfo
 

@@ -51,6 +51,7 @@ def get_basic_config() -> config_dict.ConfigDict:
     
     cfg.model_config.dropout_rate = 0.0
     cfg.model_config.name = placeholder(str)
+    cfg.activation = 'tanh'
     
 
     ## Training
@@ -65,8 +66,8 @@ def get_basic_config() -> config_dict.ConfigDict:
     
     cfg.train_config.gradient_clip = placeholder(float)
     cfg.train_config.lr_scheduler = 'constant'
-    # cfg.train_config.restart = False
-    # cfg.train_config.opt_state = False
+    cfg.train_config.load_state = placeholder(str)
+    cfg.train_config.frozen_layers = placeholder(tuple)
 
 
 
@@ -137,7 +138,7 @@ def get_config(cfgstr:str = None):
             'random_sensors': placeholder(tuple), # (random seed, number of sensors)
             'sensor_index': placeholder(tuple),
         })
-    elif _observe == 'slice':
+    elif _observe == 'slice' or _observe == 'slice_pin':
         cfg.data_config.update({
             'measure_slice': placeholder(tuple)
         })
@@ -150,13 +151,11 @@ def get_config(cfgstr:str = None):
     else:
         raise ValueError('Invalid dataloader option.')
 
-    
-    if _select_model == 'ffcnn':
-        cfg.model_config.update(_default_mdlcfg_ffcnn[_dataloader])
-    elif _select_model == 'fc2branch':
-        cfg.model_config.update(_default_mdlcfg_fc2branch[_dataloader])
-    elif _select_model == 'ff':
-        cfg.model_config.update(_default_mdlcfg_ff[_dataloader])
+    if _select_model in _default_mdlcfg:
+        try:
+            cfg.model_config.update(_default_mdlcfg[_select_model][_dataloader])
+        except KeyError as _:
+            raise ValueError('Default configs are not defined for the chosen model-data combination.')
     else:
         raise ValueError('Invalid select_model option.')
 
@@ -207,7 +206,8 @@ _default_datacfg = {
         'pressure_inlet_slice': placeholder(tuple),
         'random_input': placeholder(tuple), # (randseed, number of pressure sensors)
         'forcing_frequency': 4,
-        'train_test_split': (6000,500,500)
+        'train_test_split': (6000,500,500),
+        'crop_data': ((None,),(None,)), # (crop_data xy)
     },
     '3dvolvo': {
         'data_dir': './local_data/volvorig/u166/',
@@ -221,7 +221,8 @@ _default_datacfg = {
         'dx': 2*np.pi/64,
         'dy': 2*np.pi/64,
         'dz': 2*np.pi/64,
-        'pressure_inlet_slice': ((0,1,None),(None,None,None),(None,None,None)),
+        'crop_data': ((None,),(None,),(None,)), # (crop_data xyz)
+        'pressure_inlet_slice': ((0,1,None),(None,),(None,)),
         'measure_slice': (None, None, 32, 3), # (x,y,z,num_components), default take the z=32 plane, all velocity components
         'forcing_frequency': 4,
         'train_test_split': (800,100,100)
@@ -233,77 +234,92 @@ _default_datacfg = {
         'dx': 2*np.pi/64,
         'dy': 2*np.pi/64,
         'dz': 2*np.pi/64,
-        'pressure_inlet_slice': ((0,1,None),(None,None,None),(None,None,None)),
+        'crop_data': ((None,),(None,),(None,)), # (crop_data xyz)
+        'pressure_inlet_slice': ((0,1,None),(None,),(None,)),
         'measure_slice': (None, None, 32, 3), # (x,y,z,num_components), default take the z=32 plane, all velocity components
         'forcing_frequency': 4,
         'train_test_split': (2250,250,0)
     },
 }
 
-
-_default_mdlcfg_ffcnn = {
-    '2dtriangle': {
-        'mlp_layers': (96750,),
-        'output_shape': (250,129,3),
-        'cnn_channels': (32,16,3),
-        'cnn_filters': ((3,3),),
+_default_mdlcfg = {
+    'ffcnn': {
+        '2dtriangle': {
+            'mlp_layers': (96750,),
+            'output_shape': (250,129,3),
+            'cnn_channels': (32,16,3),
+            'cnn_filters': ((3,3),),
+        },
+        '2dkol': {
+            'mlp_layers': (49152,),
+            'output_shape': (128,128,3),
+            'cnn_channels': (3,3),
+            'cnn_filters': ((3,3),),
+        }
     },
-    '2dkol': {
-        'mlp_layers': (49152,),
-        'output_shape': (128,128,3),
-        'cnn_channels': (3,3),
-        'cnn_filters': ((3,3),),
-    }
-}
-_default_mdlcfg_fc2branch = {
-    '2dtriangle': {
-        'img_shapes': ((128,64),(128,32),(64,16),(128,64),(250,129)),
-        'b1_channels': (1,),
-        'b2_channels': (8,16,8),
-        'b3_channels': (4,3),
-        'b1_filters': ((3,3),),
-        'b2_filters': ((5,5),),
-        'b3_filters': ((3,3),),
-        'resize_method': 'linear',
-        'fft_branch': False
+    'fc2branch': {
+        '2dtriangle': {
+            'img_shapes': ((128,64),(128,32),(64,16),(128,64),(250,129)),
+            'b1_channels': (1,),
+            'b2_channels': (8,16,8),
+            'b3_channels': (4,3),
+            'b1_filters': ((3,3),),
+            'b2_filters': ((5,5),),
+            'b3_filters': ((3,3),),
+            'resize_method': 'linear',
+            'fft_branch': False
+        },
+        '2dkol': {
+            'img_shapes': ((64,64),(64,64),(32,32),(16,16),(32,32),(64,64),(128,128)),
+            'b1_channels': (1,),
+            'b2_channels': (4,8,16,8,4),
+            'b3_channels': (4,3),
+            'b1_filters': ((3,3),),
+            'b2_filters': ((3,3),),
+            'b3_filters': ((3,3),),
+            'resize_method': 'linear',
+            'fft_branch': True,
+        },
+        '3dvolvo': {
+            'img_shapes': ((20,10,10),(10,10,10),(5,5,5),(10,10,10),(40,20,20)),
+            'b1_channels': (1,),
+            'b2_channels': (8,16,8),
+            'b3_channels': (4,),
+            'resize_method': 'linear',
+            'fft_branch': False,
+            'small_mlp': False,
+        },
+        '3dkol': {
+            'img_shapes': ((32,32,32),(16,16,16),(4,4,4),(8,8,8),(64,64,64)),
+            'b1_channels': (1,),
+            'b2_channels': (4,8,4),
+            'b3_channels': (4,),
+            'resize_method': 'linear',
+            'fft_branch': False,
+            'small_mlp': True,
+        },
     },
-    '2dkol': {
-        'img_shapes': ((64,64),(64,64),(32,32),(16,16),(32,32),(64,64),(128,128)),
-        'b1_channels': (1,),
-        'b2_channels': (4,8,16,8,4),
-        'b3_channels': (4,3),
-        'b1_filters': ((3,3),),
-        'b2_filters': ((3,3),),
-        'b3_filters': ((3,3),),
-        'resize_method': 'linear',
-        'fft_branch': True,
+    'ff': {
+        '3dkol': {
+            'mlp_layers': placeholder(tuple),
+            'name': 'pretrain',
+        },
+        '3dkolsets':{
+            'mlp_layers': placeholder(tuple),
+            'name': 'pretrain',
+        },
     },
-    '3dvolvo': {
-        'img_shapes': ((20,10,10),(10,10,10),(5,5,5),(10,10,10),(40,20,20)),
-        'b1_channels': (1,),
-        'b2_channels': (8,16,8),
-        'b3_channels': (4,),
-        'resize_method': 'linear',
-        'fft_branch': False,
-        'small_mlp': False,
-    },
-    '3dkol': {
-        'img_shapes': ((32,32,32),(16,16,16),(4,4,4),(8,8,8),(64,64,64)),
-        'b1_channels': (1,),
-        'b2_channels': (4,8,4),
-        'b3_channels': (4,),
-        'resize_method': 'linear',
-        'fft_branch': False,
-        'small_mlp': True,
-    },
-}
-_default_mdlcfg_ff = {
-    '3dkol': {
-        'mlp_layers': placeholder(tuple),
-        'name': 'pretrain',
-    },
-    '3dkolsets':{
-        'mlp_layers': placeholder(tuple),
-        'name': 'pretrain',
+    'slice3d': {
+        '3dkolsets': {
+            'pretrained_model': 'ff',
+            'pretrained_config': placeholder(str),
+            'newvar_model': 'ff',
+            'newvar_config': placeholder(str),
+            'map_axis': (2,3),
+            'reduce_layers': (512,128),
+            'pretrain_shape': (64,64,3),
+            'newvar_shape': (64,64,1),
+            'name': 'slice3d'
+        }
     },
 }
