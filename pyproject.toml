@@ -20,7 +20,7 @@ dependencies = [
 
 
 [project.optional-dependencies]
-cpu = ["jax==0.4.24",]
+cpu = ["jax[cpu]==0.4.24",]
 gpu = [
  	"jax[cuda12]==0.4.24",
     "nvidia-cudnn-cu12<9.0.0.0",
