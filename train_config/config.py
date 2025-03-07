@@ -92,8 +92,8 @@ def get_config(cfgstr:str = None):
 
     # Set up default options
     _dataloader = '3dkolsets'
-    _observe = 'grid_pin'
-    _select_model = 'fc2branch'
+    _observe = 'slice'
+    _select_model = 'ff'
     _loss_fn = 'physicswithdata'
 
 
