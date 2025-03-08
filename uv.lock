@@ -1,4 +1,5 @@
 version = 1
+revision = 1
 requires-python = ">=3.11.0, <3.12.0"
 resolution-markers = [
     "sys_platform != 'linux'",
@@ -76,7 +77,7 @@ name = "click"
 version = "8.1.8"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "colorama", marker = "platform_system == 'Windows'" },
+    { name = "colorama", marker = "sys_platform == 'win32'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/b9/2e/0090cbf739cee7d23781ad4b89a9894a41538e4fcf4c31dcdd705b78eb8b/click-8.1.8.tar.gz", hash = "sha256:ed53c9d8990d83c2a27deae68e4ee337473f6330c040a31d4225c9574d16096a", size = 226593 }
 wheels = [
@@ -170,6 +171,7 @@ dependencies = [
     { name = "ml-collections" },
     { name = "numpy" },
     { name = "optax" },
+    { name = "pip" },
     { name = "pyyaml" },
     { name = "scipy" },
     { name = "tqdm" },
@@ -197,11 +199,13 @@ requires-dist = [
     { name = "numpy", specifier = "<2.0.0" },
     { name = "nvidia-cudnn-cu12", marker = "extra == 'gpu'", specifier = "<9.0.0.0" },
     { name = "optax", specifier = "==0.1.7" },
+    { name = "pip", specifier = ">=25.0.1" },
     { name = "pyyaml", specifier = "==6.0" },
     { name = "scipy", specifier = "==1.12.0" },
     { name = "tqdm", specifier = ">=4.67.1" },
     { name = "wandb", specifier = ">=0.15.4" },
 ]
+provides-extras = ["cpu", "gpu"]
 
 [[package]]
 name = "fonttools"
@@ -620,6 +624,15 @@ wheels = [
 ]
 
 [[package]]
+name = "pip"
+version = "25.0.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/70/53/b309b4a497b09655cb7e07088966881a57d082f48ac3cb54ea729fd2c6cf/pip-25.0.1.tar.gz", hash = "sha256:88f96547ea48b940a3a385494e181e29fb8637898f88d88737c5049780f196ea", size = 1950850 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/c9/bc/b7db44f5f39f9d0494071bddae6880eb645970366d0a200022a1a93d57f5/pip-25.0.1-py3-none-any.whl", hash = "sha256:c46efd13b6aa8279f33f2864459c8ce587ea6a1a59ee20de055868d8f7688f7f", size = 1841526 },
+]
+
+[[package]]
 name = "platformdirs"
 version = "4.3.6"
 source = { registry = "https://pypi.org/simple" }
@@ -847,7 +860,7 @@ name = "tqdm"
 version = "4.67.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "colorama", marker = "platform_system == 'Windows'" },
+    { name = "colorama", marker = "sys_platform == 'win32'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/a8/4b/29b4ef32e036bb34e4ab51796dd745cdba7ed47ad142a9f4a1eb8e0c744d/tqdm-4.67.1.tar.gz", hash = "sha256:f8aef9c52c08c13a65f30ea34f4e5aac3fd1a34959879d7e59e63027286627f2", size = 169737 }
 wheels = [
