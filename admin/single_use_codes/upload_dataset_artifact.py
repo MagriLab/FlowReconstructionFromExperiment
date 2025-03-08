@@ -5,6 +5,29 @@ from pathlib import Path
 
 run = wandb.init(project="FlowReconstruction", name="CreateArtifactDataPath")
 
+
+kolsolsets = Path('./local_data/kolmogorov/dim3_datasets_080325.txt')
+assert kolsolsets.exists()
+tag = "$".join(kolsolsets.parts)
+data = wandb.Artifact(
+    '3dkolsets',
+    type='DataPath',
+    description="Collection of 6 sets of 3D Kolmogorov flows",
+    metadata={
+        're': 34,
+        'filepath': str(kolsolsets),
+        'random_seeds': [478,57,1372,691],
+        'number_of_sets': 6,
+        'snapshots_per_set': 500,
+        'flowtype': "turbulent",
+        "source": "KolSol",
+        "notes": "Weakly turbulent. First 5 sets are used when testing for convergence (see attached figure)."
+    }
+)
+data.add_file(Path('./local_data/kolmogorov/Kolsol_converge_080325.png'))
+run.log_artifact(data, aliases=[tag])
+
+
 # d1 = Path('./local_data/re100/')
 # tag1 = "$".join(d1.parts)
 # data1 = wandb.Artifact(

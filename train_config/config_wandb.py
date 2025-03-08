@@ -4,6 +4,7 @@ import warnings
 
 
 _valid_loss_fn = ['physicswithdata_mae', 'physicsnoreplace_mae', 'physicsreplacemean_mae', 'physicsandmean_mae', 'physicswithdata', 'physicsnoreplace', 'physicsreplacemean', 'physicsandmean']
+_valid_loss_fn2 = ['mse',]
 
 def get_config(cfgstr:str = None):
     
@@ -14,7 +15,7 @@ def get_config(cfgstr:str = None):
         # warnings.warn('No training case is selected, proceeds with the basic configuration. Are you sure this is not a mistake?')
 
     # Set up default options
-    _mdl = 'fc2branch'
+    _mdl = 'slice3d'
     _loss_fn = 'physicswithdata'
     if 'model' in user:
         _mdl = user['model']
@@ -84,6 +85,11 @@ def get_config(cfgstr:str = None):
         cfg.config.fft_branch = placeholder(bool)
     elif _mdl == 'ff':
         cfg.config.mlp_layers = placeholder(tuple)
+    elif _mdl == 'slice3d':
+        cfg.config.load_state = placeholder(str)
+        cfg.config.newvar_model = placeholder(str)
+        cfg.config.newvar_config = placeholder(str)
+        cfg.reduce_layers = placeholder(tuple)
     else:
         raise ValueError('Invalid model option for wandb configuration.')
 
@@ -91,6 +97,8 @@ def get_config(cfgstr:str = None):
         cfg.config.weight_momentum = placeholder(float)
         cfg.config.weight_continuity = placeholder(float)
         cfg.config.weight_sensors = placeholder(float)
+    elif _loss_fn in _valid_loss_fn2:
+        pass
     else:
         raise ValueError('Invalid loss option for wandb configuration.')
 

@@ -93,7 +93,7 @@ def get_config(cfgstr:str = None):
     # Set up default options
     _dataloader = '3dkolsets'
     _observe = 'slice'
-    _select_model = 'ff'
+    _select_model = 'slice3d'
     _loss_fn = 'physicswithdata'
 
 
@@ -228,7 +228,7 @@ _default_datacfg = {
         'train_test_split': (800,100,100)
     },
     '3dkolsets': {
-        'data_dir': './local_data/kolmogorov/dim3_datasets.txt',
+        'data_dir': './local_data/kolmogorov/dim3_datasets_080325.txt',
         're': 34.0,
         'dt': 0.1,
         'dx': 2*np.pi/64,
