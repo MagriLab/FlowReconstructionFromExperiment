@@ -81,18 +81,26 @@ def batching(nb_batches:int, data:jax.Array, sets_index:list[int] = None) -> lis
         logger.debug(f'Dataset index {list(_index)}. The number of snapshots in total is {data.shape[0]}, {nt_per_batch} snapshots per batch.')
         batched = []
         for i in range(1,len(_index)):
-            n = int(sets_index[i-1]/nt_per_batch)
-            if n == 0:
-                logger.critical(f'There are {sets_index[i-1]} snapshots in this dataset but the user asked for {nt_per_batch} snapshots per batch.')
+            n_equal_size = sets_index[i-1] // nt_per_batch
+            if n_equal_size == 0:
+                logger.error(f'There are {sets_index[i-1]} snapshots in this dataset but the user asked for {nt_per_batch} snapshots per batch.')
+            if sets_index[i-1] % nt_per_batch != 0:
+                logger.warning('The batches do not have equal numbers of batches')
+            n = [nt_per_batch]*n_equal_size
+            n = np.cumsum(n)[:-1]
             batched.extend(
-                jnp.array_split(
-                    data[_index[i-1]:_index[i],...], n,
+                jnp.split(
+                    data[_index[i-1]:_index[i],...],
+                    n,
                     axis=0
                 )
             )
         logger.debug(f'Batch sizes are {[d.shape[0] for d in batched]}')
+        assert len(batched)==nb_batches, f"{len(batched)} batches instead of the user-specified {nb_batches}."
         return batched
     else:        
+        if data.shape[0] % nb_batches != 0:
+            logger.warning('The batches do not have equal numbers of batches')
         return jnp.array_split(data,nb_batches,axis=0)
 
 
