@@ -9,6 +9,7 @@ from timeit import timeit
 import time
 import h5py
 import warnings
+import yaml
 
 import wandb
 import jax
@@ -113,7 +114,15 @@ def save_config(config:config_dict.ConfigDict, tmp_dir:Path):
         config.to_yaml(stream=f, default_flow_style=False)
 
 
-
+def update_resume_config(resume_from: Path, cfg:config_dict.ConfigDict):
+    """Compare the update the old config from previous training with the new user config. train_config is not updated."""
+    with open(Path(resume_from,'config.yml'),'r') as f:
+        old_cfg = yaml.load(f, Loader=yaml.UnsafeLoader)
+        logger.info('Successfully loaded old configs')
+    for k in cfg.keys():
+        if k != 'train_config':
+            update_matching_keys(cfg[k], old_cfg[k])
+    logger.warning("When resuming, use all sections but 'train_config' are loaded from old config.")
 
 
 def wandb_init(wandbcfg:config_dict.ConfigDict):    
@@ -121,10 +130,6 @@ def wandb_init(wandbcfg:config_dict.ConfigDict):
     if not wandbcfg.name and not FLAGS.wandb_sweep:
         wandbcfg.update({'name':FLAGS.result_folder_name})
     
-    ## If resuming from a previously logged run
-    if (wandbcfg.resume is not None) and (wandbcfg.id is None):
-        raise ValueError('wandbcfg.id cannot be None when resuming.')
-
     cfg_dict = wandbcfg.to_dict()
     input_artifact = cfg_dict.pop('use_artifact')
     logger.debug(f'Arguments passed to wandb.init {cfg_dict}.')
@@ -270,7 +275,7 @@ def fit(
 
 
         if wandb_run is not None:
-            if i % wandb_run.config.log_frequency:
+            if i % wandb_run.config.log_frequency == 0:
                 logger.debug(f'Logging with wandb every {wandb_run.config.log_frequency} epochs.')
                 wandb_run.log({
                     'loss':loss_train[-1],
@@ -319,9 +324,6 @@ standard_data_keys = ['u_train_clean', 'u_val_clean', 'train_minmax', 'val_minma
 def main(_):
 
     cfg = FLAGS.cfg
-    datacfg = FLAGS.cfg.data_config
-    mdlcfg = FLAGS.cfg.model_config
-    traincfg = FLAGS.cfg.train_config
     wandbcfg = FLAGS.wandbcfg
     if wandbcfg.mode == 'disabled':
         use_wandb = False
@@ -351,9 +353,39 @@ def main(_):
     
     if FLAGS.wandb_sweep:
         use_wandb = True
+    
+    tmp_dir = Path(FLAGS.result_dir,FLAGS.result_folder_name)
+    if not tmp_dir.is_dir():
+        logger.warning(f'Making a new target directory at {tmp_dir.absolute()}.')
+        tmp_dir.mkdir(parents=True)
+    else:
+        logger.warning(f'Writing into exisiting directory {tmp_dir.absolute()}.')
+
+
+
+
     if FLAGS.resume:
-        wandbcfg.update({'resume': 'must',})
- 
+        if not wandbcfg.resume: # user defined mode first
+            wandbcfg.update({'resume': 'must',})
+        if cfg.train_config.load_state is None:
+            logger.info('Resuming. Loading parameters from current directory because load_state is not specified.')
+            load_params_from = Path(tmp_dir) # if resume load from current folder
+        else:
+            load_params_from = Path(FLAGS.cfg.train_config.load_state) # if not resuming load from previous folder
+        update_resume_config(Path(tmp_dir), cfg)
+        tmp_dir = Path(tmp_dir,'resume')
+        tmp_dir.mkdir(parents=False,exist_ok=False)
+        logger.info(f'Loading training state and config from {load_params_from}.')
+    elif FLAGS.cfg.train_config.load_state is not None:
+        load_params_from = Path(FLAGS.cfg.train_config.load_state) # if not resuming load from previous folder
+        logger.info(f'Loading training state from {load_params_from}.')
+    else:
+        load_params_from = None
+        params_old = None
+    datacfg = cfg.data_config
+    mdlcfg = cfg.model_config
+    traincfg = cfg.train_config
+
     ## Initialise wandb
     if use_wandb:
         logger.info('Updating wandb config with experiment config')
@@ -383,13 +415,6 @@ def main(_):
 
     else:
         run = None
-
-    tmp_dir = Path(FLAGS.result_dir,FLAGS.result_folder_name)
-    if not tmp_dir.is_dir():
-        logger.warning(f'Making a new target directory at {tmp_dir.absolute()}.')
-        tmp_dir.mkdir(parents=True)
-    else:
-        logger.warning(f'Writing into exisiting directory {tmp_dir.absolute()}.')
 
     # =================== pre-processing ================================
     
@@ -456,20 +481,6 @@ def main(_):
     logger.info('Initialised optimiser.')
 
     # ========= restore model weights and optimizer states if requested =======
-    ## Load from load_state. This could be a pre-trained model or for resuming
-    if FLAGS.resume:
-        load_params_from = Path(tmp_dir) # if resume load from current folder
-        logger.info('Resuming.')
-        tmp_dir = Path(tmp_dir,'resume')
-        tmp_dir.mkdir(parents=False,exist_ok=False)
-        logger.info(f'Loading training state from {load_params_from}.')
-    elif traincfg.load_state is not None:
-        load_params_from = Path(traincfg.load_state) # if not resuming load from previous folder
-        logger.info(f'Loading training state from {load_params_from}.')
-    else:
-        load_params_from = None
-        params_old = None
-        
     if load_params_from is not None: 
         state_old = restore_trainingstate(load_params_from, 'state')
         # override the new params and opt_state initialised above 
@@ -483,8 +494,9 @@ def main(_):
     if traincfg.frozen_layers is not None: # Freeze some layers
         params = mdl.load_old_weights(params, params_old)
         logger.debug(f'Model has these layers: {list(params)}')
-        logger.debug(f'Freezing these layers {traincfg.frozen_layers}')
+        logger.info(f'Trying to freeze these layers {traincfg.frozen_layers}')
         params_frozen, params = mdl.freeze_layers(params, list(traincfg.frozen_layers))
+        logger.info(f'These layers are frozen: {list(params_frozen)}')
         if len(list(params_frozen)) < 1:
             raise ValueError('No layers have been frozen. Double check the layer names or run in a different training mode.')
         save_trainingstate(tmp_dir, params_frozen, 'frozen_params') # save frozen params

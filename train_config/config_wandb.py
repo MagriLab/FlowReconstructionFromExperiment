@@ -89,7 +89,7 @@ def get_config(cfgstr:str = None):
         cfg.config.load_state = placeholder(str)
         cfg.config.newvar_model = placeholder(str)
         cfg.config.newvar_config = placeholder(str)
-        cfg.reduce_layers = placeholder(tuple)
+        cfg.config.reduce_layers = placeholder(tuple)
     else:
         raise ValueError('Invalid model option for wandb configuration.')
 

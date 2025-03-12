@@ -374,10 +374,6 @@ def select_model_slice3d(**kwargs):
         if filter_type is not None:
             logger.error('The requested filtering method is not implemented.')
             raise NotImplementedError
-    if 'load_state' in kwargs['traincfg']:
-        load_state_from = Path(kwargs['traincfg']['load_state'])
-    else:
-        load_state_from = None
     map_axis = kwargs['mdlcfg'].map_axis
 
     def prep_data(data:dict, datainfo:DataMetadata, **kwargs) -> dict:
@@ -402,21 +398,24 @@ def select_model_slice3d(**kwargs):
             'ffcnn': cnn.MLPWithCNN,
             'ff': feedforward.MLP
         }
-        if load_state_from is not None:
+        if mdlcfg_dict['pretrain_config'] is not None: # Prioritize user inputs
+            pretrained_config = literal_eval(mdlcfg_dict['pretrain_config'])
+            pretrained_model = model_options[mdlcfg_dict['pretrain_model']]
+        elif model_config.load_pretrain_config is not None:
+            load_state_from = Path(model_config.load_pretrain_config)
             logger.info(f"Loading pretrained model config from {Path(load_state_from, 'config.yml')}")
             with open(Path(load_state_from, 'config.yml'), 'r') as f:
                 old_config = yaml.load(f, Loader=yaml.UnsafeLoader)
             pretrained_config = old_config.model_config.to_dict()
             pretrained_model = model_options[old_config.case._case_select_model]
-            logger.debug(f'Pretrained model: \n        model: {old_config.case._case_select_model}\n        config: {pretrained_config}')
         else:
-            pretrained_config = literal_eval(mdlcfg_dict['pretrained_config'])
-            pretrained_model = model_options[mdlcfg_dict['pretrained_model']]
+            raise ValueError('Cannot find pretrain config and pretrain model.')
+        logger.debug(f'Pretrained model: \n        model: {old_config.case._case_select_model}\n        config: {pretrained_config}')
         newvar_model = model_options[mdlcfg_dict['newvar_model']]
         newvar_config = literal_eval(mdlcfg_dict['newvar_config'])
         logger.debug(f'Newvar model config: {newvar_config}')
 
-        for k in ['pretrained_config', 'pretrained_model', 'newvar_model', 'newvar_config']:
+        for k in ['pretrain_config', 'pretrain_model', 'newvar_model', 'newvar_config', 'load_pretrain_config']:
             del mdlcfg_dict[k]
 
         mdl = slice3d.Model(
