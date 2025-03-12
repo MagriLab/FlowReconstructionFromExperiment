@@ -51,14 +51,14 @@ def get_basic_config() -> config_dict.ConfigDict:
     
     cfg.model_config.dropout_rate = 0.0
     cfg.model_config.name = placeholder(str)
-    cfg.activation = 'tanh'
+    cfg.model_config.activation = 'tanh'
     
 
     ## Training
     cfg.train_config = config_dict.ConfigDict()
     
     cfg.train_config.nb_batches = 20
-    cfg.train_config.learning_rate = 3e-4
+    cfg.train_config.learning_rate = 4e-3
     cfg.train_config.regularisation_strength = 0.0
     cfg.train_config.epochs = 20000
 
@@ -311,15 +311,16 @@ _default_mdlcfg = {
     },
     'slice3d': {
         '3dkolsets': {
-            'pretrained_model': 'ff',
-            'pretrained_config': placeholder(str),
+            'pretrain_model': 'ff',
+            'pretrain_config': placeholder(str),
+            'load_pretrain_config': placeholder(str),
             'newvar_model': 'ff',
             'newvar_config': placeholder(str),
             'map_axis': (2,3),
             'reduce_layers': (512,128),
             'pretrain_shape': (64,64,3),
             'newvar_shape': (64,64,1),
-            'name': 'slice3d'
+            'name': 'slice3d',
         }
     },
 }

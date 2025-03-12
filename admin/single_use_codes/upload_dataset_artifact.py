@@ -25,6 +25,7 @@ data = wandb.Artifact(
     }
 )
 data.add_file(Path('./local_data/kolmogorov/Kolsol_converge_080325.png'))
+data.add_file(kolsolsets)
 run.log_artifact(data, aliases=[tag])
 
 
