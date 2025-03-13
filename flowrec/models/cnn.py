@@ -38,7 +38,10 @@ class MLPWithCNN(hk.Module):
         super().__init__(name)
 
         self.output_shape = output_shape
-        self.act = activation
+        if isinstance(activation,str):
+            self.act = getattr(jax.nn,activation)
+        else:
+            self.act = activation
         self.dropout_rate = dropout_rate
 
         if len(cnn_filters[0]) != 2:

@@ -451,5 +451,5 @@ def _norm_inputs(flag_norm:bool, data:dict):
 
 def _flatten_inputs(data, input_keys = ['inn_train', 'inn_val']):
     for k in input_keys:
-        data[k].update({data[k].reshape((data[k].shape[0],-1))})
+        data.update({k: data[k].reshape((data[k].shape[0],-1))})
     return data

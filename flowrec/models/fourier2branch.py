@@ -119,7 +119,10 @@ class Fourier2Branch(hk.Module):
             logger.error("Wrong user value for 'img_shapes'.")
             logger.debug(f"The provided img_shapes has length {len(img_shapes)} and the first entry is {img_shapes[0]} of type {type(img_shapes[0])}.")
             raise e
-        self.act = activation
+        if isinstance(activation,str):
+            self.act = getattr(jax.nn,activation)
+        else:
+            self.act = activation
         self.dropout_rate = dropout_rate
         self.b0_shape = tuple(img_shapes[0])
         assert isinstance(self.b0_shape[0],int)
