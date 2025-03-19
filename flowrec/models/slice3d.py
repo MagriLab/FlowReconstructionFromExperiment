@@ -63,7 +63,9 @@ class Slice3D(hk.Module):
                 out1_reduce = l(out1_reduce)
             out2 = self.merge_layer(x1)
             out2 = out2 + out1_reduce
+            logger.debug(f'Input to the newvar model has shape {out2.shape}.')
             out2 = self.newvar_mdl(out2, training=training)
+            logger.debug(f'Output of the newvar model has shape {out2.shape}.')
             out1 = out1.reshape((-1,) + self.pretrain_shape)
             out2 = out2.reshape((-1,) + self.newvar_shape)
             return jnp.concatenate((out1,out2), axis=-1)

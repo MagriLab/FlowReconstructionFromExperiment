@@ -396,7 +396,8 @@ def select_model_slice3d(**kwargs):
         
         model_options = {
             'ffcnn': cnn.MLPWithCNN,
-            'ff': feedforward.MLP
+            'ff': feedforward.MLP,
+            'fc2branch': fourier2branch.Fourier2Branch,
         }
         if mdlcfg_dict['pretrain_config'] is not None: # Prioritize user inputs
             pretrained_config = literal_eval(mdlcfg_dict['pretrain_config'])
