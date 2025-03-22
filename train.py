@@ -506,7 +506,11 @@ def main(_):
         opt_state = optimizer.init(params)
     else: # no layers are frozen, use normal apply and parameters
         if params_old is not None:
-            params = params_old
+            try:
+                params = mdl.load_old_weights(params, params_old)
+            except AttributeError as e:
+                logger.info(f'{e}. Using the old parameters with no modification.')
+                params = params_old
         apply_fn = mdl.apply
     
     if FLAGS.resume:
