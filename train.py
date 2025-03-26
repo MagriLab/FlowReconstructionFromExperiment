@@ -160,6 +160,15 @@ _keys_to_exclude = [
 ]
 
 
+def shuffle_batch(rng, n_batch:int, shuffle:bool):
+    if not shuffle:
+        return rng, jnp.arange(n_batch)
+    logger.debug('Shuffling batches each epoch.')
+    batch_idx = jax.random.permutation(rng, n_batch)
+    [rng] = jax.random.split(rng,1)
+    return rng, batch_idx
+
+
 def fit(
     x_train_batched:Sequence[jax.Array],
     y_train_batched:Sequence[jax.Array],
@@ -177,6 +186,7 @@ def fit(
     eval_true_mse_val:Callable,
     yfull_train_batched_clean:Optional[Sequence[jax.Array]],
     yfull_val_clean:Optional[jax.Array],
+    shuffle:bool,
 ):
     '''Train a network'''
 
@@ -206,7 +216,10 @@ def fit(
         loss_epoch_mom = []
         loss_epoch_s = []
         loss_epoch_true = []
-        for b in range(n_batch):
+
+        rng, batch_idx = shuffle_batch(rng, n_batch, shuffle)
+        
+        for b in batch_idx:
             (l, (l_div, l_mom, l_s)), state = update(state, rng, x_train_batched[b], y_train_batched[b])
             if FLAGS.cfg.model_config.dropout_rate > 0.0:
                 l, (l_div, l_mom, l_s) = mdl_validation_loss(state.params,None,x_train_batched[b],y_train_batched[b])
@@ -621,7 +634,8 @@ def main(_):
         eval_true_mse_train=eval_mse_train,
         eval_true_mse_val=eval_mse_val,
         yfull_train_batched_clean=yfull_batched_clean,
-        yfull_val_clean=yfull_val_clean
+        yfull_val_clean=yfull_val_clean,
+        shuffle=traincfg.shuffle_batch
     )
 
 

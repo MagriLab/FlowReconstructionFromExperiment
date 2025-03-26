@@ -57,6 +57,7 @@ def get_config(cfgstr:str = None):
 
     # data
     cfg.config.shuffle = placeholder(bool)
+    cfg.config.shuffle_batch = placeholder(bool)
     cfg.config.remove_mean = placeholder(bool)
     cfg.config.normalise = placeholder(bool)
     cfg.config.re = placeholder(float)

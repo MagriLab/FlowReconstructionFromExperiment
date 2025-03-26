@@ -84,7 +84,7 @@ def dataloader_2dtriangle(cfg:ConfigDict = None) -> tuple[dict, ClassDataMetadat
     # Add white noise
     if cfg.snr:
         logger.info('Saving clean data for calculating true loss')
-        [x_train,x_val,_], _ = data_partition(x,1,cfg.train_test_split,REMOVE_MEAN=cfg.remove_mean,randseed=randseed,SHUFFLE=cfg.shuffle) # Do not shuffle, do not remove mean for training with physics informed loss
+        [x_train,x_val,_], _ = data_partition(x,1,cfg.train_test_split,REMOVE_MEAN=cfg.remove_mean,randseed=randseed,shuffle=cfg.shuffle) # Do not shuffle, do not remove mean for training with physics informed loss
         [ux_train,uy_train,pp_train] = np.squeeze(np.split(x_train,3,axis=0))
         [ux_val,uy_val,pp_val] = np.squeeze(np.split(x_val,3,axis=0))
         
@@ -119,7 +119,7 @@ def dataloader_2dtriangle(cfg:ConfigDict = None) -> tuple[dict, ClassDataMetadat
 
     ## Pre-process data that will be used for training
     logger.info("Pre-process data that will be used for training")   
-    [x_train,x_val,_], _ = data_partition(x,1,cfg.train_test_split,REMOVE_MEAN=cfg.remove_mean,randseed=randseed,SHUFFLE=cfg.shuffle) # Do not shuffle, do not remove mean for training with physics informed loss
+    [x_train,x_val,_], _ = data_partition(x,1,cfg.train_test_split,REMOVE_MEAN=cfg.remove_mean,randseed=randseed,shuffle=cfg.shuffle) # Do not shuffle, do not remove mean for training with physics informed loss
     logger.info(f'Remove mean is {cfg.remove_mean}')
 
     [ux_train,uy_train,pp_train] = np.squeeze(np.split(x_train,3,axis=0))
@@ -254,7 +254,7 @@ def _load_kolsol(cfg:ConfigDict, dim:int, multiplesets:bool = False) -> tuple[di
             partition=cfg.train_test_split,
             REMOVE_MEAN=cfg.remove_mean,
             randseed=randseed,
-            SHUFFLE=cfg.shuffle
+            shuffle=cfg.shuffle
         )
 
         logger.info('Saving clean data for calculating true loss')
@@ -289,7 +289,7 @@ def _load_kolsol(cfg:ConfigDict, dim:int, multiplesets:bool = False) -> tuple[di
         partition=cfg.train_test_split,
         REMOVE_MEAN=cfg.remove_mean,
         randseed=randseed,
-        SHUFFLE=cfg.shuffle
+        shuffle=cfg.shuffle
     )
 
     ## get inputs
@@ -425,7 +425,7 @@ def dataloader_3dvolvo(cfg:ConfigDict|None = None) -> tuple[dict,ClassDataMetada
         partition=cfg.train_test_split,
         REMOVE_MEAN=cfg.remove_mean,
         randseed=randseed,
-        SHUFFLE=cfg.shuffle
+        shuffle=cfg.shuffle
     )
 
     ## get inputs

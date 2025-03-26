@@ -192,7 +192,7 @@ def get_single_case_predictions_2dtriangle(results_dir:Path, has_noise:bool, pre
 
     rng = np.random.default_rng(cfg.data_config.randseed)
     if cfg.data_config.snr:
-        [x_train,x_val,x_test], _ = data_utils.data_partition(x,1,cfg.data_config.train_test_split,REMOVE_MEAN=cfg.data_config.remove_mean,randseed=cfg.data_config.randseed,SHUFFLE=cfg.data_config.shuffle) # Do not shuffle, do not remove mean for training with physics informed loss
+        [x_train,x_val,x_test], _ = data_utils.data_partition(x,1,cfg.data_config.train_test_split,REMOVE_MEAN=cfg.data_config.remove_mean,randseed=cfg.data_config.randseed,shuffle=cfg.data_config.shuffle) # Do not shuffle, do not remove mean for training with physics informed loss
         [ux_train,uy_train,pp_train] = np.squeeze(np.split(x_train,3,axis=0))
         # [ux_val,uy_val,pp_val] = np.squeeze(np.split(x_val,3,axis=0))
         # [ux_test,uy_test,pp_test] = np.squeeze(np.split(x_test,3,axis=0))
@@ -216,7 +216,7 @@ def get_single_case_predictions_2dtriangle(results_dir:Path, has_noise:bool, pre
         cfg.data_config.train_test_split,
         REMOVE_MEAN=cfg.data_config.remove_mean,
         randseed=cfg.data_config.randseed,
-        SHUFFLE=cfg.data_config.shuffle
+        shuffle=cfg.data_config.shuffle
     ) # Do not shuffle, do not remove mean for training with physics informed loss
     [ux_train_n,uy_train_n,pp_train_n] = np.squeeze(np.split(x_train_n,3,axis=0))
     [ux_val_n,uy_val_n,pp_val_n] = np.squeeze(np.split(x_val_n,3,axis=0))
