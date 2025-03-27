@@ -378,12 +378,10 @@ def select_model_slice3d(**kwargs):
 
     def prep_data(data:dict, datainfo:DataMetadata, **kwargs) -> dict:
         # make data into suitable form
-        new_inn = data['inn_train']
-        new_inn = np.squeeze(new_inn)
-        if map_axis[0] >= new_inn.ndim:
-            raise ValueError(f'Cannot map input axis {map_axis[0]} to output axis {map_axis[1]} because the input only have {new_inn.ndim} dimensions.')
-        new_inn_val = data['inn_val']
-        new_inn_val = np.squeeze(new_inn_val)
+        new_inn = [np.squeeze(inn) for inn in data['inn_train']]
+        if map_axis[0] >= new_inn[0].ndim:
+            raise ValueError(f'Cannot map input axis {map_axis[0]} to output axis {map_axis[1]} because the input only have {new_inn[0].ndim} dimensions.')
+        new_inn_val = [np.squeeze(inn) for inn in data['inn_val']]
         data.update({
             'inn_train': new_inn,
             'inn_val': new_inn_val,

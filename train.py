@@ -73,39 +73,6 @@ def debugger(loggers:Sequence[str]):
         logging.getLogger(f'fr.{l}').setLevel(logging.DEBUG)
 
 
-def batching(nb_batches:int, data:jax.Array, sets_index:list[int] = None) -> list[Array]:
-    '''Split data into nb_batches number of batches along axis 0.'''
-    if sets_index is not None:
-        _index = np.cumsum(sets_index)
-        nt_per_batch = int(np.sum(sets_index)/nb_batches)
-        _index = np.insert(_index,0,0)
-        logger.debug(f'Dataset index {list(_index)}. The number of snapshots in total is {data.shape[0]}, {nt_per_batch} snapshots per batch.')
-        batched = []
-        for i in range(1,len(_index)):
-            n_equal_size = sets_index[i-1] // nt_per_batch
-            if n_equal_size == 0:
-                logger.error(f'There are {sets_index[i-1]} snapshots in this dataset but the user asked for {nt_per_batch} snapshots per batch.')
-            if sets_index[i-1] % nt_per_batch != 0:
-                logger.warning('The batches do not have equal numbers of batches')
-            n = [nt_per_batch]*n_equal_size
-            n = np.cumsum(n)[:-1]
-            batched.extend(
-                jnp.split(
-                    data[_index[i-1]:_index[i],...],
-                    n,
-                    axis=0
-                )
-            )
-        logger.debug(f'Batch sizes are {[d.shape[0] for d in batched]}')
-        assert len(batched)==nb_batches, f"{len(batched)} batches instead of the user-specified {nb_batches}."
-        return batched
-    else:        
-        if data.shape[0] % nb_batches != 0:
-            logger.warning('The batches do not have equal numbers of batches')
-        return jnp.array_split(data,nb_batches,axis=0)
-
-
-
 def save_config(config:config_dict.ConfigDict, tmp_dir:Path):
     '''Save config to file config.yml. Load with yaml.unsafe_load(file)'''
     logger.info(f'save config to {tmp_dir}.')
@@ -238,13 +205,12 @@ def fit(
                 logger.debug('Calculating true loss using clean data.')
             try:
                 if not error_logged:
-                    l_mse = eval_true_mse_train(
+                    l_true = eval_true_mse_train(
                         state.params,
                         None,
                         x_train_batched[b],
                         yfull_train_batched_clean[b]
                     )
-                    l_true = l_mse+l_div+l_mom
             except Exception as e:
                 warnings.warn(f'True loss not available.')
                 logger.warning(f'True loss cannot be calculated due to {e}')
@@ -264,27 +230,32 @@ def fit(
 
         
         ## Validating
-        l_val, (l_val_div, l_val_mom, l_val_s) = mdl_validation_loss(state.params,None,x_val,y_val)
+        l_val, l_val_div, l_val_mom, l_val_s, l_val_true = [], [], [], [], []
+        for _x,_y,_yclean in zip(x_val,y_val,yfull_val_clean):
+            l_v, (l_v_d, l_v_m, l_v_s) = mdl_validation_loss(state.params,None,_x,_y)
+            l_val.append(l_v)
+            l_val_div.append(l_v_d)
+            l_val_mom.append(l_v_m)
+            l_val_s.append(l_v_s)
 
-        logger.debug('Calculating true validation loss using clean data.')
-        try:
-            if not error_logged:
-                l_val_mse = eval_true_mse_val(state.params,None,x_val,yfull_val_clean)
-                l_val_true = float(np.sum([l_val_div, l_val_mom, l_val_mse]))
-            else:
-                l_val_true = 0.0
-        except Exception as e:
-            warnings.warn('True loss not available.')
-            logger.warning(f'True loss cannot be calculated due to {e}')
-            l_val_true = 0.0
-            error_logged = True
+            try:
+                if not error_logged:
+                    logger.debug('Calculating true validation loss using clean data.')
+                    l_v_true = eval_true_mse_val(state.params,None,_x,_yclean)
+                else:
+                    l_v_true = 0.0
+            except Exception as e:
+                warnings.warn('True loss not available.')
+                logger.warning(f'True loss cannot be calculated due to {e}')
+                l_v_true = 0.0
+                error_logged = True
+            l_val_true.append(l_v_true)
 
-
-        loss_val.append(float(l_val))
-        loss_val_true.append(l_val_true)
-        loss_val_div.append(float(l_val_div))
-        loss_val_momentum.append(float(l_val_mom))
-        loss_val_sensors.append(float(l_val_s))
+        loss_val.append(np.mean(l_val))
+        loss_val_true.append(np.mean(l_val_true))
+        loss_val_div.append(np.mean(l_val_div))
+        loss_val_momentum.append(np.mean(l_val_mom))
+        loss_val_sensors.append(np.mean(l_val_s))
 
 
         if wandb_run is not None:
@@ -296,13 +267,13 @@ def fit(
                     'loss_div':loss_div[-1], 
                     'loss_momentum':loss_momentum[-1], 
                     'loss_sensors':loss_sensors[-1],
-                    'loss_val':l_val,
-                    'loss_val_true': l_val_true,
-                    'loss_val_div':l_val_div, 
-                    'loss_val_momentum':l_val_mom, 
-                    'loss_val_sensors':l_val_s,
+                    'loss_val':loss_val[-1],
+                    'loss_val_true': loss_val_true[-1],
+                    'loss_val_div':loss_val_div[-1], 
+                    'loss_val_momentum':loss_val_momentum[-1], 
+                    'loss_val_sensors':loss_val_sensors[-1],
                     'loss_total': loss_div[-1] + loss_momentum[-1] + loss_sensors[-1],
-                    'loss_val_total': l_val_div + l_val_mom + l_val_s,
+                    'loss_val_total': loss_val_div[-1] + loss_val_momentum[-1] + loss_val_sensors[-1],
                 })
 
         if l_epoch < min_loss:
@@ -310,9 +281,9 @@ def fit(
             save_trainingstate(tmp_dir,state,'state')
 
         if i%FLAGS.print == 0:
-            print(f'Epoch: {i}, loss: {loss_train[-1]:.7f}, validation_loss: {l_val:.7f}', flush=True)
+            print(f'Epoch: {i}, loss: {loss_train[-1]:.7f}, validation_loss: {loss_val[-1]:.7f}', flush=True)
             print(f'    For training, loss_div: {loss_div[-1]:.7f}, loss_momentum: {loss_momentum[-1]:.7f}, loss_sensors: {loss_sensors[-1]:.7f}')
-            print(f'    True loss of training: {loss_true[-1]:.7f}, validation: {l_val_true:.7f}')
+            print(f'    True loss of training: {loss_true[-1]:.7f}, validation: {loss_val_true[-1]:.7f}')
 
 
     loss_dict = {
@@ -442,13 +413,16 @@ def main(_):
     observe_kwargs = {key: value for key, value in data.items() if key not in _keys_to_exclude}
     take_observation, insert_observation = cfg.case.observe(
         datacfg,
-        example_pred_snapshot = data['u_train'][0,...],
-        example_pin_snapshot = data['inn_train'][0,...],
+        example_pred_snapshot = data['u_train'][0][0,...],
+        example_pin_snapshot = data['inn_train'][0][0,...],
         **observe_kwargs
     )
-    observed_train, train_minmax = take_observation(data['u_train'], init=True)
-    observed_val, val_minmax = take_observation(data['u_val'], init=True)
-    
+    _, train_minmax = take_observation(np.concatenate(data['u_train'],axis=0), init=True)
+    _, val_minmax = take_observation(np.concatenate(data['u_val'],axis=0),init=True)
+    observed_train = [take_observation(_u) for _u in data['u_train']]
+    observed_val = [take_observation(_u) for _u in data['u_val']]
+
+
     data.update({
         'y_train':observed_train,
         'y_val':observed_val,
@@ -458,7 +432,7 @@ def main(_):
     logger.debug(f'Data dict now has {data.keys()}')
     data_extra = {k: data[k] for k in data if k not in standard_data_keys}
 
-    percent_observed = 100*(observed_train.size/data['u_train'].size)
+    percent_observed = 100*(observed_train[0].size/data['u_train'][0].size)
     if run:
         run.config.update({'percent_observed':percent_observed, 're':cfg.data_config.re}, allow_val_change=True)
 
@@ -484,7 +458,7 @@ def main(_):
     mdl = make_model(mdlcfg)
     logger.info('Made a model.')
 
-    params = mdl.init(rng,data['inn_train'][[0],...])
+    params = mdl.init(rng,data['inn_train'][0][[0],...])
     logger.info('Initialised weights.')
     logger.debug('Params shape')
     logger.debug(jax.tree_util.tree_map(lambda x: x.shape,params))
@@ -599,34 +573,30 @@ def main(_):
 
     # ==================== start training ===========================
 
-    x_batched = batching(traincfg.nb_batches, data['inn_train'], data['sets_index'])
-    y_batched = batching(traincfg.nb_batches, data['y_train'], data['sets_index'])
-    logger.info('Prepared data as required by the model selected and batched the data.')
-    logger.debug(f'First batch of input data has shape {x_batched[0].shape}.')
-    logger.debug(f'First batch of reference data {y_batched[0].shape}.')
-    logger.debug(f'First batch of output has shape {apply_fn(state.params, None, x_batched[0], False).shape}')
-    _ = update(state,jax.random.PRNGKey(10),x_batched[0],y_batched[0])
-    logger.info(f"Time taken for each update step {timeit(lambda: update(state, jax.random.PRNGKey(10), x_batched[0], y_batched[0]), number=5)}")
+    logger.debug(f"First batch of input data has shape {data['inn_train'][0].shape}.")
+    logger.debug(f"First batch of reference data {data['y_train'][0].shape}.")
+    logger.debug(f"First batch of output has shape {apply_fn(state.params, None, data['inn_train'][0], False).shape}")
+    _ = update(state,jax.random.PRNGKey(10),data['inn_train'][0],data['y_train'][0])
+    logger.info(f"Time taken for each update step {timeit(lambda: update(state, jax.random.PRNGKey(10), data['inn_train'][0], data['y_train'][0]), number=5)}")
 
     if FLAGS._noisy:
-        logger.debug('Batching clean data because training data is noisy.')
-        yfull_batched_clean = batching(traincfg.nb_batches, data['u_train_clean'], data['sets_index'])
+        yfull_batched_clean = data['u_train_clean']
         yfull_val_clean = data['u_val_clean']
     else:
-        yfull_batched_clean = batching(traincfg.nb_batches, data['u_train'], data['sets_index'])
+        yfull_batched_clean = data['u_train']
         yfull_val_clean = data['u_val']
 
 
     logger.info('Starting training now...')
     state, loss_dict = fit(
-        x_train_batched=x_batched,
-        y_train_batched=y_batched,
+        x_train_batched=data['inn_train'],
+        y_train_batched=data['y_train'],
         x_val=data['inn_val'],
         y_val=data['y_val'],
         state=state,
         epochs=traincfg.epochs,
         rng=rng,
-        n_batch=traincfg.nb_batches,
+        n_batch=len(data['inn_train']),
         update=update,
         mdl_validation_loss=mdl_validation_loss,
         tmp_dir=tmp_dir,

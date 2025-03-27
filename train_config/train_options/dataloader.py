@@ -182,9 +182,8 @@ def _load_kolsol(cfg:ConfigDict, dim:int, multiplesets:bool = False) -> tuple[di
         _check_dt = []
         x = []
         sets_index = []
-        total_snapshots = int(np.sum(cfg.train_test_split[:-1]))
         i = 0
-        while int(np.sum(sets_index)) < total_snapshots:
+        while int(np.sum(sets_index)) < cfg.nsample:
             _x, re, dt = simulation.read_data_kolsol(datasets_path[i])
             x.append(_x)
             sets_index.append(_x.shape[0]) # keep the number of snapshots in each set
@@ -194,14 +193,8 @@ def _load_kolsol(cfg:ConfigDict, dim:int, multiplesets:bool = False) -> tuple[di
             if len(set(_check_dt)) > 1 or len(set(_check_re)) > 1:
                 raise ValueError('Datasets must be generated with the same parameters.')
             i += 1
-        x = np.concatenate(x, axis=0)[:total_snapshots,...] # build a large dataset
-        num_snapshots_lastset = total_snapshots-cfg.train_test_split[1]-int(np.sum(sets_index[:-1]))
-        if num_snapshots_lastset < 0:
-            raise ValueError('Validation data cannot be taken from more than one set of data')
-        else:
-            sets_index[-1] = num_snapshots_lastset
-            if num_snapshots_lastset == 0:
-                sets_index.pop()
+        x = np.concatenate(x, axis=0) # build a large dataset
+        sets_index[-1] = sets_index[-1] - (x.shape[0]-cfg.nsample) # modify the last index if not the entire set is used
     else:    
         x, re, dt = simulation.read_data_kolsol(cfg.data_dir)
         logger.debug(f'The simulated kolmogorov flow has shape {x.shape}')
@@ -247,15 +240,25 @@ def _load_kolsol(cfg:ConfigDict, dim:int, multiplesets:bool = False) -> tuple[di
 
     # Add white noise
     if cfg.snr:
-        
-        [u_train, u_val, _], _ = data_partition(
+        [u], _ = data_partition(
             x, 
             axis=0, 
-            partition=cfg.train_test_split,
+            partition=[cfg.nsample],
             REMOVE_MEAN=cfg.remove_mean,
             randseed=randseed,
             shuffle=cfg.shuffle
         )
+
+        ## Batching and take validation set. These are clean data
+        u = batching(cfg.batch_size, u, sets_index)
+        u_train, u_val = [], []
+        _idx = np.array(list(range(len(u))))
+        _idx_val = _idx[list(cfg.val_batch_idx)]
+        for i in _idx:
+            if i in _idx_val:
+                u_val.append(u[i])
+            else:
+                u_train.append(u[i])
 
         logger.info('Saving clean data for calculating true loss')
         data.update({
@@ -269,10 +272,10 @@ def _load_kolsol(cfg:ConfigDict, dim:int, multiplesets:bool = False) -> tuple[di
         except flags._exceptions.UnrecognizedFlagError as e:
             warnings.warn(str(e))
             warnings.warn('Are you calling the dataloader from train.py?')
-        std_data = np.std(x,axis=tuple(np.arange(dim+1)),ddof=1)
+        std_data = np.std(u,axis=tuple(np.arange(dim+1)),ddof=1)
         std_n = get_whitenoise_std(cfg.snr,std_data)
-        noise = rng.normal([0]*len(std_n),std_n,size=x.shape)
-        x = x + noise
+        noise = rng.normal([0]*len(std_n),std_n,size=u.shape)
+        x = u + noise
         
     else:
         data.update({
@@ -283,14 +286,26 @@ def _load_kolsol(cfg:ConfigDict, dim:int, multiplesets:bool = False) -> tuple[di
 
     ## Pre-process data that will be used for training
     logger.info("Pre-process data that will be used for training")   
-    [u_train, u_val, _], _ = data_partition(
+    [u], _ = data_partition(
         x, 
         axis=0, 
-        partition=cfg.train_test_split,
+        partition=[cfg.nsample],
         REMOVE_MEAN=cfg.remove_mean,
         randseed=randseed,
         shuffle=cfg.shuffle
     )
+
+    ## Batching and take validation set 
+    u = batching(cfg.batch_size, u, sets_index)
+    u_train, u_val = [], []
+    _idx = np.array(list(range(len(u))))
+    _idx_val = _idx[list(cfg.val_batch_idx)]
+    for i in _idx:
+        if i in _idx_val:
+            u_val.append(u[i])
+        else:
+            u_train.append(u[i])
+    logger.debug(f"{np.sum([_u.shape[0] for _u in u_val])} snapshots are used for validation.")
 
     ## get inputs
     logger.info('Generating inputs')
@@ -310,20 +325,19 @@ def _load_kolsol(cfg:ConfigDict, dim:int, multiplesets:bool = False) -> tuple[di
         logger.debug(f'Pressure input at grid points {tuple(inn_idx)}.')
         # slice data
         slice_inn = np.s_[:,*inn_idx,-1]
-        inn_train = u_train[slice_inn]
-        inn_val = u_val[slice_inn]
+        inn_train = [_u[slice_inn] for _u in u_train]
+        inn_val = [_u[slice_inn] for _u in u_val]
         data.update({'_slice_inn': slice_inn})
 
     elif hasattr(cfg, 'pressure_inlet_slice'):
         inn_loc = slice_from_tuple(cfg.pressure_inlet_slice)
         s_pressure = (np.s_[:],) + inn_loc + (np.s_[-1],)
-        inn_train = u_train[s_pressure] # has shape [nt, x, y, z]
-        inn_val = u_val[s_pressure]
+        inn_train = [_u[s_pressure] for _u in u_train]
+        inn_val = [_u[s_pressure] for _u in u_val]
 
     else:
         logger.critical('Pressure input is not defined in config. Please define inputs.')
         raise NotImplementedError
-
 
     data.update({
         'u_train': u_train,
@@ -347,7 +361,7 @@ def dataloader_2dkol(cfg:ConfigDict|None = None) -> tuple[dict,ClassDataMetadata
     data, datainfo = _load_kolsol(cfg,2)
 
 
-    ngrid = data['u_val'].shape[datainfo.axx]
+    ngrid = data['u_train'].shape[datainfo.axx]
     f = simulation.kolsol_forcing_term(cfg.forcing_frequency,ngrid,2)
     data.update({'forcing': f})
     return data, datainfo
@@ -362,7 +376,7 @@ def dataloader_3dkol(cfg:ConfigDict|None = None) -> tuple[dict,ClassDataMetadata
     data, datainfo = _load_kolsol(cfg,3)
 
 
-    ngrid = data['u_val'].shape[datainfo.axx]
+    ngrid = data['u_train'].shape[datainfo.axx]
     f = simulation.kolsol_forcing_term(cfg.forcing_frequency,ngrid,3)
     data.update({'forcing': f})
     
@@ -377,7 +391,7 @@ def dataloader_3dkolsets(cfg:ConfigDict|None = None) -> tuple[dict, ClassDataMet
     
     data, datainfo = _load_kolsol(cfg, 3, multiplesets=True)
 
-    ngrid = data['u_val'].shape[datainfo.axx]
+    ngrid = data['u_train'][0].shape[datainfo.axx]
     f = simulation.kolsol_forcing_term(cfg.forcing_frequency,ngrid,3)
     data.update({'forcing': f[:,:,:,:,0:1]})
     
@@ -445,3 +459,37 @@ def dataloader_3dvolvo(cfg:ConfigDict|None = None) -> tuple[dict,ClassDataMetada
     logger.debug(f'Shape of the training set:{u_train.shape}, shape of the inputs:{inn_train.shape}')
 
     return data, datainfo
+
+
+
+
+def batching(batch_size:int, data:Array, sets_index:list[int] = None) -> list[Array]:
+    '''Split data into nb_batches number of batches along axis 0.'''
+    if sets_index is not None:
+        _index = np.cumsum(sets_index)
+        _index = np.insert(_index,0,0)
+        logger.debug(f'Dataset index {list(_index)}. The number of snapshots in total is {data.shape[0]}, {batch_size} snapshots per batch.')
+        batched = []
+        for i in range(1,len(_index)):
+            n_equal_size = sets_index[i-1] // batch_size
+            if n_equal_size == 0:
+                logger.error(f'There are {sets_index[i-1]} snapshots in this dataset but the user asked for {batch_size} snapshots per batch.')
+            if sets_index[i-1] % batch_size != 0:
+                logger.warning('The batches do not have equal numbers of batches')
+            n = [batch_size]*n_equal_size
+            n = np.cumsum(n)[:-1]
+            batched.extend(
+                np.split(
+                    data[_index[i-1]:_index[i],...],
+                    n,
+                    axis=0
+                )
+            )
+        logger.debug(f'Batch sizes are {[d.shape[0] for d in batched]}')
+        return batched
+    else:        
+        nb_batches = data.shape[0] // batch_size
+        if data.shape[0] % nb_batches != 0:
+            logger.warning('The batches do not have equal numbers of batches')
+        return np.array_split(data,nb_batches,axis=0)
+

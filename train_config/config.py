@@ -36,7 +36,9 @@ def get_basic_config() -> config_dict.ConfigDict:
     cfg.data_config.randseed = placeholder(int)
     cfg.data_config.remove_mean = False # Do NOT remove mean
     cfg.data_config.normalise = False
-    cfg.data_config.train_test_split = placeholder(tuple)
+    cfg.data_config.nsample = placeholder(int)
+    cfg.data_config.val_batch_idx = (-1,-2)
+    cfg.data_config.batch_size = placeholder(int)
     cfg.data_config.re = placeholder(float)
     cfg.data_config.dt = placeholder(float)
     cfg.data_config.dx = placeholder(float)
@@ -57,7 +59,6 @@ def get_basic_config() -> config_dict.ConfigDict:
     ## Training
     cfg.train_config = config_dict.ConfigDict()
     
-    cfg.train_config.nb_batches = 20
     cfg.train_config.learning_rate = 4e-3
     cfg.train_config.regularisation_strength = 0.0
     cfg.train_config.epochs = 20000
@@ -239,7 +240,7 @@ _default_datacfg = {
         'pressure_inlet_slice': ((0,1,None),(None,),(None,)),
         'measure_slice': (None, None, 32, 3), # (x,y,z,num_components), default take the z=32 plane, all velocity components
         'forcing_frequency': 4,
-        'train_test_split': (2250,250,0)
+        'nsample': 2500,
     },
 }
 

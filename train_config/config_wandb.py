@@ -44,7 +44,8 @@ def get_config(cfgstr:str = None):
     cfg.config.log_frequency = 10 # must be an integer
 
     # training
-    cfg.config.nb_batches = placeholder(int)
+    # cfg.config.nb_batches = placeholder(int)
+    cfg.config.batch_size = placeholder(int)
     cfg.config.dropout_rate = placeholder(float)
     cfg.config.regularisation_strength = placeholder(float)
     cfg.config.learning_rate = placeholder(float)
