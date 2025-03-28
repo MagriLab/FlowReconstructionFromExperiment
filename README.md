@@ -2,6 +2,9 @@
 
 Reconstructing 3D wake behind a bluff body with limited amount of sensors. 
 
+## Major changes
+
+28 Mar 2025: The current config file is no longer compatible with the old training script starting from commit `e60831b779e301e9a3b5f88c0d43d4e47ba1455a`. 
 
 ## Stage 1
 
