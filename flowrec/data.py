@@ -16,7 +16,7 @@ Array = Union[np.ndarray, jax.Array]
 def data_partition(data:np.ndarray,
                     axis:int,
                     partition:List,
-                    SHUFFLE:bool=True,
+                    shuffle:bool=True,
                     REMOVE_MEAN:bool=False,
                     data_type:dtype=np.float32,
                     randseed:Optional[int]=None,) -> List[np.ndarray]: 
@@ -41,7 +41,7 @@ def data_partition(data:np.ndarray,
     d = np.moveaxis(d,axis,0)
     d = d[:np.sum(partition),...]
 
-    if SHUFFLE:
+    if shuffle:
         rng = np.random.default_rng(randseed)
         idx_shuffle, _ = shuffle_with_idx(d.shape[0],rng)
         d = d[idx_shuffle,...]
@@ -95,6 +95,9 @@ def normalise(*args:Array, range:list = None) -> tuple[list[Array], list]:
     if range:
         logger.info('Using user provided range.')
         ran = list(range)
+        if (len(ran) == 1) and (len(args) > 1):
+            assert isinstance(ran[0],list), 'When using a single range for multiple datasets, it must be a list in a list [[data_min, data_max]]'
+            ran = ran*len(args)
         assert len(ran) == len(args), 'Range provided does not match the number of arrays to normalise.'
     else:
         logger.debug('Using calculated range.')

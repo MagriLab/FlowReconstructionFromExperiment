@@ -66,7 +66,7 @@ def dataloader_2dtriangle(cfg:ConfigDict) -> dict:
         randseed = None
 
     
-    [x_train,x_val,_], _ = data_partition(x,1,cfg.train_test_split,REMOVE_MEAN=cfg.remove_mean,randseed=randseed,SHUFFLE=cfg.shuffle) # Do not shuffle, do not remove mean for training with physics informed loss
+    [x_train,x_val,_], _ = data_partition(x,1,cfg.train_test_split,REMOVE_MEAN=cfg.remove_mean,randseed=randseed,shuffle=cfg.shuffle) # Do not shuffle, do not remove mean for training with physics informed loss
 
     [ux_train,uy_train,pp_train] = np.squeeze(np.split(x_train,3,axis=0))
     [ux_val,uy_val,pp_val] = np.squeeze(np.split(x_val,3,axis=0))

@@ -36,7 +36,9 @@ def get_basic_config() -> config_dict.ConfigDict:
     cfg.data_config.randseed = placeholder(int)
     cfg.data_config.remove_mean = False # Do NOT remove mean
     cfg.data_config.normalise = False
-    cfg.data_config.train_test_split = placeholder(tuple)
+    cfg.data_config.nsample = placeholder(int)
+    cfg.data_config.val_batch_idx = (-1,-2)
+    cfg.data_config.batch_size = placeholder(int)
     cfg.data_config.re = placeholder(float)
     cfg.data_config.dt = placeholder(float)
     cfg.data_config.dx = placeholder(float)
@@ -57,10 +59,10 @@ def get_basic_config() -> config_dict.ConfigDict:
     ## Training
     cfg.train_config = config_dict.ConfigDict()
     
-    cfg.train_config.nb_batches = 20
     cfg.train_config.learning_rate = 4e-3
     cfg.train_config.regularisation_strength = 0.0
     cfg.train_config.epochs = 20000
+    cfg.train_config.shuffle_batch = True
 
     cfg.train_config.randseed = placeholder(int)
     
@@ -195,7 +197,7 @@ _default_datacfg = {
         'dx': 12/512,
         'dy': 4/128,
         'pressure_inlet_slice': ((0,1,None),(49,80,None)),
-        'train_test_split': (600,100,100)
+        'nsample': 700
     },
     '2dkol': {
         'data_dir': './local_data/kolmogorov/dim2_re34_k32_f4_dt1_grid128_25619.h5',
@@ -206,13 +208,13 @@ _default_datacfg = {
         'pressure_inlet_slice': placeholder(tuple),
         'random_input': placeholder(tuple), # (randseed, number of pressure sensors)
         'forcing_frequency': 4,
-        'train_test_split': (6000,500,500),
+        'nsample': 6500,
         'crop_data': ((None,),(None,)), # (crop_data xy)
     },
     '3dvolvo': {
         'data_dir': './local_data/volvorig/u166/',
         'pressure_inlet_slice': ((0,1,None),(None,None,2),(None,None,None)), # sensors at x=0, a slice at each z, sensor at every other y
-        'train_test_split': (450, 40, 3)
+        'nsample': 490
     },
     '3dkol': {
         'data_dir': './local_data/kolmogorov/dim3_re34_k32_f4_dt01_grid64_189.h5',
@@ -225,7 +227,7 @@ _default_datacfg = {
         'pressure_inlet_slice': ((0,1,None),(None,),(None,)),
         'measure_slice': (None, None, 32, 3), # (x,y,z,num_components), default take the z=32 plane, all velocity components
         'forcing_frequency': 4,
-        'train_test_split': (800,100,100)
+        'nsample': 900,
     },
     '3dkolsets': {
         'data_dir': './local_data/kolmogorov/dim3_datasets_080325.txt',
@@ -238,7 +240,7 @@ _default_datacfg = {
         'pressure_inlet_slice': ((0,1,None),(None,),(None,)),
         'measure_slice': (None, None, 32, 3), # (x,y,z,num_components), default take the z=32 plane, all velocity components
         'forcing_frequency': 4,
-        'train_test_split': (2250,250,0)
+        'nsample': 2500,
     },
 }
 
