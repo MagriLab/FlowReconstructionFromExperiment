@@ -95,6 +95,9 @@ def normalise(*args:Array, range:list = None) -> tuple[list[Array], list]:
     if range:
         logger.info('Using user provided range.')
         ran = list(range)
+        if (len(ran) == 1) and (len(args) > 1):
+            assert isinstance(ran[0],list), 'When using a single range for multiple datasets, it must be a list in a list [[data_min, data_max]]'
+            ran = ran*len(args)
         assert len(ran) == len(args), 'Range provided does not match the number of arrays to normalise.'
     else:
         logger.debug('Using calculated range.')

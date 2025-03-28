@@ -197,7 +197,7 @@ _default_datacfg = {
         'dx': 12/512,
         'dy': 4/128,
         'pressure_inlet_slice': ((0,1,None),(49,80,None)),
-        'train_test_split': (600,100,100)
+        'nsample': 700
     },
     '2dkol': {
         'data_dir': './local_data/kolmogorov/dim2_re34_k32_f4_dt1_grid128_25619.h5',
@@ -208,13 +208,13 @@ _default_datacfg = {
         'pressure_inlet_slice': placeholder(tuple),
         'random_input': placeholder(tuple), # (randseed, number of pressure sensors)
         'forcing_frequency': 4,
-        'train_test_split': (6000,500,500),
+        'nsample': 6500,
         'crop_data': ((None,),(None,)), # (crop_data xy)
     },
     '3dvolvo': {
         'data_dir': './local_data/volvorig/u166/',
         'pressure_inlet_slice': ((0,1,None),(None,None,2),(None,None,None)), # sensors at x=0, a slice at each z, sensor at every other y
-        'train_test_split': (450, 40, 3)
+        'nsample': 490
     },
     '3dkol': {
         'data_dir': './local_data/kolmogorov/dim3_re34_k32_f4_dt01_grid64_189.h5',
@@ -227,7 +227,7 @@ _default_datacfg = {
         'pressure_inlet_slice': ((0,1,None),(None,),(None,)),
         'measure_slice': (None, None, 32, 3), # (x,y,z,num_components), default take the z=32 plane, all velocity components
         'forcing_frequency': 4,
-        'train_test_split': (800,100,100)
+        'nsample': 900,
     },
     '3dkolsets': {
         'data_dir': './local_data/kolmogorov/dim3_datasets_080325.txt',

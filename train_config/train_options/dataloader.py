@@ -81,34 +81,23 @@ def dataloader_2dtriangle(cfg:ConfigDict = None) -> tuple[dict, ClassDataMetadat
         randseed = cfg.randseed
     rng = np.random.default_rng(randseed)
 
+    x = np.einsum('utxy -> txyu', x)
     # Add white noise
     if cfg.snr:
         logger.info('Saving clean data for calculating true loss')
-        [x_train,x_val,_], _ = data_partition(x,1,cfg.train_test_split,REMOVE_MEAN=cfg.remove_mean,randseed=randseed,shuffle=cfg.shuffle) # Do not shuffle, do not remove mean for training with physics informed loss
-        [ux_train,uy_train,pp_train] = np.squeeze(np.split(x_train,3,axis=0))
-        [ux_val,uy_val,pp_val] = np.squeeze(np.split(x_val,3,axis=0))
-        
-        u_train = np.stack((ux_train,uy_train,pp_train),axis=-1)
-        u_val = np.stack((ux_val,uy_val,pp_val),axis=-1)
-
-        data.update({
-            'u_train_clean': u_train,
-            'u_val_clean': u_val
-        })
-
-        logger.info('Adding white noise to data.')
         try:
             FLAGS._noisy = True
         except flags._exceptions.UnrecognizedFlagError as e:
             warnings.warn(str(e))
             warnings.warn('Are you calling the dataloader from train.py?')
-        std_data = np.std(x,axis=(1,2,3),ddof=1)
-        std_n = get_whitenoise_std(cfg.snr,std_data)
-        noise_ux = rng.normal(scale=std_n[0],size=x[0,...].shape)
-        noise_uy = rng.normal(scale=std_n[1],size=x[1,...].shape)
-        noise_pp = rng.normal(scale=std_n[2],size=x[2,...].shape)
-        noise = np.stack([noise_ux,noise_uy,noise_pp],axis=0)
-        x = x + noise
+
+        x, u_train_clean, u_val_clean = _add_whitenoise(x, randseed+1, cfg)
+
+        logger.info('Saving clean data for calculating true loss')
+        data.update({
+            'u_train_clean': u_train_clean,
+            'u_val_clean': u_val_clean
+        })
 
     else:
         data.update({
@@ -119,14 +108,17 @@ def dataloader_2dtriangle(cfg:ConfigDict = None) -> tuple[dict, ClassDataMetadat
 
     ## Pre-process data that will be used for training
     logger.info("Pre-process data that will be used for training")   
-    [x_train,x_val,_], _ = data_partition(x,1,cfg.train_test_split,REMOVE_MEAN=cfg.remove_mean,randseed=randseed,shuffle=cfg.shuffle) # Do not shuffle, do not remove mean for training with physics informed loss
-    logger.info(f'Remove mean is {cfg.remove_mean}')
+    [x], _ = data_partition(
+        x, 
+        axis=0, 
+        partition=[cfg.nsample],
+        REMOVE_MEAN=cfg.remove_mean,
+        randseed=randseed,
+        shuffle=cfg.shuffle
+    )
 
-    [ux_train,uy_train,pp_train] = np.squeeze(np.split(x_train,3,axis=0))
-    [ux_val,uy_val,pp_val] = np.squeeze(np.split(x_val,3,axis=0))
-    
-    pb_train = simulation.take_measurement_base(pp_train,ly=triangle_base_coords,centrex=0)
-    pb_val = simulation.take_measurement_base(pp_val,ly=triangle_base_coords,centrex=0)
+    pp = x[...,-1]
+    pb= simulation.take_measurement_base(pp,ly=triangle_base_coords,centrex=0)
 
     # information about the grid
     datainfo = DataMetadata(
@@ -136,14 +128,24 @@ def dataloader_2dtriangle(cfg:ConfigDict = None) -> tuple[dict, ClassDataMetadat
         problem_2d=True
     ).to_named_tuple()
     logger.debug(f'datainfo is {datainfo}.')
+    
+    ## batching
+    x = batching(cfg.batch_size, x)
+    pb = batching(cfg.batch_size, pb)
+    u_train, u_val = [], []
+    pb_train, pb_val = [], []
+    _idx = np.array(list(range(len(x))))
+    _idx_val = _idx[list(cfg.val_batch_idx)]
+    for i in _idx:
+        if i in _idx_val:
+            u_val.append(x[i])
+            pb_val.append(pb[i])
+        else:
+            u_train.append(x[i])
+            pb_train.append(pb[i])
+    logger.debug(f'Input of the training set (first batch) has shape {pb_train[0].shape}.')
 
-    pb_train = np.reshape(pb_train,(cfg.train_test_split[0],-1))
-    pb_val = np.reshape(pb_val,(cfg.train_test_split[1],-1))
-    logger.debug(f'Input of the training set has shape {pb_train.shape}.')
-
-    u_train = np.stack((ux_train,uy_train,pp_train),axis=-1)
-    u_val = np.stack((ux_val,uy_val,pp_val),axis=-1)
-    logger.debug(f'Shapes of u_train and u_val are {u_train.shape} and {u_val.shape}.')
+    logger.debug(f'Shapes of u_train and u_val (first batch) are {u_train[0].shape} and {u_val[0].shape}.')
 
 
     data.update({
@@ -240,43 +242,20 @@ def _load_kolsol(cfg:ConfigDict, dim:int, multiplesets:bool = False) -> tuple[di
 
     # Add white noise
     if cfg.snr:
-        [u], _ = data_partition(
-            x, 
-            axis=0, 
-            partition=[cfg.nsample],
-            REMOVE_MEAN=cfg.remove_mean,
-            randseed=randseed,
-            shuffle=cfg.shuffle
-        )
-
-        ## Batching and take validation set. These are clean data
-        u = batching(cfg.batch_size, u, sets_index)
-        u_train, u_val = [], []
-        _idx = np.array(list(range(len(u))))
-        _idx_val = _idx[list(cfg.val_batch_idx)]
-        for i in _idx:
-            if i in _idx_val:
-                u_val.append(u[i])
-            else:
-                u_train.append(u[i])
-
-        logger.info('Saving clean data for calculating true loss')
-        data.update({
-            'u_train_clean': u_train,
-            'u_val_clean': u_val
-        })
-
-        logger.info('Adding white noise to data.')
         try:
             FLAGS._noisy = True
         except flags._exceptions.UnrecognizedFlagError as e:
             warnings.warn(str(e))
             warnings.warn('Are you calling the dataloader from train.py?')
-        std_data = np.std(u,axis=tuple(np.arange(dim+1)),ddof=1)
-        std_n = get_whitenoise_std(cfg.snr,std_data)
-        noise = rng.normal([0]*len(std_n),std_n,size=u.shape)
-        x = u + noise
-        
+         
+        x, u_train_clean, u_val_clean = _add_whitenoise(x, randseed+1, cfg, sets_index)
+
+        logger.info('Saving clean data for calculating true loss')
+        data.update({
+            'u_train_clean': u_train_clean,
+            'u_val_clean': u_val_clean
+        })
+               
     else:
         data.update({
             'u_train_clean': None,
@@ -433,10 +412,10 @@ def dataloader_3dvolvo(cfg:ConfigDict|None = None) -> tuple[dict,ClassDataMetada
         })
     
     logger.info("Pre-process data that will be used for training")   
-    [u_train, u_val, _], _ = data_partition(
+    [u], _ = data_partition(
         x, 
         axis=0, 
-        partition=cfg.train_test_split,
+        partition=[cfg.nsample],
         REMOVE_MEAN=cfg.remove_mean,
         randseed=randseed,
         shuffle=cfg.shuffle
@@ -446,9 +425,24 @@ def dataloader_3dvolvo(cfg:ConfigDict|None = None) -> tuple[dict,ClassDataMetada
     inn_loc = slice_from_tuple(cfg.pressure_inlet_slice)
     s_pressure = (np.s_[:],) + inn_loc + (np.s_[-1],)
     logger.info(f'Taking input preessure measurememts at {s_pressure}.')
+    inn = u[s_pressure].reshape((cfg.nsample,-1))
+    
+    ## Batching and take validation set 
+    u = batching(cfg.batch_size, u)
+    inn = batching(cfg.batch_size, inn)
+    u_train, u_val = [], []
+    inn_train, inn_val = [], []
+    _idx = np.array(list(range(len(u))))
+    _idx_val = _idx[list(cfg.val_batch_idx)]
+    for i in _idx:
+        if i in _idx_val:
+            u_val.append(u[i])
+            inn_val.append(u[i])
+        else:
+            u_train.append(u[i])
+            inn_train.append(u[i])
+    logger.debug(f"{np.sum([_u.shape[0] for _u in u_val])} snapshots are used for validation.")
 
-    inn_train = u_train[s_pressure].reshape((cfg.train_test_split[0],-1))
-    inn_val = u_val[s_pressure].reshape((cfg.train_test_split[1],-1)) # [t,len]
     data.update({
         'u_train': u_train, # [t,x,y,4]
         'u_val': u_val, # [t,x,y,4]
@@ -456,7 +450,7 @@ def dataloader_3dvolvo(cfg:ConfigDict|None = None) -> tuple[dict,ClassDataMetada
         'inn_val': inn_val
     })
 
-    logger.debug(f'Shape of the training set:{u_train.shape}, shape of the inputs:{inn_train.shape}')
+    logger.debug(f'Shape of the training set:{u_train[0].shape}, shape of the inputs:{inn_train[0].shape}')
 
     return data, datainfo
 
@@ -493,3 +487,35 @@ def batching(batch_size:int, data:Array, sets_index:list[int] = None) -> list[Ar
             logger.warning('The batches do not have equal numbers of batches')
         return np.array_split(data,nb_batches,axis=0)
 
+
+def _add_whitenoise(x:Array, randseed:int, cfg:ConfigDict, sets_index:list|None = None) -> tuple[Array,Array,Array]:
+    logger.info('Adding white noise to data.')
+
+    [u], _ = data_partition(
+        x, 
+        axis=0, 
+        partition=[cfg.nsample],
+        REMOVE_MEAN=cfg.remove_mean,
+        randseed=randseed,
+        shuffle=cfg.shuffle
+    )
+
+    ## add white noise
+    rng = np.random.default_rng(randseed)
+    std_data = np.std(u,axis=tuple(np.arange(u.ndim-1)),ddof=1)
+    std_n = get_whitenoise_std(cfg.snr,std_data)
+    noise = rng.normal([0]*len(std_n),std_n,size=u.shape)
+    x = u + noise
+    
+    ## Batching and take validation set. These are clean data
+    u_batched = batching(cfg.batch_size, u, sets_index)
+    u_train_clean, u_val_clean = [], []
+    _idx = np.array(list(range(len(u_batched))))
+    _idx_val = _idx[list(cfg.val_batch_idx)]
+    for i in _idx:
+        if i in _idx_val:
+            u_val_clean.append(u_batched[i])
+        else:
+            u_train_clean.append(u_batched[i])
+
+    return x, u_train_clean, u_val_clean

@@ -55,9 +55,11 @@ def select_model_ffcnn(**kwargs):
         '''make data into suitable form
         data.update({'u_train':new_u_train,'inn_train':new_inn_train})'''
 
-        data = _flatten_inputs(data)
+        data = _flatten(data)
 
         if filter_type == 'lowpass':
+            logger.critical('The losspass filter in dataloaders need to be updated to deal with batched input.')
+            raise NotImplementedError
             logger.info('Using the lowpass filter to de-noise.')
             (nt_train, nin) = data['inn_train'].shape # always has shape [t,j]
             (nt_val, _) = data['inn_val'].shape
@@ -199,8 +201,10 @@ def select_model_fc2branch(**kwargs):
 
     def prep_data(data:dict, datainfo:DataMetadata, **kwargs) -> dict:
         # make data into suitable form
-        data = _flatten_inputs(data)        
+        data = _flatten(data)        
         if filter_type == 'lowpass':
+            logger.critical('The losspass filter in dataloaders need to be updated to deal with batched input.')
+            raise NotImplementedError
             logger.info('Using the lowpass filter to de-noise.')
             (nt_train, nin) = data['inn_train'].shape # always has shape [t,j]
             (nt_val, _) = data['inn_val'].shape
@@ -337,14 +341,12 @@ def select_model_ff(**kwargs):
     def prep_data(data:dict, datainfo:DataMetadata, **kwargs) -> dict:
         # make data into suitable form
         if filter_type is not None:
-            logger.error('The requested filtering method is not implemented.')
+            logger.critical('The requested filtering method is not implemented for this model.')
             raise NotImplementedError
         data = _norm_inputs(flag_norm, data)
         ## Flatten data for FF model
-        for k in ['y_train', 'y_val', 'u_train_clean', 'u_val_clean', 'u_train', 'u_val', 'inn_train', 'inn_val']:
-            if data[k] is not None:
-                nt = data[k].shape[0]
-                data.update({k: data[k].reshape((nt,-1))})
+        keys_to_flatten = ['y_train', 'y_val', 'u_train_clean', 'u_val_clean', 'u_train', 'u_val', 'inn_train', 'inn_val']
+        data = _flatten(data, keys_to_flatten)
         return data
     
     def make_model(model_config:ConfigDict) -> BaseModel:
@@ -438,7 +440,9 @@ def _norm_inputs(flag_norm:bool, data:dict):
         r_val = data['val_minmax']
         
         logger.info('Normalising inputs to the network.')
-        [new_train_inn, new_val_inn], _ = normalise(data['inn_train'], data['inn_val'], range=[r_train[-1],r_val[-1]])
+        
+        new_train_inn, _ = normalise(*data['inn_train'], range=[r_train[-1]])
+        new_val_inn, _ = normalise(*data['inn_val'], range=[r_val[-1]])
 
         logger.debug('Update inputs to normalised inputs.')
 
@@ -448,7 +452,12 @@ def _norm_inputs(flag_norm:bool, data:dict):
         })
     return data
 
-def _flatten_inputs(data, input_keys = ['inn_train', 'inn_val']):
+def _flatten(data, input_keys = ['inn_train', 'inn_val']):
+    logger.debug('Flattening data')
     for k in input_keys:
-        data.update({k: data[k].reshape((data[k].shape[0],-1))})
+        modified = data[k]
+        modified = [a.reshape((a.shape[0],-1)) for a in modified]
+        data.update({
+            k: modified
+        })
     return data
