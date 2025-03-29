@@ -37,4 +37,4 @@ Also starting from pressure measurements, and using sparse velocity & pressure m
 *An example of the mean of a 2D Kolmogorov flow.*
 
 ## Stage 3 
-Reconstruction of 3D Kolmogorv flow, knowing only an $xy$ plane.
+Reconstruction of 3D Kolmogorv flow. TBC
