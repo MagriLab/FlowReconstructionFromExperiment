@@ -4,7 +4,7 @@ Reconstructing 3D wake behind a bluff body with sparse sensor measurements.
 
 ### Publications:
 <p style="padding-left: 1em; text-indent: -1em;">
-*Mo, Y., Magri, L., 2025. *Reconstructing unsteady flows from sparse, noisy measurements with a physics-constrained convolutional neural network*. Phys. Rev. Fluids 10, 034901. https://doi.org/10.1103/PhysRevFluids.10.034901
+*Mo, Y., Magri, L., 2025. <i>Reconstructing unsteady flows from sparse, noisy measurements with a physics-constrained convolutional neural network</i>. Phys. Rev. Fluids 10, 034901. https://doi.org/10.1103/PhysRevFluids.10.034901
 </p>
 
 \*Go to branch `paper/flow-reconstruction-2d`.
