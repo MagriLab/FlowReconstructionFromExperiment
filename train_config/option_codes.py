@@ -24,6 +24,7 @@ code_observe = {
     'random_pin': 'rp',
     'slice': 'pl',
     'slice_pin': 'pp',
+    'cross_pin': 'cp',
 }
 code_model = {
     'ffcnn': 'fc',
