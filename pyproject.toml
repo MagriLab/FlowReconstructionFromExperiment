@@ -10,6 +10,7 @@ dependencies = [
     "h5py==3.9.0",
     "matplotlib>=3.10.1",
     "ml-collections==0.1.1",
+    "nbformat>=5.10.4",
     "numpy<2.0.0",
     "optax==0.1.7",
     "pip>=25.0.1",
