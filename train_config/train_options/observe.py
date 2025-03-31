@@ -445,6 +445,93 @@ def observe_slice_pin(
     return take_observation, insert_obervation
                     
 
+
+def observe_cross_pin(
+        data_config:ConfigDict,
+        *,
+        example_pred_snapshot:jax.Array, 
+        example_pin_snapshot:jax.Array,
+        **kwargs
+):
+    # keep dimensions
+    grid_shape = example_pred_snapshot.shape[:-1]
+    dim = len(grid_shape)
+    if dim != 3:
+        logger.error(f'Expect 3D data.')
+
+    plane1 = data_config.plane1[:-1]
+    n1 = list(data_config.plane1[-1])
+    plane2 = data_config.plane2[:-1]
+    n2 = list(data_config.plane2[-1])
+    s1 = tuple([slice(None,None,None) if a is None else a for a in np.s_[*plane1]])
+    s2 = tuple([slice(None,None,None) if a is None else a for a in np.s_[*plane2]])
+    
+    # take planes
+    _empty_data = np.zeros_like(example_pred_snapshot,dtype=int)
+    _empty_data[*s1,n1] = 1
+    _empty_data[*s2,n2] = 1
+
+    x, y, z, u = np.indices(_empty_data.shape)
+    has_values = _empty_data > 0
+    x1 = x[has_values]
+    y1 = y[has_values]
+    z1 = z[has_values]
+    u1 = u[has_values]
+    idx = np.array(tuple(zip(x1,y1,z1,u1))).T #(4,num)
+    s = np.s_[:,*idx]
+    
+    slice_shape = example_pred_snapshot[s[1:]].shape
+    num_sensors = idx.shape[1]
+    logger.debug(f'The slice has shape {slice_shape}, {num_sensors} sensors in total.')
+
+
+    # inlet
+    inn_loc, s_pressure = _make_pressure_index(data_config, **kwargs)
+    pressure_shape = example_pred_snapshot[inn_loc + (-1,)].shape
+    num_pressure = np.prod(pressure_shape)
+    if num_pressure != example_pin_snapshot.size:
+        warnings.warn(f'Expect {num_pressure} pressure measurement at inlet, received {example_pin_snapshot.size}. Is this intentional?')
+
+    def take_observation(u:jax.Array, **kwargs) -> jax.Array:
+        us = u[s]
+        ps = u[s_pressure]
+        us = us.reshape((-1,num_sensors))
+        ps = ps.reshape((-1,num_pressure))
+        observed = jnp.concatenate((us,ps), axis=1)
+
+        if ('init' in kwargs) and (kwargs['init'] is True):
+            if data_config.normalise:
+                _u1 = us[:,has_values[...,0]]
+                _u2 = us[:,has_values[...,1]]
+                _u3 = us[:,has_values[...,2]]
+                _p = us[:,has_values[...,3]].flatten()
+                _p = np.concatenate((_p,ps.faltten()))
+                r = []
+                r.append([_u1.min(), _u1.max()])
+                r.append([_u2.min(), _u2.max()])
+                r.append([_u3.min(), _u3.max()])
+                r.append([_p.min(), _p.max()])
+            else:
+                r = None
+            return observed, r
+
+        return observed # observed has shape [t,number_of_all_observed]
+    
+
+    def insert_obervation(pred:jax.Array, observed:jax.Array, **kwargs) -> jax.Array:
+
+        us_observed, ps_observed = jnp.array_split(observed,[num_sensors],axis=1)
+
+        us_observed = us_observed.reshape((-1,)+slice_shape)
+        ps_observed = ps_observed.reshape((-1,)+pressure_shape)
+
+        pred_new = pred.at[s].set(us_observed)
+        pred_new = pred_new.at[s_pressure].set(ps_observed)
+        return pred_new
+    
+    return take_observation, insert_obervation
+
+
 # =====================================================================
 
 def _make_pressure_index(data_config, **kwargs):

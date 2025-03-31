@@ -45,7 +45,7 @@ def load_data(cfg):
         cfg.data_config.train_test_split,
         REMOVE_MEAN=False,
         randseed=None,
-        SHUFFLE=False
+        shuffle=False
     ) # Do not shuffle, do not remove mean for training with physics informed loss
 
     return x_train, x_val, x_test
