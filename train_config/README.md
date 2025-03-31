@@ -52,8 +52,6 @@ The cases given for both `cfg` and `wandbcfg` should match.
 ## System Options
 Here is a list of options and their (type:default).
 
-- `--(no)wandb` (bool:False)<br>
-    Turn on and off to log experiments to Weights&Biases.
 - `--(no)wandb_sweep` (bool:False)<br>
     Run script in wandb sweep mode. This option will automatically turn on `--wandb`.
 - `--(no)chatty` (bool:False)<br>
@@ -73,6 +71,8 @@ Here is a list of options and their (type:default).
     If None, the folder will be named *option codes*+*starting time*.
     Option codes are defined in [`train_config.option_codes`](./option_codes.py). 
     An example is *t2gpfcpi32304150439548*.
+- `--print` (int:200)<br>
+    How often to print the losses to screen. 
 
 **Note: If running in sweep mode, then the user must update the [sweep pre-processing function](./sweep_process_config.py)
 
@@ -89,7 +89,7 @@ For example, data_dir in data_config is set by `--cfg.data_config.data_dir=path`
 
 #### **data_config**
 
-- `data_dir` (str:./local_data/re100)<br>
+- `data_dir` (str:None)<br>
     Directory where the data is stored.
 - `shuffle` (bool:False)<br>
     Whether to shuffle the snapshots before splitting into training/validation/testing sets.
@@ -97,11 +97,13 @@ For example, data_dir in data_config is set by `--cfg.data_config.data_dir=path`
     Random seed to use in `shuffle`, if None but `shuffle` is True, then a new one is generated.
 - `remove_mean` (bool:False)<br>
     Whether to centre the dataset around $0$ by subtracting mean.
-- `normalise` (book:True)<br>
+- `normalise` (book:False)<br>
     Whether to normalise the dataset before training. 
     The data and model prediction will be unnormalised before taking any physics-informed loss.
-- `train_test_split` (tuple:(600,100,100))<br>
-    Number of snapshots to put into (training, validation, testing) set.
+- `nsample` (int:None)<br>
+    How many samples to load. This is then split into the training and validation set.
+- `batch_size` (int:None)<br>
+    Number of snapshots per batch.
 - `re` (float:100.0)<br>
     Reynolds number of the dataset.
 - `dt` (float:0.125)<br>
@@ -114,23 +116,32 @@ For example, data_dir in data_config is set by `--cfg.data_config.data_dir=path`
     Distance between grids in z direction.
 - `snr` (float:0.0)<br>
     Signal-to-noise ratio in dB. This adds white noise to the measurement after the data is cropped and shuffled, but before other pre-processing.
+- `filter` (str:None)<br>
 
 
 #### **model_config**
 
 - `dropout_rate` (float:0.0)
+- `name` (str:None) \
+    Model name.
+- `activation` (str:tanh) \
+    We will look up the name of this function in `jax.nn`
 
 
 #### **train_config**
 
-- `nb_batches` (int:10)<br>
-Number of batches to split the training set into.
 - `learning_rate` (float:3e-4)
 - `regularisation_strength` (float:0.0)
 - `epoches` (int:20000)
 
 
 ### Weights&Biases (`--wandbcfg`)
+
+- `mode` (online | disabled | offline) 
+- `use_artifact` (str:None) \
+    The name of the artifact.
+- `config.log_frequency` (int:10) \
+    How many epochs between logging values to Weights&Biases.
 
 For the options to pass to `wandb.init`, see [documentation](https://docs.wandb.ai/ref/python/init).
 `Tuple[str]` is used instead of `List[str]`.
@@ -200,7 +211,9 @@ Sensors are placed sparsely in the domain, with extra pressure sensors.
     Define location of the pressure sensors using (start,end,step) in spatial directions.
     Default pressure sensors are placed at the same locations as the input to the network.
 
+### slice
 
+### cross
 
 ### **Select_model**
 
@@ -221,7 +234,14 @@ For details of the network and the arguments it takes, see [here](../flowrec/mod
 - `cnn_filters` (tuple:((3,3),))<br>
     Size of the convolution filters.
 
+### ff
+Simple feedforward network.
 
+### fc2branch
+Dual-branch CNN network, with an optional Fourier Transform.
+
+### slice3d
+A 2D network applied and trained on 3D flows.
 
 ### **Loss_fn**
 
