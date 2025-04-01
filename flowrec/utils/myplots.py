@@ -3,8 +3,12 @@
 import numpy as np
 import matplotlib.colors as mcolors
 
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 from functools import partial
 from typing import Optional
+
+
+truegrey = '#808080'
 
 # user-defined color maps
 discrete_dict = {
@@ -105,4 +109,8 @@ def create_custom_colormap(map_name:str = 'defne',type:str = 'discrete', colors:
     return cmap
 
 
-truegrey = '#808080'
+
+def make_cax(ax, loc='right', size="5%", pad=0.0):
+    divider = make_axes_locatable(ax)
+    cax = divider.append_axes(loc, size=size, pad=pad) 
+    return cax
