@@ -8,6 +8,7 @@ dependencies = [
     "chex==0.1.86",
     "dm-haiku==0.0.13",
     "h5py==3.9.0",
+    "ipykernel>=6.29.5",
     "matplotlib>=3.10.1",
     "ml-collections==0.1.1",
     "nbformat>=5.10.4",
