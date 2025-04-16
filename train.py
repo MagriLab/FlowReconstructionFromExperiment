@@ -52,7 +52,7 @@ flags.DEFINE_string('result_dir','./local_results/3dkol/','Path to a directory w
 flags.DEFINE_string('result_folder_name',None,'Name of the folder where all files from this run will save to. Default the time stamp.')
 flags.DEFINE_bool('chatty',False,'Print information on where the program is at now.')
 flags.DEFINE_bool('resume',False, "True for resuming an exisitng model using the same weights")
-flags.DEFINE_integer('print', 200, "How many epochs to print losses screen.")
+flags.DEFINE_integer('print', 50, "How many epochs to print losses screen.")
 
 
 ## Define interal global variables

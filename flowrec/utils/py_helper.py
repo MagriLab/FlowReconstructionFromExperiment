@@ -37,3 +37,11 @@ def update_matching_keys(
         if key in dict_to_update:
             logger.debug(f'{key} updated from {dict_to_update[key]} to {dict_with_values[key]}')
             dict_to_update.update({key:dict_with_values[key]},**kwargs) 
+
+
+def hasattr_and_value(obj:object, name:str) -> bool:
+    """Return True if the given attribute exists and is not None."""
+    if hasattr(obj, name):
+        if getattr(obj, name) is not None:
+            return True
+    return False

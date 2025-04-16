@@ -242,7 +242,8 @@ _default_datacfg = {
         'dy': 2*np.pi/64,
         'dz': 2*np.pi/64,
         'crop_data': ((None,),(None,),(None,)), # (crop_data xyz)
-        'pressure_inlet_slice': ((0,1,None),(None,),(None,)),
+        'pressure_inlet_slice': placeholder(tuple),
+        'random_input': placeholder(tuple), # (randseed, number of pressure sensors)
         'forcing_frequency': 4,
         'nsample': 2500,
     },
