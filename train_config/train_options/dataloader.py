@@ -3,7 +3,7 @@ from ml_collections.config_dict import ConfigDict
 from pathlib import Path
 
 from flowrec.utils import simulation
-from flowrec.utils.py_helper import slice_from_tuple
+from flowrec.utils.py_helper import slice_from_tuple, hasattr_and_value
 from flowrec.data import data_partition ,get_whitenoise_std
 from flowrec.sensors import random_coords_generator
 
@@ -288,10 +288,10 @@ def _load_kolsol(cfg:ConfigDict, dim:int, multiplesets:bool = False) -> tuple[di
 
     ## get inputs
     logger.info('Generating inputs')
-    if sum([hasattr(cfg, 'random_input'),hasattr(cfg,'pressure_inlet_slice')]) > 1:
+    if sum([hasattr_and_value(cfg, 'random_input'),hasattr_and_value(cfg,'pressure_inlet_slice')]) > 1:
         raise ValueError("Please only specify one between 'random_input' and 'pressure_inlet_slice")
 
-    if hasattr(cfg, 'random_input'):
+    if hasattr_and_value(cfg, 'random_input'):
         sensor_seed, num_inputs = cfg.random_input
         logger.info(f'{num_inputs} random pressure inputs generated using random key specified by the user.')
         observation_rng  = np.random.default_rng(sensor_seed)
@@ -308,7 +308,7 @@ def _load_kolsol(cfg:ConfigDict, dim:int, multiplesets:bool = False) -> tuple[di
         inn_val = [_u[slice_inn] for _u in u_val]
         data.update({'_slice_inn': slice_inn})
 
-    elif hasattr(cfg, 'pressure_inlet_slice'):
+    elif hasattr_and_value(cfg, 'pressure_inlet_slice'):
         inn_loc = slice_from_tuple(cfg.pressure_inlet_slice)
         s_pressure = (np.s_[:],) + inn_loc + (np.s_[-1],)
         inn_train = [_u[s_pressure] for _u in u_train]

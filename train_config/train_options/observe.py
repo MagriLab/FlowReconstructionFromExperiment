@@ -446,7 +446,7 @@ def observe_slice_pin(
                     
 
 
-def observe_cross_pin(
+def observe_boxtest(
         data_config:ConfigDict,
         *,
         example_pred_snapshot:jax.Array, 
@@ -468,8 +468,10 @@ def observe_cross_pin(
     
     # take planes
     _empty_data = np.zeros_like(example_pred_snapshot,dtype=int)
-    _empty_data[*s1,n1] = 1
-    _empty_data[*s2,n2] = 1
+    # _empty_data[*s1,n1] = 1
+    # _empty_data[*s2,n2] = 1
+    _empty_data[:20,20:41,20:41,:3] = 1
+    _empty_data[1:19,21:40,21:40,:3] = 0
 
     x, y, z, u = np.indices(_empty_data.shape)
     has_values = _empty_data > 0
