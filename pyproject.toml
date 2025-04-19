@@ -7,6 +7,7 @@ requires-python = ">=3.11.0,<3.12.0"
 dependencies = [
     "chex==0.1.86",
     "dm-haiku==0.0.13",
+    "flax>=0.8.4",
     "h5py==3.9.0",
     "ipykernel>=6.29.5",
     "matplotlib>=3.10.1",
