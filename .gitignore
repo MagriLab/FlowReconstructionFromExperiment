@@ -5,7 +5,7 @@ tmp*
 *.png
 *.pdf
 *.sh
-
+*ipynb
 
 __pycache__/
 wandb/
