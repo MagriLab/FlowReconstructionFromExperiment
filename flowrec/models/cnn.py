@@ -8,6 +8,7 @@ import haiku as hk
 import numpy as np
 
 from .feedforward import MLP
+from .layers import MyConv
 from ._general import BaseModel
 
 from typing import Optional, Callable, Sequence, List
@@ -26,6 +27,7 @@ class MLPWithCNN(hk.Module):
                 activation:Callable[[jnp.ndarray],jnp.ndarray] = jax.nn.tanh,
                 w_init:Optional[hk.initializers.Initializer]=hk.initializers.VarianceScaling(1.0,"fan_avg","uniform"),
                 dropout_rate:Optional[float] = None,
+                padding:str = 'SAME',
                 mlp_kwargs:dict = {},
                 conv_kwargs:dict = {},
                 name: Optional[str] = 'ffcnn'):
@@ -67,7 +69,7 @@ class MLPWithCNN(hk.Module):
         cnn_layers = []
         for i, (c,f) in enumerate(zip(cnn_channels,self.cnn_filters)):
             cnn_layers.append(
-                hk.Conv2D(c,f,w_init=w_init,name=f'convolve_{i}',**conv_kwargs)
+                MyConv(c,f,padding=padding,name=f'convolve_{i}',**conv_kwargs)
             )
         self.cnn_layers = tuple(cnn_layers)
     

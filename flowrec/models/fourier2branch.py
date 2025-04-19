@@ -8,6 +8,7 @@ import haiku as hk
 import numpy as np
 
 from .feedforward import MLP
+from .layers import MyConv
 from ._general import BaseModel
 from .._typing import *
 from ..signal import rfftn_filter
@@ -70,6 +71,7 @@ class Fourier2Branch(hk.Module):
             b1_filters:List[Tuple[int, ...]] = [(3,),],
             b2_filters:List[Tuple[int, ...]] = [(3,),],
             b3_filters:List[Tuple[int, ...]] = [(3,),],
+            padding:str = 'CIRCULAR',
             activation:Callable[[jnp.ndarray],jnp.ndarray] = jax.nn.tanh,
             w_init:Optional[hk.initializers.Initializer]=hk.initializers.VarianceScaling(1.0,"fan_avg","uniform"),
             resize_method:str = 'linear',
@@ -174,7 +176,7 @@ class Fourier2Branch(hk.Module):
         self._mlp = MLP([mlp_size], activation=self.act, w_init=w_init, dropout_rate=self.dropout_rate, **mlp_kwargs)
 
         # branch 0: first convolution
-        self._b0conv = hk.ConvND(nspace, self.output_dim, b0_filter, w_init=w_init, name='branch0_conv',**conv_kwargs)
+        self._b0conv = MyConv(self.output_dim, b0_filter,padding=padding, name='branch0_conv', **conv_kwargs)
 
         # branch 1: image does not change size, fourier if requested
         b1 = []
@@ -197,7 +199,7 @@ class Fourier2Branch(hk.Module):
 
         for i, (c,f) in enumerate(zip(b1_channels, fb1)):
             b1.append(
-                hk.ConvND(nspace, c, f, name=f'branch1_conv_{i}', **conv_kwargs)
+                MyConv(c, f, padding=padding, name=f'branch1_conv_{i}', **conv_kwargs)
             )
         logger.info("'w_init' is not specified in branch 1.")
         self.b1 = tuple(b1)
@@ -206,7 +208,7 @@ class Fourier2Branch(hk.Module):
         b2 = []
         for i, (c,f) in enumerate(zip(b2_channels, fb2)):
             b2.append(
-                hk.ConvND(nspace, c, f, w_init=w_init, name=f'branch2_conv_{i}', **conv_kwargs)
+                MyConv(c, f, padding=padding, name=f'branch2_conv_{i}', **conv_kwargs)
             )
         self.b2 = tuple(b2)
 
@@ -214,7 +216,7 @@ class Fourier2Branch(hk.Module):
         b3 = []
         for i, (c,f) in enumerate(zip(b3_channels, fb3)):
             b3.append(
-                hk.ConvND(nspace, c, f, w_init=w_init, name=f'branch3_conv_{i}', **conv_kwargs)
+                MyConv(c, f, padding=padding, name=f'branch3_conv_{i}', **conv_kwargs)
             )
         self.b3 = tuple(b3)
         logger.info(f'Branch 1 has {len(self.b1)} layers, branch 2 has {len(self.b2)} layers, Branch 3 (after merging has) {len(self.b3)} layers.')
@@ -302,7 +304,8 @@ class Model(BaseModel):
         b2_filters:List[Tuple[int, ...]] = [(3,),],
         b3_filters:List[Tuple[int, ...]] = [(3,),],
         dropout_rate:Optional[float] = None,
-        ffft_time = False,
+        ffft_time:bool = False,
+        padding:str = 'CIRCULAR',
         **kwargs,
     ) -> None:
         super().__init__()
@@ -318,6 +321,7 @@ class Model(BaseModel):
                 b3_filters=b3_filters,
                 dropout_rate=dropout_rate,
                 ffft_time=ffft_time,
+                padding=padding,
                 **kwargs
             )
             return mdl(x, training)
