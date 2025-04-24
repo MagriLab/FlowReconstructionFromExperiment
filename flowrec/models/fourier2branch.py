@@ -308,7 +308,6 @@ class Model(BaseModel):
         padding:str = 'CIRCULAR',
         **kwargs,
     ) -> None:
-        super().__init__()
 
         def forward_fn(x, training=True):
             mdl = Fourier2Branch(
@@ -327,27 +326,5 @@ class Model(BaseModel):
             return mdl(x, training)
         
         self.mdl = hk.transform(forward_fn)
-        self._apply = jax.jit(self.mdl.apply,static_argnames='training')
-        self._init = jax.jit(self.mdl.init)
-        self._predict = jax.jit(jax.tree_util.Partial(self.mdl.apply,training=False))
-        logger.info('Successfully created model.')
-
-        
-    def init(self, rng, sample_input) -> hk.Params:
-        '''Initialise params'''
-        params = self._init(rng,sample_input)
-        return params
-    
-    def apply(self, params:hk.Params, rng:jax.random.PRNGKey, *args, **kwargs):
-        '''hk.Transformed.apply, training mode by default\n
-        
-        Arguments:\n
-            params: hk.Params.\n
-            rng: jax random number generator key.\n
-            Also takes positional and keyword arguments for hk.Transformed.apply.
-        '''
-        return self._apply(params, rng, *args, **kwargs)
-    
-    def predict(self,params:hk.Params,x,**kwargs):
-        '''Same as apply, but Training flag is False and no randomness.'''
-        return self._predict(params,None,x,**kwargs)
+        logger.debug('Successfully created model, passing the model to BaseModel.')
+        super().__init__(self.mdl)

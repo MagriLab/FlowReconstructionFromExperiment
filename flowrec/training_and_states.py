@@ -10,10 +10,9 @@ import pickle
 from pathlib import Path
 
 
-from .models._general import BaseModel
 
-from typing import Union, NamedTuple, Callable, Any
-from ._typing import Array, Model
+from typing import Union, NamedTuple, Callable
+from ._typing import Array
 
 
 class TrainingState(NamedTuple):

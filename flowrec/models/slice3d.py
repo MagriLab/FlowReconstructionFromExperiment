@@ -3,15 +3,12 @@ logger = logging.getLogger(f'fr.{__name__}')
 import jax
 import jax.numpy as jnp
 import haiku as hk
-import warnings
 
 from ._general import BaseModel
 from .._typing import *
-from ..training_and_states import params_merge
 from ..training_and_states import params_split as params_split_general
 
 from typing import Optional, Callable, Sequence, List, Tuple
-from jax.tree_util import Partial
 
 
 
@@ -104,7 +101,6 @@ class Model(BaseModel):
     ''' 
 
     def __init__(self, name='slice3d', **kwargs):
-        super().__init__()
         if name is None:
             logger.eror('Model name cannot be none. Setting it to slice3d.')
             self.name = 'slice3d'
@@ -116,28 +112,11 @@ class Model(BaseModel):
             return mdl(x, training)
 
         self.mdl = hk.transform(forward)
+        super().__init__(self.mdl)
+
         self._pretrain_mdl = kwargs['pretrained_model']
         self._pretrain_config = kwargs['pretrained_config']
 
-        self._apply = jax.jit(self.mdl.apply,static_argnames=['training'])
-        self._init = jax.jit(self.mdl.init)
-        self._predict = jax.jit(jax.tree_util.Partial(self.mdl.apply,training=False))
-
-    def init(self, rng, sample_input):
-        '''Initialise params'''
-        params = self._init(rng, sample_input)
-        return params
-
-    def apply(self, params:hk.Params, rng:jax.random.PRNGKey, *args, **kwargs):
-        '''hk.Transformed.apply, training mode by default\n
-        
-        Arguments:\n
-            params: hk.Params.\n
-            rng: jax random number generator key.\n
-            Also takes positional and keyword arguments for hk.Transformed.apply.
-        '''
-        return self._apply(params, rng, *args, **kwargs)
-    
     def _check_layer_names(self, paramsnames, oldparamsnames):
         noprefix_match = any(name in paramsnames for name in oldparamsnames)
         prefix_match = any(f'{self.name}/~/{name}' in paramsnames for name in oldparamsnames)
@@ -174,24 +153,6 @@ class Model(BaseModel):
         frozen_params, trainable_params = params_split_general(params, layer_names)
         return frozen_params, trainable_params
 
-    def set_nontrainable(self, non_trainable_params:hk.Params):
-        '''Make the model remeber the non_trainable_params'''
-        if hasattr(self, 'params_merge'):
-            warnings.warn('Overriding the old non_trainable_params.')
-        self.params_merge = Partial(params_merge, non_trainable_params)
-    
-    def apply_trainable(self, trainable_params:hk.Params, rng:jax.random.PRNGKey, *args, **kwargs):
-        '''Apply the model using the trainable_params.
-        ------------------------------
-        Must call `set_nontrainable(non_trainable_params)` first.
-        '''
-        params = self.params_merge(trainable_params)
-        return self._apply(params, rng, *args, **kwargs)
-
-    def predict(self,params:hk.Params,x,**kwargs):
-        '''Same as apply, but Training flag is False and no randomness.'''
-        return self._predict(params,None,x,**kwargs)
-    
     @property
     def get_pretrain_model(self):
         def forward_pretrain(x,training=False):

@@ -107,9 +107,7 @@ class Model(BaseModel):
             dropout_rate: a float between 0.0 and 1.0. If None, do not use dropout.\n
             mlp_kwargs: keyword arguments to be passed to haiku.nets.MLP.
         '''
-        super().__init__()
         self.layers = mlp_layers
-
 
         def forward_fn(x,training=True):
             mlp = MLP(self.layers,
@@ -121,28 +119,5 @@ class Model(BaseModel):
             return mlp(x,training=training)
         self.mdl = hk.transform(forward_fn)
 
-        self._apply = jax.jit(self.mdl.apply,static_argnames=['training'])
-        self._init = jax.jit(self.mdl.init)
-
-        self._predict = jax.jit(jax.tree_util.Partial(self.mdl.apply,training=False))
-
+        super().__init__(self.mdl)
         logger.info(f'Successfully created a MLP.')
-    
-    def init(self, rng, sample_input) -> hk.Params:
-        '''Initialise params'''
-        params = self._init(rng, sample_input)
-        return params
-
-    def apply(self, params: hk.Params, rng:jax.random.PRNGKey, *args, **kwargs):
-        '''hk.Transformed.apply, training mode by default\n
-        
-        Arguments:\n
-            params: hk.Params.\n
-            rng: jax random number generator key.\n
-            Also takes positional and keyword arguments for hk.Transformed.apply.
-        '''
-        return self._apply(params, rng, *args, **kwargs)
-
-    def predict(self, params:hk.Params, x, **kwargs):
-        '''Same as apply, but Training flag is False and no randomness.'''
-        return self._predict(params,None,x,**kwargs)
