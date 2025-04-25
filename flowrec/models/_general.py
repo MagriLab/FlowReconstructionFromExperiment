@@ -4,19 +4,20 @@ import haiku as hk
 import logging
 logger = logging.getLogger(f'fr.{__name__}')
 from functools import partial
+## Do not import from non-library modules
 
 class BaseModel():
     """Has Methods
     ------------------
-        - init: same as haiku.Transformed.init.
-        - apply: same as haiku.Transformed.apply.
-        - predict: apply in prediction mode.
-        - set_nontrainable: make the model remember the non-trainable weights
-        - apply_trainable: apply the model using the trianable weights and the previously memorised non-trainable weights.
+    - init: same as haiku.Transformed.init.
+    - apply: same as haiku.Transformed.apply.
+    - predict: apply in prediction mode.
+    - set_nontrainable: make the model remember the non-trainable weights
+    - apply_trainable: apply the model using the trianable weights and the previously memorised non-trainable weights.
     """
     def __init__(self, mdl:hk.Transformed|None = None) -> None:
         if mdl is not None:
-            logger.debug('Creating model in ')
+            logger.debug('Creating model in BaseModel')
             self.mdl = mdl
             self._apply = jax.jit(self.mdl.apply,static_argnames=['training'])
             self._init = jax.jit(self.mdl.init)

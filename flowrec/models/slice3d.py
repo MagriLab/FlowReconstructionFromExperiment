@@ -91,13 +91,13 @@ class Model(BaseModel):
         - init: same as haiku.Transformed.init.
         - apply: same as haiku.Transformed.apply.
         - predict: apply in prediction mode.
-        - load_pretrained_weights: load the pre-trained model weights into the new model weights when the layers have the same name.
+        - load_old_weights: load the pre-trained model weights into the new model weights when the layers have the same name.
         - params_split: split the params into trainable and non-trainable
         - set_nontrainable: make the model remember the non-trainable weights
         - apply_trainable: apply the model using the trianable weights and the previously memorised non-trainable weights.
 
     To fine-tune this model starting from a pre-trained model:  
-    init -> load_pretrained_weights -> params_split -> set_nontrainable -> apply_trainable
+    init -> load_old_weights -> params_split -> set_nontrainable -> apply_trainable
     ''' 
 
     def __init__(self, name='slice3d', **kwargs):
@@ -117,7 +117,7 @@ class Model(BaseModel):
         self._pretrain_mdl = kwargs['pretrained_model']
         self._pretrain_config = kwargs['pretrained_config']
 
-    def _check_layer_names(self, paramsnames, oldparamsnames):
+    def _check_layer_names(self, paramsnames:List[str], oldparamsnames:List[str]):
         noprefix_match = any(name in paramsnames for name in oldparamsnames)
         prefix_match = any(f'{self.name}/~/{name}' in paramsnames for name in oldparamsnames)
         if (noprefix_match and prefix_match):
@@ -129,8 +129,7 @@ class Model(BaseModel):
 
         return prefix_match, matching_param_names
 
-    
-    def load_old_weights(self, params: hk.Params, old_params: hk.Params) -> hk.Params:
+    def load_old_weights(self, params:hk.Params, old_params:hk.Params) -> hk.Params:
         '''Loading the old model weights into the new weights for layers with the same name.
         ------------------------------
         For example, if the old model has a layer 'linear0', and the new Slice3D model has a layers 'slice3d/\~/linear0' and 'slice3d/\~/linear1'. `self.load_pretrained_weights(params, pretrained_params)` will load the pre-trained 'linear0' into 'slice3d/\~/linear0'.
