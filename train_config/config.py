@@ -229,7 +229,7 @@ _default_datacfg = {
         'dy': 2*np.pi/64,
         'dz': 2*np.pi/64,
         'crop_data': ((None,),(None,),(None,)), # (crop_data xyz)
-        'pressure_inlet_slice': ((0,1,None),(None,),(None,)),
+        'pressure_inlet_slice': ((None,),(0,1,None),(None,)),
         'measure_slice': (None, None, 32, 3), # (x,y,z,num_components), default take the z=32 plane, all velocity components
         'forcing_frequency': 4,
         'nsample': 900,
@@ -339,4 +339,21 @@ _default_mdlcfg = {
             'name': 'slice3d',
         }
     },
+    'shareparts': {
+        '3dkolsets': {
+            'img_shapes3d': ((16,16,16),(32,32,32),(64,64,64)),
+            'channels3d': (8,8,4),
+            'filters3d': (3,5,5),
+            'map_axis': (2,3),
+            'img_shapes': ((32,32),(16,16),(8,8),(16,16),(32,32),(64,64)),
+            'b1_channels': (1,),
+            'b2_channels': (4,16,16,8),
+            'b3_channels': (4,),
+            'b1_filters': ((3,3),),
+            'b2_filters': ((3,3),),
+            'b3_filters': ((3,3),),
+            'fft_branch': False,
+            'small_mlp': False,
+        }
+    }
 }

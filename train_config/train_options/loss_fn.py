@@ -90,14 +90,15 @@ def loss_fn_physicswithdata(cfg,**kwargs):
                 apply_kwargs:dict = {}, 
                 **kwargs):
         pred = apply_fn(params, rng, x, **apply_kwargs)
-        # un-normalise
-        if normalise:
-            pred = unnormalise_group(pred, y_minmax, axis_data=-1, axis_range=0)
-            logger.debug('Un-normalise before calculating loss.')
 
         pred_observed = take_observation(pred)
         logger.debug(f'Prediction from the network {pred.shape}, after taking observations {pred_observed.shape}')
         loss_sensor = data_loss_fn(pred_observed, y)
+
+        # un-normalise
+        if normalise:
+            pred = unnormalise_group(pred, y_minmax, axis_data=-1, axis_range=0)
+            logger.debug('Un-normalise before calculating loss.')
 
         pred_new = insert_observation(pred,y)
 
@@ -137,13 +138,15 @@ def loss_fn_physicsnoreplace(cfg,**kwargs):
                 apply_kwargs:dict = {}, 
                 **kwargs):
         pred = apply_fn(params, rng, x, **apply_kwargs)
+
+        pred_observed = take_observation(pred)
+        loss_sensor = data_loss_fn(pred_observed, y)
+
         # un-normalise
         if normalise:
             pred = unnormalise_group(pred, y_minmax, axis_data=-1, axis_range=0)
             logger.debug('Un-normalise before calculating loss.')
 
-        pred_observed = take_observation(pred)
-        loss_sensor = data_loss_fn(pred_observed, y)
         loss_div = div_loss_fn(pred[...,:-1], datainfo)
         loss_mom = momentum_loss_fn(
             u=pred,
@@ -185,13 +188,14 @@ def loss_fn_physicsreplacemean(cfg,**kwargs):
                 apply_kwargs:dict = {}, 
                 **kwargs):
         pred = apply_fn(params, rng, x, **apply_kwargs)
+        
+        pred_observed = take_observation(pred)
+        loss_sensor = data_loss_fn(pred_observed, y)
+
         # un-normalise
         if normalise:
             pred = unnormalise_group(pred, y_minmax, axis_data=-1, axis_range=0)
             logger.debug('Un-normalise before calculating loss.')
-        
-        pred_observed = take_observation(pred)
-        loss_sensor = data_loss_fn(pred_observed, y)
         
         pred_replaced = insert_observation(pred,y)
         pred_f = pred - jnp.mean(pred,axis=0,keepdims=True)

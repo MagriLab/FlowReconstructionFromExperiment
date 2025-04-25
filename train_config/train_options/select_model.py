@@ -5,7 +5,7 @@ from ml_collections.config_dict import ConfigDict
 from ast import literal_eval
 
 import flowrec.signal as flowsignal
-from flowrec.models import cnn, fourier2branch, feedforward, slice3d
+from flowrec.models import cnn, fourier2branch, feedforward, slice3d, sharenet
 from flowrec.data import normalise
 from flowrec.training_and_states import restore_trainingstate
 
@@ -430,6 +430,38 @@ def select_model_slice3d(**kwargs):
 
     return prep_data, make_model
         
+
+
+
+def select_model_shareparts(**kwargs):
+    if 'datacfg' in kwargs:
+        flag_norm = kwargs['datacfg'].normalise
+        filter_type = kwargs['datacfg'].filter
+        if filter_type is not None:
+            logger.error('Filter not implemented, ignoring for now.')
+        map_axis = kwargs['mdlcfg'].map_axis
+
+    def prep_data(data:dict, datainfo:DataMetadata, **kwargs) -> dict:
+        data = _norm_inputs(flag_norm, data)
+        new_inn = [np.squeeze(inn) for inn in data['inn_train']]
+        if map_axis[0] >= new_inn[0].ndim:
+            raise ValueError(f'Cannot map input axis {map_axis[0]} to output axis {map_axis[1]} because the input only have {new_inn[0].ndim} dimensions.')
+        new_inn_val = [np.squeeze(inn) for inn in data['inn_val']]
+        data.update({
+            'inn_train': new_inn,
+            'inn_val': new_inn_val,
+        })
+        assert len(data['inn_train'][0].shape) == 3, f"Input must be of shape [t,x1,x2], one time and two spatial dimensions. Received {data['inn_train'][0].shape}."
+        return data
+
+    def make_model(model_config:ConfigDict) -> BaseModel:
+        mdl = sharenet.Model(
+            **model_config
+        )
+        return mdl
+    
+    return prep_data, make_model
+    
 
 
 # =========== helper function ===================

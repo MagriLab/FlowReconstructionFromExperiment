@@ -49,10 +49,10 @@ flags.DEFINE_multi_string('debug',None,'Run these scripts in debug mode.')
 flags.DEFINE_string('gpu_id',None,'Which gpu use.')
 flags.DEFINE_float('gpu_mem',0.9,'Fraction of gpu memory to use.')
 flags.DEFINE_string('result_dir','./local_results/3dkol/','Path to a directory where the result will be saved.')
-flags.DEFINE_string('result_folder_name',None,'Name of the folder where all files from this run will save to. Default the time stamp.')
+-flags.DEFINE_string('result_folder_name',None,'Name of the folder where all files from this run will save to. Default the time stamp.')
 flags.DEFINE_bool('chatty',False,'Print information on where the program is at now.')
 flags.DEFINE_bool('resume',False, "True for resuming an exisitng model using the same weights")
-flags.DEFINE_integer('print', 50, "How many epochs to print losses screen.")
+flags.DEFINE_integer('print', 20, "How many epochs to print losses screen.")
 
 
 ## Define interal global variables

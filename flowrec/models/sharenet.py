@@ -25,13 +25,13 @@ class ShareNet(hk.Module):
     """
     def __init__(
         self, 
-        img_shapes2d:NestedTupleInteger,
+        img_shapes:NestedTupleInteger,
         b1_channels:Sequence[int],
         b2_channels:Sequence[int],
         b3_channels:Sequence[int],
         img_shapes3d:NestedTupleInteger,
-        combine_channels:Sequence[int],
-        combine_filters:Sequence[int],
+        channels3d:Sequence[int],
+        filters3d:Sequence[int],
         padding:str = 'CIRCULAR',
         map_axis:Tuple[int,int] = [2,3], # map which input axis to which output axis 
         activation:Callable[[jnp.ndarray],jnp.ndarray] = jax.nn.tanh,
@@ -50,10 +50,10 @@ class ShareNet(hk.Module):
         else:
             self.act = activation
         assert len(map_axis) == 2
-        assert len(combine_channels) == len(combine_filters)
+        assert len(channels3d) == len(filters3d)
         self.img_shapes3d = img_shapes3d
         logger.debug(f'After applying the shared inner network, the output will be reshaped to {self.img_shapes3d}.')
-        logger.info(f'The final output is expected to have shape {[-1,*self.img_shapes3d[-1],combine_channels[-1]]}.')
+        logger.info(f'The final output is expected to have shape {[-1,*self.img_shapes3d[-1],channels3d[-1]]}.')
 
         ## processing inputs
         self.layer_inn1 = MyConv(3,3,padding=padding)
@@ -61,7 +61,7 @@ class ShareNet(hk.Module):
 
         ## apply the same inner network to all z
         inner = Fourier2Branch(
-            img_shapes = img_shapes2d,
+            img_shapes = img_shapes,
             b1_channels = b1_channels,
             b2_channels = b2_channels,
             b3_channels = b3_channels,
@@ -77,7 +77,7 @@ class ShareNet(hk.Module):
 
         ## last layers after shared weigths
         self.last_conv = []
-        for c,k in zip(combine_channels, combine_filters):
+        for c,k in zip(channels3d, filters3d):
             self.last_conv.append(
                 MyConv(c, k, padding=padding),
             )
@@ -122,31 +122,34 @@ class Model(BaseModel):
     def __init__(
             self,
             img_shapes3d:NestedTupleInteger,
-            combine_channels:Sequence[int],
-            combine_filters:Sequence[int]|int,
-            img_shapes2d:NestedTupleInteger = ((32,32), (16,16), (8,8), (16,16), (32,32)),
+            channels3d:Sequence[int],
+            filters3d:Sequence[int]|int,
+            img_shapes:NestedTupleInteger = ((32,32), (16,16), (8,8), (16,16), (32,32)),
             b1_channels:Sequence[int] = (1,),
             b2_channels:Sequence[int] = (8,16,8),
             b3_channels:Sequence[int] = (4,),
-            map_axis:Tuple[int,int] = [2,3],
+            map_axis:Tuple[int,int] = (2,3),
             padding:str = 'CIRCULAR',
             name:str = 'sharenet',
             **kwargs
     ):
-        self.name = name # name is needed for loading from pre-trained
+        if name:
+            self.name = name # name is needed for loading from pre-trained
+        else:
+            self.name = 'sharenet'
 
-        if isinstance(combine_filters, int):
-            combine_filters = [combine_filters,]*len(combine_channels)
+        if isinstance(filters3d, int):
+            filters3d = [filters3d,]*len(channels3d)
 
         def forward_fn(x, training=True):
             mdl = ShareNet(
-                img_shapes2d = img_shapes2d,
+                img_shapes = img_shapes,
                 b1_channels = b1_channels,
                 b2_channels = b2_channels,
                 b3_channels = b3_channels,
                 img_shapes3d = img_shapes3d,
-                combine_channels = combine_channels,
-                combine_filters = combine_filters,
+                channels3d = channels3d,
+                filters3d = filters3d,
                 padding = padding,
                 map_axis = map_axis,
                 name = name,

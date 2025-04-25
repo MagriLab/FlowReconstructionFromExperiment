@@ -31,6 +31,7 @@ code_model = {
     'fc2branch': 'b2',
     'ff': 'ff',
     'slice3d': 's3',
+    'shareparts': 'sw',
 }
 code_loss = {
     'physicswithdata': 'pi3',

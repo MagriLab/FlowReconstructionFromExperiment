@@ -1,6 +1,5 @@
 from ml_collections import config_dict
 from ml_collections.config_dict import placeholder
-import warnings
 
 
 _valid_loss_fn = ['physicswithdata_mae', 'physicsnoreplace_mae', 'physicsreplacemean_mae', 'physicsandmean_mae', 'physicswithdata', 'physicsnoreplace', 'physicsreplacemean', 'physicsandmean']
@@ -12,7 +11,6 @@ def get_config(cfgstr:str = None):
         user = dict([x.split('@') for x in cfgstr.split(',')])
     else:
         user = {}
-        # warnings.warn('No training case is selected, proceeds with the basic configuration. Are you sure this is not a mistake?')
 
     # Set up default options
     _mdl = 'slice3d'
@@ -91,6 +89,20 @@ def get_config(cfgstr:str = None):
         cfg.config.newvar_model = placeholder(str)
         cfg.config.newvar_config = placeholder(str)
         cfg.config.reduce_layers = placeholder(tuple)
+    elif _mdl == 'shareparts':
+        cfg.config.img_shapes3d = placeholder(tuple)
+        cfg.config.channels3d = placeholder(tuple)
+        cfg.config.filters3d = placeholder(tuple)
+        cfg.config.map_axis = placeholder(tuple)
+        cfg.config.img_shapes = placeholder(tuple)
+        cfg.config.b1_channels = placeholder(tuple)
+        cfg.config.b2_channels = placeholder(tuple)
+        cfg.config.b3_channels = placeholder(tuple)
+        cfg.config.b1_filters = placeholder(tuple)
+        cfg.config.b2_filters = placeholder(tuple)
+        cfg.config.b3_filters = placeholder(tuple)
+        cfg.config.fft_branch = placeholder(bool)
+        cfg.config.small_mlp = placeholder(bool)
     else:
         raise ValueError('Invalid model option for wandb configuration.')
 
