@@ -125,20 +125,24 @@ def get_config(cfgstr:str = None):
 
     if _observe == 'grid' or _observe == 'grid_pin':
         cfg.data_config.update({
-            'slice_grid_sensors': ((None,None,15), (None,None,5))
+            'slice_grid_sensors': ((None,None,15), (None,None,5)),
+            'components': 'all' # default all velocity components
         }) # spatial slicing, the default is equivalent to np.s_[::15,::5] in x and y direction
         if _dataloader == '3dvolvo' or _dataloader == '3dkol':
             cfg.data_config.update({
-                'slice_grid_sensors': ((None,None,None), (None,None,None),(None,None,None))
+                'slice_grid_sensors': ((None,None,None), (None,None,None),(None,None,None)),
+                'components': 'all' # default all velocity components
             }) # spatial slicing, the default is equivalent to np.s_[:,:,
     elif _observe == 'sparse' or _observe == 'sparse_pin':
         cfg.data_config.update({
-            'sensor_index': placeholder(tuple)
+            'sensor_index': placeholder(tuple),
+            'components': 'all' # default all velocity components
         })
     elif _observe == 'random_pin':
         cfg.data_config.update({
             'random_sensors': placeholder(tuple), # (random seed, number of sensors)
             'sensor_index': placeholder(tuple),
+            'components': 'all' # default all velocity components
         })
     elif _observe == 'slice' or _observe == 'slice_pin':
         cfg.data_config.update({

@@ -56,8 +56,13 @@ def observe_grid(data_config:ConfigDict, **kwargs):
     '''# Place sensors in a grid.\n
     Sensor locations given by data_config.slice_grid_sensors'''
 
+    if data_config.normalise and (data_config.components != 'all'):
+        logger.error('Cannot normalise data when some velocity components or pressure are missing.')
+        data_config.update({'normalise': False})
+
     s_space = slice_from_tuple(data_config.slice_grid_sensors)
-    s = (np.s_[:],) + s_space + (np.s_[:],)
+    s_components = _make_component_index(data_config.components)
+    s = (np.s_[:],) + s_space + (s_components,)
 
     def take_observation(u:jax.Array,**kwargs) -> jax.Array:
         us = u[s]
@@ -90,8 +95,13 @@ def observe_grid_pin(data_config:ConfigDict,
     '''# Place sensors in a grid and place pressure sensors at the inlet.\n
     Sensor locations given by data_config.slice_grid_sensors, pressure sensor location given by data_config.pressure_inlet_slice.'''
 
+    if data_config.normalise and (data_config.components != 'all'):
+        logger.error('Cannot normalise data when some velocity components or pressure are missing.')
+        data_config.update({'normalise': False})
+
     s_space = slice_from_tuple(data_config.slice_grid_sensors)
-    s = (np.s_[:],) + s_space + (np.s_[:],)
+    s_components = _make_component_index(data_config.components)
+    s = (np.s_[:],) + s_space + (s_components,)
 
     inn_loc, s_pressure = _make_pressure_index(data_config, **kwargs)
 
@@ -164,15 +174,23 @@ def observe_sparse(data_config:ConfigDict, **kwargs):
     '''# Place sensors at specific locations.\n
     Sensor locations are given by data_config.sensor_index.'''
 
+    if data_config.normalise and (data_config.components != 'all'):
+        logger.error('Cannot normalise data when some velocity components or pressure are missing.')
+        data_config.update({'normalise': False})
+
     sensor_idx = data_config.sensor_index
+    s_components = _make_component_index(data_config.components)
+    if data_config.components in ['all', 'velocity']:
+        s = (np.s_[:,*sensor_idx],) + (s_components,)
 
     logger.debug(f'Sensor indices are provided for a {len(sensor_idx)}D flow.')
     if 'example_pred_snapshot' in kwargs.keys():
-        chex.assert_rank(kwargs['example_pred_snapshot'][*sensor_idx],2)
+        s = _make_sparse_index(sensor_idx, s_components, kwargs['example_pred_snapshot'])
+        chex.assert_rank(kwargs['example_pred_snapshot'][s[1:]],1)
 
 
     def take_observation(u:jax.Array, **kwargs) -> jax.Array:
-        us = u[:,*sensor_idx]
+        us = u[s]
 
         if ('init' in kwargs) and (kwargs['init'] is True):
             if data_config.normalise:
@@ -188,7 +206,7 @@ def observe_sparse(data_config:ConfigDict, **kwargs):
         return us # [snapshot, num_sensors, velocities]
 
     def insert_observation(pred:jax.Array, observed:jax.Array, **kwargs) -> jax.Array:
-        pred_new = pred.at[:,*sensor_idx].set(observed)
+        pred_new = pred.at[s].set(observed)
         return pred_new
 
     return take_observation, insert_observation
@@ -202,15 +220,20 @@ def observe_sparse_pin(data_config:ConfigDict,
     '''# Place sensors at specific locations.\n
     Sensor locations given by data_config.sensor_index, pressure sensor location given by data_config.pressure_inlet_slice.'''
 
+    if data_config.normalise and (data_config.components != 'all'):
+        logger.error('Cannot normalise data when some velocity components or pressure are missing.')
+        data_config.update({'normalise': False})
+
     # velocity and pressure sensors
     sensor_idx = data_config.sensor_index
-    # num_sensors = len(sensor_idx[0])
-    num_sensors = example_pred_snapshot[*sensor_idx].size
+    s_components = _make_component_index(data_config.components)
+    s = _make_sparse_index(sensor_idx, s_components, example_pred_snapshot)
+    num_sensors = example_pred_snapshot[s[1:]].size
     logger.debug(f'Sensor indices are provided for a {len(sensor_idx)}D flow, with {num_sensors} measurements.')
-    observed_all_shape = (-1,) + example_pred_snapshot[*sensor_idx].shape
+    observed_all_shape = (-1,) + example_pred_snapshot[s[1:]].shape
     logger.debug(f'Observed will have shape {observed_all_shape}.')
     
-    chex.assert_rank(example_pred_snapshot[*sensor_idx],2)
+    chex.assert_rank(example_pred_snapshot[s[1:]],1) #"Will have a rank of 1"
     
     inn_loc, s_pressure = _make_pressure_index(data_config, **kwargs)
 
@@ -222,7 +245,7 @@ def observe_sparse_pin(data_config:ConfigDict,
         warnings.warn(f'Expect {num_pressure} pressure measurement at inlet, received {example_pin_snapshot.size}. Is this intentional?')
     
     def take_observation(u:jax.Array, **kwargs) -> jax.Array:
-        us = u[:,*sensor_idx]
+        us = u[s]
         ps = u[s_pressure]
 
         if ('init' in kwargs) and (kwargs['init'] is True):
@@ -261,7 +284,7 @@ def observe_sparse_pin(data_config:ConfigDict,
         ps_observed = ps_observed.reshape(observed_p_shape)
 
         pred_new = pred.at[s_pressure].set(ps_observed)
-        pred_new = pred_new.at[:,*sensor_idx].set(us_observed)
+        pred_new = pred_new.at[s].set(us_observed)
 
         return pred_new
 
@@ -547,3 +570,36 @@ def _make_pressure_index(data_config, **kwargs):
 
     return inn_loc, s_pressure
 
+
+def _make_component_index(components):
+    """data_config.components: 'all' for velocities and pressure, 'velocity' for velocities, and 'ij...' for components i,j,..."""
+    
+    if components == 'all': # velocity and pressure
+        logger.info('Sensors measure velcoties and pressure.')
+        index = np.s_[:]
+    elif components == 'velocity':
+        logger.info('Sensors measure velcoties.')
+        index = np.s_[:-1]
+    else:
+        index = np.s_[:-1]
+        c = [int(num) for num in components]
+        logger.info(f'Sensors measure components {c}.')
+        index = np.s_[c]
+
+    return index # return a list of index
+
+def _make_sparse_index(sensor_index, component_idx, example_snapshot):
+    _empty_data = np.zeros_like(example_snapshot, dtype=int)
+    c_ints = np.arange(_empty_data.shape[-1])[component_idx] # Get the actual integers
+    for c in c_ints:
+        _empty_data[*sensor_index,c] = 1
+    x, y, z, u = np.indices(_empty_data.shape)
+    has_values = _empty_data > 0
+    u1 = u[has_values]
+    _sort = np.argsort(u1)
+    u1 = u1[_sort]
+    x1 = x[has_values][_sort]
+    y1 = y[has_values][_sort]
+    z1 = z[has_values][_sort]
+    idx = np.array(tuple(zip(x1,y1,z1,u1))).T #(4,num)
+    return np.s_[:,*idx]
