@@ -8,7 +8,6 @@ from flowrec.data import data_partition ,get_whitenoise_std
 from flowrec.sensors import random_coords_generator
 
 
-import itertools as it
 import warnings
 import logging
 logger = logging.getLogger(f'fr.{__name__}')
