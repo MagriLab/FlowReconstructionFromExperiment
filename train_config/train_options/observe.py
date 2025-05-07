@@ -412,10 +412,35 @@ def observe_slice_pin(
     if (data_config.dz is not None) and (dim != 3):
         logger.warning(f'Expect 3D data, got grid size {grid_shape}.')
     
-    x, y, z, num_components = data_config.measure_slice
+    # x, y, z, num_components = data_config.measure_slice
 
-    _slice_index = np.s_[:,x,y,z,:num_components]
-    s = tuple([slice(None,None,None) if a is None else a for a in _slice_index])
+    # _slice_index = np.s_[:,x,y,z,:num_components]
+    # s = tuple([slice(None,None,None) if a is None else a for a in _slice_index])
+
+    xplane = [int(i) for i in data_config.xplane.split(',') if len(i)>0]
+    yplane = [int(i) for i in data_config.yplane.split(',') if len(i)>0]
+    zplane = [int(i) for i in data_config.zplane.split(',') if len(i)>0]
+    components = [i for i in data_config.components.split(',') if len(i)>0]
+    assert len(xplane)+len(yplane)+len(zplane) == len(components)
+    
+    binary_snapshot = np.zeros_like(example_pred_snapshot, dtype=int)
+    for x in xplane:
+        c_str = components.pop(0)
+        c_idx = _make_component_index(c_str)
+        _s = np.s_[x,:,:] + (c_idx,)
+        binary_snapshot[_s] = 1
+    for y in yplane:
+        c_str = components.pop(0)
+        c_idx = _make_component_index(c_str)
+        _s = np.s_[:,y,:] + (c_idx,)
+        binary_snapshot[_s] = 1
+    for z in zplane:
+        c_str = components.pop(0)
+        c_idx = _make_component_index(c_str)
+        _s = np.s_[:,:,z] + (c_idx,)
+        binary_snapshot[_s] = 1
+    s = _make_sparse_index(binary_snapshot)
+
     slice_shape = example_pred_snapshot[s[1:]].shape
     logger.debug(f'The slice has shape {slice_shape}, index {s}')
     num_sensors = np.prod(slice_shape)
@@ -562,7 +587,7 @@ def _make_pressure_index(data_config, **kwargs):
     return inn_loc, s_pressure
 
 
-def _make_component_index(components):
+def _make_component_index(components:str):
     """data_config.components: 'all' for velocities and pressure, 'velocity' for velocities, and 'ij...' for components i,j,..."""
     
     if components == 'all': # velocity and pressure

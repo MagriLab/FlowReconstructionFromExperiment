@@ -146,7 +146,11 @@ def get_config(cfgstr:str = None):
         })
     elif _observe == 'slice' or _observe == 'slice_pin':
         cfg.data_config.update({
-            'measure_slice': (None, None, 32, 3), # (x,y,z,num_components), default take the z=32 plane, all velocity components
+            # 'measure_slice': (None, None, 32, 3), # (x,y,z,num_components), default take the z=32 plane, all velocity components
+            'xplane': "",
+            'yplane': "",
+            'zplane': "32",
+            'components': "velocity" 
         })
     elif _observe == 'cross_pin':
         cfg.data_config.update({
