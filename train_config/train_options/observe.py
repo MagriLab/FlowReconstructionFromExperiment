@@ -185,7 +185,11 @@ def observe_sparse(data_config:ConfigDict, **kwargs):
 
     logger.debug(f'Sensor indices are provided for a {len(sensor_idx)}D flow.')
     if 'example_pred_snapshot' in kwargs.keys():
-        s = _make_sparse_index(sensor_idx, s_components, kwargs['example_pred_snapshot'])
+        binary_snapshot = np.zeros_like(kwargs['example_pred_snapshot'], dtype=int)
+        c_ints = np.arange(binary_snapshot.shape[-1])[s_components]
+        for c in c_ints:
+            binary_snapshot[*sensor_idx,c] = 1
+        s = _make_sparse_index(binary_snapshot)
         chex.assert_rank(kwargs['example_pred_snapshot'][s[1:]],1)
 
 
@@ -227,7 +231,11 @@ def observe_sparse_pin(data_config:ConfigDict,
     # velocity and pressure sensors
     sensor_idx = data_config.sensor_index
     s_components = _make_component_index(data_config.components)
-    s = _make_sparse_index(sensor_idx, s_components, example_pred_snapshot)
+    binary_snapshot = np.zeros_like(kwargs['example_pred_snapshot'], dtype=int)
+    c_ints = np.arange(binary_snapshot.shape[-1])[s_components]
+    for c in c_ints:
+        binary_snapshot[*sensor_idx,c] = 1
+    s = _make_sparse_index(binary_snapshot)
     num_sensors = example_pred_snapshot[s[1:]].size
     logger.debug(f'Sensor indices are provided for a {len(sensor_idx)}D flow, with {num_sensors} measurements.')
     observed_all_shape = (-1,) + example_pred_snapshot[s[1:]].shape
@@ -490,21 +498,13 @@ def observe_cross_pin(
     s2 = tuple([slice(None,None,None) if a is None else a for a in np.s_[*plane2]])
     
     # take planes
-    _empty_data = np.zeros_like(example_pred_snapshot,dtype=int)
-    _empty_data[*s1,n1] = 1
-    _empty_data[*s2,n2] = 1
-
-    x, y, z, u = np.indices(_empty_data.shape)
-    has_values = _empty_data > 0
-    x1 = x[has_values]
-    y1 = y[has_values]
-    z1 = z[has_values]
-    u1 = u[has_values]
-    idx = np.array(tuple(zip(x1,y1,z1,u1))).T #(4,num)
-    s = np.s_[:,*idx]
+    binary_snapshot = np.zeros_like(example_pred_snapshot,dtype=int)
+    binary_snapshot[*s1,n1] = 1
+    binary_snapshot[*s2,n2] = 1
+    s = _make_sparse_index(binary_snapshot)
     
     slice_shape = example_pred_snapshot[s[1:]].shape
-    num_sensors = idx.shape[1]
+    num_sensors = example_pred_snapshot[s[1:]].size
     logger.debug(f'The slice has shape {slice_shape}, {num_sensors} sensors in total.')
 
 
@@ -524,16 +524,7 @@ def observe_cross_pin(
 
         if ('init' in kwargs) and (kwargs['init'] is True):
             if data_config.normalise:
-                _u1 = us[:,has_values[...,0]]
-                _u2 = us[:,has_values[...,1]]
-                _u3 = us[:,has_values[...,2]]
-                _p = us[:,has_values[...,3]].flatten()
-                _p = np.concatenate((_p,ps.faltten()))
-                r = []
-                r.append([_u1.min(), _u1.max()])
-                r.append([_u2.min(), _u2.max()])
-                r.append([_u3.min(), _u3.max()])
-                r.append([_p.min(), _p.max()])
+                raise NotImplementedError
             else:
                 r = None
             return observed, r
@@ -588,13 +579,10 @@ def _make_component_index(components):
 
     return index # return a list of index
 
-def _make_sparse_index(sensor_index, component_idx, example_snapshot):
-    _empty_data = np.zeros_like(example_snapshot, dtype=int)
-    c_ints = np.arange(_empty_data.shape[-1])[component_idx] # Get the actual integers
-    for c in c_ints:
-        _empty_data[*sensor_index,c] = 1
-    x, y, z, u = np.indices(_empty_data.shape)
-    has_values = _empty_data > 0
+def _make_sparse_index(binary_snapshot):
+    """Return the slice based on a binary_snapshot where 1 means sensors and 0 means no sensor."""
+    x, y, z, u = np.indices(binary_snapshot.shape)
+    has_values = binary_snapshot > 0
     u1 = u[has_values]
     _sort = np.argsort(u1)
     u1 = u1[_sort]
