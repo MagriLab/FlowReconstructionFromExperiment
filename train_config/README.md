@@ -87,7 +87,7 @@ Common options are the options that are available for all cases.
 `cfg`, the main configuration, has four sections, case (see [Setting Training Cases](#setting-training-cases)), data_config, train_config and model_config.
 For example, data_dir in data_config is set by `--cfg.data_config.data_dir=path`.
 
-#### **data_config**
+#### data_config
 
 - `data_dir` (str:None)<br>
     Directory where the data is stored.
@@ -119,7 +119,7 @@ For example, data_dir in data_config is set by `--cfg.data_config.data_dir=path`
 - `filter` (str:None)<br>
 
 
-#### **model_config**
+#### model_config
 
 - `dropout_rate` (float:0.0)
 - `name` (str:None) \
@@ -128,7 +128,7 @@ For example, data_dir in data_config is set by `--cfg.data_config.data_dir=path`
     We will look up the name of this function in `jax.nn`
 
 
-#### **train_config**
+#### train_config
 
 - `learning_rate` (float:3e-4)
 - `regularisation_strength` (float:0.0)
@@ -154,75 +154,149 @@ Default mode is set to *online* and default project is *FlowReconstruction*.
 ## Options for Each Case
 
 
-### **Dataloader**
+### Dataloader
+--------------------
+Options are under **data_config**.
 
-### 2dtriangle
-
+#### 2dtriangle
 Generated 2D wake behind a triangle.
 
-**data_config**
+- `slice_to_keep` (tuple: ((None,), (None,), (None,250,None), (None,))) <br>
+    Define the area to take from the simulation domain.
+- `data_dir` (str: ./local_data/re100/) <br>
+    Path to the data.
+- `re` (float: 100.0) <br>
+    Reynolds number used in the simulation.
+- `dt` (float: 0.125) <br>
+    Time step between snapshots.
+- `dx` (float: 12/512) <br>
+    Grid spacing in the x-direction.
+- `dy` (float: 4/128) <br>
+    Grid spacing in the y-direction.
+- `pressure_inlet_slice` (tuple: ((0,1,None), (49,80,None))) <br>
+    Slice defining the region where pressure inlet values are extracted.
+- `nsample` (int: 700) <br>
+    Number of simulation samples to load.
 
-- `slice_to_keep` (tuple: ((None,), (None,), (None,250,None), (None,)))<br>
-    Keep only the suitable data from the dataset, because some parts of the dataset may have $u_z \neq 0$.
+#### 2dkol/3dkol
+2D/3D Kolmogorov flow. Both 2dkol and 3dkol have the same config options, the defaults shown here are for 3dkol.
+
+- `data_dir` (str: ./local_data/kolmogorov/dim3_re34_k32_f4_dt01_grid64_189.h5) <br>
+    Path to the dataset file containing simulation data.
+- `re` (float: 34.0) <br>
+    Reynolds number used in the simulation.
+- `dt` (float: 0.1) <br>
+    Time step between snapshots.
+- `dx` (float: $2\pi$/64) <br>
+    Grid spacing in the x-direction.
+- `dy` (float: $2\pi$/64) <br>
+    Grid spacing in the y-direction.
+- `dz` (float: $2\pi$/64) <br>
+    Grid spacing in the z-direction. *This option is not available for 3dkol.*
+- `crop_data` (tuple: ((None,), (None,), (None,))) <br>
+    Defines spatial cropping bounds for the simulation data along (x, y, z).
+- `pressure_inlet_slice` (tuple: ((None,), (0,1,None), (None,))) <br>
+    Slice defining the pressure inlet region.
+- `forcing_frequency` (int: 4) <br>
+    Frequency of the external forcing applied in the simulation.
+- `nsample` (int: 900) <br>
+    Number of simulation samples to load.
 
 
-### **Observe**
+#### 3dkolsets
+Multiple decorrelated segments of 3D kolmogorov flow.
 
-### grid
+- `data_dir` (str: ./local_data/kolmogorov/dim3_datasets_080325.txt) <br>
+    Path to the dataset file containing metadata.
+- `re` (float: 34.0) <br>
+    Reynolds number used in the simulation.
+- `dt` (float: 0.1) <br>
+    Time step between simulation frames.
+- `dx` (float: $2\pi$/64) <br>
+    Grid spacing in the x-direction.
+- `dy` (float: $2\pi$/64) <br>
+    Grid spacing in the y-direction.
+- `dz` (float: $2\pi$/64) <br>
+    Grid spacing in the z-direction.
+- `crop_data` (tuple: ((None,), (None,), (None,))) <br>
+    Defines spatial cropping bounds for the simulation data along (x, y, z).
+- `pressure_inlet_slice` (tuple) <br>
+    Placeholder slice defining the pressure inlet region (to be specified).
+- `random_input` (tuple) <br>
+    Placeholder tuple containing (random seed, number of pressure sensors).
+- `forcing_frequency` (int: 4) <br>
+    Frequency of the external forcing applied in the simulation.
+- `nsample` (int: 2500) <br>
+    Number of simulation samples to load.
 
-Sensors are placed in a grid.
 
-**data_config**
+### Observe
+------------------------
+Options are under **data_config**.
+
+#### grid/grid_pin
+
+Sensors are placed in a grid. / Sensors are placed in a grid, with extra pressure sensors.
 
 - `slice_grid_sensors` (tuple: ((None,None,15), (None,None,5)))<br>
     Define a grid with (start,end,step).
+- `components` (str: all) <br>
+    Which components to taken measurements from. 
+    - 'all': all components
+    - 'velocity': all velocities, equivalent to slice the last dimension of the data using [\:-1]
+    - 'ij...': component with index i, j, ...
 
-### grid_pin
-Sensors are placed in a grid, with extra pressure sensors.
-
-**data_config**
-
-- `slice_grid_sensors` (tuple: ((None,None,15), (None,None,5)))<br>
-    Define a spatial grid with (start,end,step).
-- `pressure_inlet_slice` (tuple:)<br>
-    Define location of the pressure sensors using (start,end,step) in spatial directions.
-    Default pressure sensors are placed at the same locations as the input to the network.
-
-
-### sparse
-Sensors are placed sparsely in the domain.
+#### sparse/sparse_pin
+Sensors are placed sparsely in the domain. / Sensors are placed sparsely in the domain, with extra pressure sensors.
 
 **data_config**
 
-- `sensor_index` (tuple:None)<br>
+- `sensor_index` (tuple: None)<br>
     Coordinates of the sensors ((x1,x2,...),(y1,y2,...)).
     Can also be 3D.
+- `components` (str: all) <br>
+    Which components to taken measurements from. 
+    - 'all': all components
+    - 'velocity': all velocities, equivalent to slice the last dimension of the data using [\:-1]
+    - 'ij...': component with index i, j, ...
 
+#### random_pin
+Sensors are randomly placed in the domain.
 
-### sparse_pin
-Sensors are placed sparsely in the domain, with extra pressure sensors.
-
-**data_config**
-
-- `sensor_index` (tuple:None)<br>
+- `random_sensors` (tuple: None)<br>
+    (random seed, number of sensors).
+- `sensor_index` (tuple: None)<br>
     Coordinates of the sensors ((x1,x2,...),(y1,y2,...)).
     Can also be 3D.
-- `pressure_inlet_slice` (tuple:)<br>
-    Define location of the pressure sensors using (start,end,step) in spatial directions.
-    Default pressure sensors are placed at the same locations as the input to the network.
+- `components` (str: all) <br>
+    Which components to taken measurements from. 
+    - 'all': all components
+    - 'velocity': all velocities, equivalent to slice the last dimension of the data using [\:-1]
+    - 'ij...': component with index i, j, ...
 
-### slice
+#### slice/slice_pin
+Measurement planes are taken at indexes listed in xplane, yplane and zplane.
 
-### cross
+- `xplane` (str: "")<br>
+    "x1,x2..." each x is an integer index.
+- `yplane` (str: "")<br>
+    "y1,y2..." each y is an integer index.
+- `zplane` (str: "32")<br>
+    "z1,z2..." each z is an integer index.
+- `components` (str: "velocity") <br>
+    Which components to taken measurements from. Inorder for the planes at x1,x2...y1,y2...z1,z2...
+    - 'all': all components
+    - 'velocity': all velocities, equivalent to slice the last dimension of the data using [\:-1]
+    - 'ij...': component with index i, j, ...
 
-### **Select_model**
 
-### ffcnn
+### Select_model
+---------------------------------
+Options are under **model_config**
+
+#### ffcnn
 Fully connected layers followed by convolution layers.
 For details of the network and the arguments it takes, see [here](../flowrec/models/cnn.py). 
-
-
-**model_config**
 
 - `mlp_layers` (tuple:(96750,))<br>
     Number of neurons in (layer1,layer2,layer3...).
@@ -234,18 +308,21 @@ For details of the network and the arguments it takes, see [here](../flowrec/mod
 - `cnn_filters` (tuple:((3,3),))<br>
     Size of the convolution filters.
 
-### ff
+#### ff
 Simple feedforward network.
 
-### fc2branch
+#### fc2branch
 Dual-branch CNN network, with an optional Fourier Transform.
 
-### slice3d
-A 2D network applied and trained on 3D flows.
+#### shareparts
+A network for 3D flow, but sharing some weights to emphasize homogeneous direction.
 
-### **Loss_fn**
 
-### physicswithdata
+### Loss_fn
+---------------------------
+Options under **train_config**.
+
+#### physicswithdata
 Insert observation into the prediction before taking physics loss.
 
 The full dataset is $\boldsymbol{u}$, which contains $u,v$ and $p$ (and $w$ if 3D).
@@ -261,7 +338,6 @@ Steps to calculate the loss is
     $\tilde{\boldsymbol{y}}\_{\boldsymbol{x}\_h} = \boldsymbol{y}\_{\boldsymbol{x}\_h}$
 1. $Loss = \lambda\_p R(\tilde{\boldsymbol{y}}) + \lambda\_s MSE(\boldsymbol{y}\_{\boldsymbol{x}\_o},\boldsymbol{u}\_{\boldsymbol{x}\_o})$.
 
-**train_config**
 
 - `weight_physics` (float:1.0)<br>
     $\lambda\_p$.
@@ -269,7 +345,7 @@ Steps to calculate the loss is
     $\lambda\_s$.
 
 
-### physicsnoreplace 
+#### physicsnoreplace 
 
 The full dataset is $\boldsymbol{u}$, which contains $u,v$ and $p$ (and $w$ if 3D).
 The predicted dataset is $\boldsymbol{y}$.
@@ -280,7 +356,6 @@ If a flow field, $\hat{\boldsymbol{u}}$, is a solution to the NS equations, $R(\
 
 $Loss = \lambda\_p R(\boldsymbol{y}) + \lambda_s MSE(\boldsymbol{y}\_{\boldsymbol{x}\_o},\boldsymbol{u}\_{\boldsymbol{x}\_o})$.
 
-**train_config**
 
 - `weight_physics` (float:0.1)<br>
     $\lambda\_p$.
