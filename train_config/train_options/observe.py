@@ -231,7 +231,7 @@ def observe_sparse_pin(data_config:ConfigDict,
     # velocity and pressure sensors
     sensor_idx = data_config.sensor_index
     s_components = _make_component_index(data_config.components)
-    binary_snapshot = np.zeros_like(kwargs['example_pred_snapshot'], dtype=int)
+    binary_snapshot = np.zeros_like(example_pred_snapshot, dtype=int)
     c_ints = np.arange(binary_snapshot.shape[-1])[s_components]
     for c in c_ints:
         binary_snapshot[*sensor_idx,c] = 1
