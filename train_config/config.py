@@ -146,16 +146,10 @@ def get_config(cfgstr:str = None):
         })
     elif _observe == 'slice' or _observe == 'slice_pin':
         cfg.data_config.update({
-            # 'measure_slice': (None, None, 32, 3), # (x,y,z,num_components), default take the z=32 plane, all velocity components
-            'xplane': "",
-            'yplane': "",
-            'zplane': "32",
-            'components': "velocity" 
-        })
-    elif _observe == 'cross_pin':
-        cfg.data_config.update({
-            'plane1': (None, 32, None, (0,1,2)), # (x,y,z,num_components), default take the z=32 plane, all velocity components
-            'plane2': (None, None, 32, (0,1,2)), # (x,y,z,num_components), default take the z=32 plane, all velocity components
+            'xplane': "", # "x1,x2..." must be integer
+            'yplane': "", # "y1,y2..." must be integer
+            'zplane': "32", # "z1,z2..." must be integer
+            'components': "velocity"  # component codes for x1,x2...,y1...,z1...
         })
     else:
         raise ValueError('Invalid observe option.')
@@ -238,7 +232,6 @@ _default_datacfg = {
         'dz': 2*np.pi/64,
         'crop_data': ((None,),(None,),(None,)), # (crop_data xyz)
         'pressure_inlet_slice': ((None,),(0,1,None),(None,)),
-        'measure_slice': (None, None, 32, 3), # (x,y,z,num_components), default take the z=32 plane, all velocity components
         'forcing_frequency': 4,
         'nsample': 900,
     },
