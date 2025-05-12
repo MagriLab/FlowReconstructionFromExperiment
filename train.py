@@ -335,18 +335,13 @@ def main(_):
         debugger(FLAGS.debug)
         logger.info(f'Running these scripts in debug mode: {FLAGS.debug}.')
     
-    if FLAGS.wandb_sweep:
-        use_wandb = True
-    
-    tmp_dir = Path(FLAGS.result_dir,FLAGS.result_folder_name)
-    if not tmp_dir.is_dir():
-        logger.warning(f'Making a new target directory at {tmp_dir.absolute()}.')
-        tmp_dir.mkdir(parents=True)
-    else:
-        logger.warning(f'Writing into exisiting directory {tmp_dir.absolute()}.')
-
-
-
+    if not FLAGS.wandb_sweep:
+        tmp_dir = Path(FLAGS.result_dir,FLAGS.result_folder_name)
+        if not tmp_dir.is_dir():
+            logger.warning(f'Making a new target directory at {tmp_dir.absolute()}.')
+            tmp_dir.mkdir(parents=True)
+        else:
+            logger.warning(f'Writing into exisiting directory {tmp_dir.absolute()}.')
 
     if FLAGS.resume:
         if not wandbcfg.resume: # user defined mode first
@@ -371,7 +366,7 @@ def main(_):
     traincfg = cfg.train_config
 
     ## Initialise wandb
-    if use_wandb:
+    if use_wandb or FLAGS.wandb_sweep:
         logger.info('Updating wandb config with experiment config')
         update_matching_keys(wandbcfg.config, datacfg)
         update_matching_keys(wandbcfg.config, mdlcfg)
@@ -389,6 +384,7 @@ def main(_):
             logger.error("Skip logging DataPath artifact.")
 
         if FLAGS.wandb_sweep:
+            use_wandb = True
             sweep_params = sweep_preprocess_cfg(wandb.config)
             update_matching_keys(datacfg, sweep_params)
             update_matching_keys(mdlcfg, sweep_params)
@@ -396,6 +392,9 @@ def main(_):
             FLAGS.result_folder_name = run.name
             logger.info('Running in sweep mode, replace config parameters with sweep parameters.')
             logger.debug(f'Running with {sweep_params}')
+            tmp_dir = Path(FLAGS.result_dir,FLAGS.result_folder_name)
+            assert not tmp_dir.is_dir(), 'Cannot write sweep into an existing directory.'
+            tmp_dir.mkdir(parents=True)
 
     else:
         run = None
