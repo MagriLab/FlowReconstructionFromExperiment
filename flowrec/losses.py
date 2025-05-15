@@ -195,10 +195,20 @@ def momentum_loss(
     return mom_loss
 
 
-
 def relative_error(pred,true):
     err = jnp.sqrt(
         jnp.sum((pred-true)**2)
         / jnp.sum(true**2)
     )
     return err
+
+
+def cos_similarity(pred:Array, true:Array) -> Array:
+    """Calculate the cosine similarity for all spatial points. 
+    
+    Both input arrays must have the same dimensions, and the first dimension must be time."""
+    assert true.shape == pred.shape, "Input size mismatch."
+    dot = jnp.einsum('t..., t... -> ...', true, pred) # [txyzu] -> [xyzu], dot product for each time series
+    v1 = jnp.sqrt(jnp.einsum('t... -> ...', true**2))
+    v2 = jnp.sqrt(jnp.einsum('t... -> ...', pred**2))
+    return dot / (v1 * v2) # [xyzu]
