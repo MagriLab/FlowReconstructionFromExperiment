@@ -258,7 +258,6 @@ def dissipation(
     Return:\n
         dissipation: of shape [t,x,y,z]
     """
-    logger.warning('Dissipation not normalised.')
     # the calculated dissipation matches Elise's results in shape, but not magnitude. This dissipation is not normalised.
 
     step_space = datainfo.discretisation[1:]
@@ -287,7 +286,18 @@ def dissipation(
     d = jnp.einsum('ijt... -> t...', dijsumdji**2) / re # [t,x,y,z]
 
     return d
- 
+
+
+def global_dissipation(u:Array, datainfo:ClassDataMetadata):
+    """Compute the spatially averaged dissipation"""
+    d = dissipation(u, datainfo) # [t,x,y,z]
+    h = datainfo.discretisation[1:] #[dx,dy,dz]
+    if len(h) < d.ndim - 1: # check dimensions
+        d = d[...,0]
+    h = jnp.asarray(h)
+    l = jnp.asarray(d.shape[1:]) * h
+    d_avg = jnp.einsum('t... -> t', d) * jnp.prod(h) / jnp.prod(l)
+    return d_avg
 
 
 @jax.tree_util.Partial(jax.jit,static_argnames=('datainfo'))
