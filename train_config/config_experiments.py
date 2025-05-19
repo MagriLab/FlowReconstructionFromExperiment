@@ -453,6 +453,55 @@ def extreme_events(num_sensors:int, snr:int, sensor_randseed:int):
     
     return '', mdlcfg_update, datacfg_update, traincfg_update
 
+def kol3d_methods(group:str, sensor_randseed:int):
+    randseed_input = 10*sensor_randseed + 83
+    match group:
+        case '2dmethod':
+            _cfgstr = 'model@fc2branch'
+            datacfg_update = {
+                'val_batch_idx': (-10,-9,-8,-7,-6,-5,-4,-3,-2,-1),
+                'random_sensors': (sensor_randseed, 7200),
+                'random_input': (randseed_input, 3600),
+            }
+            mdlcfg_update = {
+                'b1_channels': (4,),
+                'b2_channels': (4,8,8,4),
+                'b3_filters': ((3,3,3),(3,3,3)),
+                'fft_branch': False,
+            }
+            traincfg_update = {
+                'batch_size': 50,
+                'learning_rate': 0.0065,
+                'lr_scheduler': 'cyclic_decay_default',
+                'weight_momentum': 11.0
+            }
+        case 'slice_inn_share':
+            raise NotImplementedError
+            _cfgstr = "model@shareparts"
+            datacfg_update = {
+                'val_batch_idx': (),
+                'pressure_inlet_slice': ((None,),(0,1,None),(None,)),
+                'random_sensors': (sensor_randseed, 7200)
+            }
+            mdlcfg_update = {
+                'b1_channels': (4,),
+                'b2_channels': (),
+                'img_shapes3d': (),
+            }
+            traincfg_update = {
+                'batch_size': 10,
+                'learning_rate': 0.01,
+                'lr_scheduler': '',
+                'weight_momentum': 5.0
+            }
+        
+        case 'slice_inn_notshare':
+            raise NotImplementedError
+    
+    return _cfgstr, mdlcfg_update, datacfg_update, traincfg_update
+
+    
+
 def get_config(cfgstr:str):
 
     experiment = dict([x.split('@') for x in cfgstr.split(',')])
@@ -462,7 +511,8 @@ def get_config(cfgstr:str):
         'noise-2dtriangle': 'dataloader@2dtriangle,model@fc2branch,observe@random_pin,',
         'clean_minimum': 'model@fc2branch,',
         'noise-2dkol': 'dataloader@2dkol,model@fc2branch,observe@random_pin,',
-        'extreme-events': 'dataloader@2dkol,model@fc2branch,observe@random_pin',
+        'extreme-events': 'dataloader@2dkol,model@fc2branch,observe@random_pin,',
+        '3dkol-methods': 'dataloader@3dkolsets,loss_fn@physicswithdata,observe@random_pin,',
     }
 
     objective = experiment['objective']
@@ -544,6 +594,22 @@ def get_config(cfgstr:str):
                 snr=int(experiment['group']), 
                 sensor_randseed=int(experiment['sensor_randseed'])
             )
+
+        case '3dkol-methods':
+            print("running experiment '3dkol-methods")
+            
+            testgroup = {
+                '1': '2dmethod',
+                '2': 'slice_inn_share',
+                '3': 'slice_inn_notshare',
+            }
+
+            _fn_input = {
+                'group': testgroup[experiment['group']],
+                'sensor_randseed': int(experiment['sensor_randseed'])
+            }
+
+            _cfgstr, mdlcfg_update, datacfg_update, traincfg_update = kol3d_methods(**_fn_input)
 
         case _:
             raise NotImplementedError
