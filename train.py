@@ -316,7 +316,8 @@ def main(_):
     if FLAGS._experimentcfgstr:
         logger.warning('train.py is started with a pre-set experiment.')
         wandb_updatecfg = get_wandb_config_experiment(FLAGS._experimentcfgstr).config
-        wandbcfg.config.update(wandb_updatecfg.to_dict())
+        with wandbcfg.config.unlocked():
+            wandbcfg.config.update(wandb_updatecfg.to_dict(), allow_val_change=True)
     logger.info(f'List of options selected from optional functions: \n      {cfg.case.values()}')
 
     # ===================== setting up system ==========================

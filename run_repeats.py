@@ -29,10 +29,12 @@ def job(randseeds:tuple, experiment:str, save_to:str, epochs:int, prefix:str, us
     if rand_s is not None:
         experiment = experiment + "," + f"sensor_randseed@{rand_s}"
         
-    command = f"python train.py --gpu_id {gpu_id} --result_dir {save_to} --result_folder_name {folder_name} --wandb --wandbcfg.mode=offline --wandbcfg.group={_experiment['objective']} --cfg train_config/config_experiments.py:{experiment} --cfg.train_config.randseed={rand_w} --cfg.train_config.epochs={epochs} --chatty"
+    command = f"python train.py --gpu_id {gpu_id} --result_dir {save_to} --result_folder_name {folder_name} --wandbcfg.group={_experiment['objective']} --cfg train_config/config_experiments.py:{experiment} --cfg.train_config.randseed={rand_w} --cfg.train_config.epochs={epochs} --chatty"
 
     if use_artifact is not None:
-        command = command + " " + f"--wandbcfg.use_artifact={use_artifact}"
+        command = command + " " + f"--wandbcfg.use_artifact={use_artifact} --wandbcfg.mode=online"
+    else:
+        command = command + " --wandbcfg.mode=offline"
 
     print('Running command: ')
     print(command)

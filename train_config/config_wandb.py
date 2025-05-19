@@ -35,6 +35,7 @@ def get_config(cfgstr:str = None):
     cfg.resume = placeholder(str)
     cfg.id = placeholder(str)
     cfg.config_exclude_keys = placeholder(tuple)
+    cfg.allow_val_change = True
 
     ## config to pass to wandbinit.config
     cfg.config = config_dict.ConfigDict()
