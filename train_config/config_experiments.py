@@ -453,7 +453,7 @@ def extreme_events(num_sensors:int, snr:int, sensor_randseed:int):
     
     return '', mdlcfg_update, datacfg_update, traincfg_update
 
-def kol3d_methods(group:str, sensor_randseed:int):
+def kol3d_methods(group:str, testcase:str, sensor_randseed:int):
     randseed_input = 10*sensor_randseed + 83
     match group:
         case '2dmethod':
@@ -462,6 +462,7 @@ def kol3d_methods(group:str, sensor_randseed:int):
                 'val_batch_idx': (-10,-9,-8,-7,-6,-5,-4,-3,-2,-1),
                 'random_sensors': (sensor_randseed, 7200),
                 'random_input': (randseed_input, 3600),
+                'components': testcase,
             }
             mdlcfg_update = {
                 'b1_channels': (4,),
@@ -476,26 +477,47 @@ def kol3d_methods(group:str, sensor_randseed:int):
                 'weight_momentum': 11.0
             }
         case 'slice_inn_share':
-            raise NotImplementedError
             _cfgstr = "model@shareparts"
             datacfg_update = {
-                'val_batch_idx': (),
+                'val_batch_idx': (-2,-1),
                 'pressure_inlet_slice': ((None,),(0,1,None),(None,)),
-                'random_sensors': (sensor_randseed, 7200)
+                'random_sensors': (sensor_randseed, 7200),
+                'components': testcase,
             }
             mdlcfg_update = {
-                'b1_channels': (4,),
-                'b2_channels': (),
-                'img_shapes3d': (),
+                'b1_channels': (1,),
+                'b2_channels': (4,16,16,8),
+                'img_shapes3d': ((32,32,32),(32,32,32),(64,64,64)),
+                'channels3d': (8,8,4),
+                'filters3d': (3,5,5)
             }
             traincfg_update = {
-                'batch_size': 10,
-                'learning_rate': 0.01,
-                'lr_scheduler': '',
-                'weight_momentum': 5.0
+                'batch_size': 250,
+                'learning_rate': 0.0045,
+                'lr_scheduler': 'cyclic_decay_default',
+                'weight_momentum': 16.0
             }
         
         case 'slice_inn_notshare':
+            _cfgstr = 'model@fc2branch'
+            datacfg_update = {
+                'val_batch_idx': (-10,-9,-8,-7,-6,-5,-4,-3,-2,-1),
+                'random_sensors': (sensor_randseed, 7200),
+                'pressure_inlet_slice': ((None,),(0,1,None),(None,)),
+                'components': testcase,
+            }
+            mdlcfg_update = {
+                'b1_channels': (4,),
+                'b2_channels': (4,8,8,4),
+                'b3_filters': ((3,3,3),(3,3,3)),
+                'fft_branch': False,
+            }
+            traincfg_update = {
+                'batch_size': 50,
+                'learning_rate': 0.0065,
+                'lr_scheduler': 'cyclic_decay_default',
+                'weight_momentum': 11.0
+            }
             raise NotImplementedError
     
     return _cfgstr, mdlcfg_update, datacfg_update, traincfg_update
@@ -603,9 +625,16 @@ def get_config(cfgstr:str):
                 '2': 'slice_inn_share',
                 '3': 'slice_inn_notshare',
             }
+            testcase = {
+                '1': 'all', # default case
+                '2': 'velocity',
+            }
+            if 'case' not in experiment.keys():
+                experiment.update({'case': 1}) # using default case all components
 
             _fn_input = {
                 'group': testgroup[experiment['group']],
+                'case': testcase[experiment['case']],
                 'sensor_randseed': int(experiment['sensor_randseed'])
             }
 
