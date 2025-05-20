@@ -463,6 +463,7 @@ def kol3d_methods(group:str, testcase:str, sensor_randseed:int):
                 'random_sensors': (sensor_randseed, 7200),
                 'random_input': (randseed_input, 3600),
                 'components': testcase,
+                'batch_size': 50,
             }
             mdlcfg_update = {
                 'b1_channels': (4,),
@@ -471,7 +472,6 @@ def kol3d_methods(group:str, testcase:str, sensor_randseed:int):
                 'fft_branch': False,
             }
             traincfg_update = {
-                'batch_size': 50,
                 'learning_rate': 0.0065,
                 'lr_scheduler': 'cyclic_decay_default',
                 'weight_momentum': 11.0
@@ -483,6 +483,7 @@ def kol3d_methods(group:str, testcase:str, sensor_randseed:int):
                 'pressure_inlet_slice': ((None,),(0,1,None),(None,)),
                 'random_sensors': (sensor_randseed, 7200),
                 'components': testcase,
+                'batch_size': 250,
             }
             mdlcfg_update = {
                 'b1_channels': (1,),
@@ -492,12 +493,10 @@ def kol3d_methods(group:str, testcase:str, sensor_randseed:int):
                 'filters3d': (3,5,5)
             }
             traincfg_update = {
-                'batch_size': 250,
                 'learning_rate': 0.0045,
                 'lr_scheduler': 'cyclic_decay_default',
                 'weight_momentum': 16.0
             }
-        
         case 'slice_inn_notshare':
             _cfgstr = 'model@fc2branch'
             datacfg_update = {
@@ -505,6 +504,7 @@ def kol3d_methods(group:str, testcase:str, sensor_randseed:int):
                 'random_sensors': (sensor_randseed, 7200),
                 'pressure_inlet_slice': ((None,),(0,1,None),(None,)),
                 'components': testcase,
+                'batch_size': 50,
             }
             mdlcfg_update = {
                 'b1_channels': (4,),
@@ -513,13 +513,10 @@ def kol3d_methods(group:str, testcase:str, sensor_randseed:int):
                 'fft_branch': False,
             }
             traincfg_update = {
-                'batch_size': 50,
                 'learning_rate': 0.0065,
                 'lr_scheduler': 'cyclic_decay_default',
                 'weight_momentum': 11.0
             }
-            raise NotImplementedError
-    
     return _cfgstr, mdlcfg_update, datacfg_update, traincfg_update
 
     
