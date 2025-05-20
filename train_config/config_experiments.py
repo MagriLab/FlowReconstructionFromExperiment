@@ -634,7 +634,7 @@ def get_config(cfgstr:str):
 
             _fn_input = {
                 'group': testgroup[experiment['group']],
-                'case': testcase[experiment['case']],
+                'testcase': testcase[experiment['case']],
                 'sensor_randseed': int(experiment['sensor_randseed'])
             }
 
