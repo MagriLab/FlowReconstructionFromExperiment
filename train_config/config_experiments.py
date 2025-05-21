@@ -468,7 +468,8 @@ def kol3d_methods(group:str, testcase:str, sensor_randseed:int):
             mdlcfg_update = {
                 'b1_channels': (4,),
                 'b2_channels': (4,8,8,4),
-                'b3_filters': ((3,3,3),(3,3,3)),
+                'b3_filters': ((3,3,3),),
+                'img_shapes': ((32,32,32),(16,16,16),(4,4,4),(8,8,8),(16,16,16),(64,64,64)),
                 'fft_branch': False,
             }
             traincfg_update = {
@@ -510,6 +511,7 @@ def kol3d_methods(group:str, testcase:str, sensor_randseed:int):
                 'b1_channels': (4,),
                 'b2_channels': (4,8,8,4),
                 'b3_filters': ((3,3,3),),
+                'img_shapes': ((32,32,32),(16,16,16),(4,4,4),(8,8,8),(16,16,16),(64,64,64)),
                 'fft_branch': False,
             }
             traincfg_update = {
