@@ -486,16 +486,16 @@ def kol3d_methods(group:str, testcase:str, sensor_randseed:int):
                 'batch_size': 250,
             }
             mdlcfg_update = {
-                'b1_channels': (1,),
+                'b1_channels': (4,1),
                 'b2_channels': (4,16,16,8),
-                'img_shapes3d': ((32,32,32),(32,32,32),(64,64,64)),
+                'img_shapes3d': ((16,16,16),(32,32,32),(64,64,64)),
                 'channels3d': (8,8,4),
                 'filters3d': (3,5,5)
             }
             traincfg_update = {
-                'learning_rate': 0.0045,
-                'lr_scheduler': 'cyclic_decay_default',
-                'weight_momentum': 16.0
+                'learning_rate': 0.0024,
+                'lr_scheduler': 'exponential_decay',
+                'weight_momentum': 5.0
             }
         case 'slice_inn_notshare':
             _cfgstr = 'model@fc2branch'
