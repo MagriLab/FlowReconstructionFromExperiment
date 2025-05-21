@@ -509,13 +509,13 @@ def kol3d_methods(group:str, testcase:str, sensor_randseed:int):
             mdlcfg_update = {
                 'b1_channels': (4,),
                 'b2_channels': (4,8,8,4),
-                'b3_filters': ((3,3,3),(3,3,3)),
+                'b3_filters': ((3,3,3),),
                 'fft_branch': False,
             }
             traincfg_update = {
-                'learning_rate': 0.0065,
-                'lr_scheduler': 'cyclic_decay_default',
-                'weight_momentum': 11.0
+                'learning_rate': 0.005,
+                'lr_scheduler': 'exponential_decay',
+                'weight_momentum': 1.0
             }
     return _cfgstr, mdlcfg_update, datacfg_update, traincfg_update
 
