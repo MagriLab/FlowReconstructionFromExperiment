@@ -63,6 +63,7 @@ def get_config(cfgstr:str = None):
     cfg.config.snr = placeholder(float)
     cfg.config.filter = placeholder(str)
     cfg.config.percent_observed = placeholder(float)
+    cfg.config.components = placeholder(str)
 
     # model general
     cfg.config.activation = placeholder(str)
