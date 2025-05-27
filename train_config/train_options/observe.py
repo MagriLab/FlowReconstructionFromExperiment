@@ -430,7 +430,15 @@ def observe_slice_pin(
     yplane = [int(i) for i in data_config.yplane.split(',') if len(i)>0]
     zplane = [int(i) for i in data_config.zplane.split(',') if len(i)>0]
     components = [i for i in data_config.components.split(',') if len(i)>0]
-    assert len(xplane)+len(yplane)+len(zplane) == len(components)
+    num_planes = len(xplane)+len(yplane)+len(zplane)
+    try:
+        assert num_planes == len(components), 'Number of component codes do not match the number of planes.'
+    except AssertionError as e:
+        if len(components) == 1:
+            logger.warning('Using the same component codes for all planes.')
+            components = components*num_planes
+        else:
+            raise e
     binary_snapshot = np.zeros_like(example_pred_snapshot, dtype=int)
     for x in xplane:
         c_str = components.pop(0)
