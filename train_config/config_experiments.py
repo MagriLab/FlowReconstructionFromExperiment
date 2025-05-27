@@ -457,7 +457,7 @@ def kol3d_methods(group:str, testcase:str, sensor_randseed:int):
     randseed_input = 10*sensor_randseed + 83
     match group:
         case '2dmethod':
-            _cfgstr = 'model@fc2branch'
+            _cfgstr = 'observe@random_pin,model@fc2branch'
             datacfg_update = {
                 'val_batch_idx': (-10,-9,-8,-7,-6,-5,-4,-3,-2,-1),
                 'random_sensors': (sensor_randseed, 7200),
@@ -468,7 +468,8 @@ def kol3d_methods(group:str, testcase:str, sensor_randseed:int):
             mdlcfg_update = {
                 'b1_channels': (4,),
                 'b2_channels': (4,8,8,4),
-                'b3_filters': ((3,3,3),(3,3,3)),
+                'b3_filters': ((3,3,3),),
+                'img_shapes': ((32,32,32),(16,16,16),(4,4,4),(8,8,8),(16,16,16),(64,64,64)),
                 'fft_branch': False,
             }
             traincfg_update = {
@@ -477,7 +478,7 @@ def kol3d_methods(group:str, testcase:str, sensor_randseed:int):
                 'weight_momentum': 11.0
             }
         case 'slice_inn_share':
-            _cfgstr = "model@shareparts"
+            _cfgstr = "observe@random_pin,model@shareparts"
             datacfg_update = {
                 'val_batch_idx': (-2,-1),
                 'pressure_inlet_slice': ((None,),(0,1,None),(None,)),
@@ -497,8 +498,10 @@ def kol3d_methods(group:str, testcase:str, sensor_randseed:int):
                 'lr_scheduler': 'exponential_decay',
                 'weight_momentum': 5.0
             }
+        case 'slice_inn_share_lossmean':
+            raise NotImplementedError
         case 'slice_inn_notshare':
-            _cfgstr = 'model@fc2branch'
+            _cfgstr = 'observe@random_pin,model@fc2branch'
             datacfg_update = {
                 'val_batch_idx': (-10,-9,-8,-7,-6,-5,-4,-3,-2,-1),
                 'random_sensors': (sensor_randseed, 7200),
@@ -510,6 +513,7 @@ def kol3d_methods(group:str, testcase:str, sensor_randseed:int):
                 'b1_channels': (4,),
                 'b2_channels': (4,8,8,4),
                 'b3_filters': ((3,3,3),),
+                'img_shapes': ((32,32,32),(16,16,16),(4,4,4),(8,8,8),(16,16,16),(64,64,64)),
                 'fft_branch': False,
             }
             traincfg_update = {
@@ -517,6 +521,12 @@ def kol3d_methods(group:str, testcase:str, sensor_randseed:int):
                 'lr_scheduler': 'exponential_decay',
                 'weight_momentum': 1.0
             }
+        case '3planes_share':
+            raise NotImplementedError
+        case '3planes_notshare':
+            raise NotImplementedError
+        case _:
+            raise NotImplementedError
     return _cfgstr, mdlcfg_update, datacfg_update, traincfg_update
 
     
@@ -531,7 +541,7 @@ def get_config(cfgstr:str):
         'clean_minimum': 'model@fc2branch,',
         'noise-2dkol': 'dataloader@2dkol,model@fc2branch,observe@random_pin,',
         'extreme-events': 'dataloader@2dkol,model@fc2branch,observe@random_pin,',
-        '3dkol-methods': 'dataloader@3dkolsets,loss_fn@physicswithdata,observe@random_pin,',
+        '3dkol-methods': 'dataloader@3dkolsets,loss_fn@physicswithdata,',
     }
 
     objective = experiment['objective']
