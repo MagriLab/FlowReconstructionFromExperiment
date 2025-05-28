@@ -17,6 +17,9 @@ def sweep_preprocess_cfg(cfg):
     # }
     # b3_filters = literal_eval(cfg._b3_filters)
 
+    n_val_batch = 500 // cfg.batch_size
+    val_batch_idx = tuple(range(-n_val_batch, 0))
+
     img_shapes3d = literal_eval(cfg._img_shapes3d)
     channels3d = {
           2: (16,4),
@@ -34,6 +37,7 @@ def sweep_preprocess_cfg(cfg):
         'img_shapes3d': img_shapes3d,
         'channels3d' : channels3d[len(img_shapes3d)],
         'filters3d': filters3d[len(img_shapes3d)],
+        'val_batch_idx': val_batch_idx
         # 'img_shapes': _img_shapes[len(b2_channels)],
         # 'b3_filters': b3_filters,
         },
