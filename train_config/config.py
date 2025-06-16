@@ -307,9 +307,9 @@ _default_mdlcfg = {
             'small_mlp': True,
         },
         '3dkolsets': {
-            'img_shapes': ((32,32,32),(32,32,32),(16,16,16),(4,4,4),(16,16,16),(32,32,32),(64,64,64)),
+            'img_shapes': ((32,32,32),(16,16,16),(4,4,4),(8,8,8),(16,16,16),(64,64,64)),
             'b1_channels': (1,),
-            'b2_channels': (4,8,16,8,4),
+            'b2_channels': (4,8,8,4),
             'b3_channels': (4,),
             'resize_method': 'linear',
             'fft_branch': False,

@@ -453,14 +453,23 @@ def extreme_events(num_sensors:int, snr:int, sensor_randseed:int):
     
     return '', mdlcfg_update, datacfg_update, traincfg_update
 
-def kol3d_methods(group:str, testcase:str, sensor_randseed:int):
-    randseed_input = 10*sensor_randseed + 83
+def kol3d_methods(group:str, testcase:str, randseed:int):
+    randseed_input = 10*randseed + 83
+
+    xplane = "32"
+    zplane_locs = {
+        8: "4,12,20,28,36,44,52,60",
+        4: "8,24,40,56",
+        2: "16,48",
+        1: "32"
+    }
+
     match group:
         case '2dmethod':
-            _cfgstr = 'model@fc2branch'
+            _cfgstr = 'observe@random_pin,model@fc2branch'
             datacfg_update = {
                 'val_batch_idx': (-10,-9,-8,-7,-6,-5,-4,-3,-2,-1),
-                'random_sensors': (sensor_randseed, 7200),
+                'random_sensors': (randseed, 7200),
                 'random_input': (randseed_input, 3600),
                 'components': testcase,
                 'batch_size': 50,
@@ -478,11 +487,11 @@ def kol3d_methods(group:str, testcase:str, sensor_randseed:int):
                 'weight_momentum': 11.0
             }
         case 'slice_inn_share':
-            _cfgstr = "model@shareparts"
+            _cfgstr = "observe@random_pin,model@shareparts"
             datacfg_update = {
                 'val_batch_idx': (-2,-1),
                 'pressure_inlet_slice': ((None,),(0,1,None),(None,)),
-                'random_sensors': (sensor_randseed, 7200),
+                'random_sensors': (randseed, 7200),
                 'components': testcase,
                 'batch_size': 250,
             }
@@ -498,11 +507,13 @@ def kol3d_methods(group:str, testcase:str, sensor_randseed:int):
                 'lr_scheduler': 'exponential_decay',
                 'weight_momentum': 5.0
             }
+        case 'slice_inn_share_lossmean':
+            raise NotImplementedError
         case 'slice_inn_notshare':
-            _cfgstr = 'model@fc2branch'
+            _cfgstr = 'observe@random_pin,model@fc2branch'
             datacfg_update = {
                 'val_batch_idx': (-10,-9,-8,-7,-6,-5,-4,-3,-2,-1),
-                'random_sensors': (sensor_randseed, 7200),
+                'random_sensors': (randseed, 7200),
                 'pressure_inlet_slice': ((None,),(0,1,None),(None,)),
                 'components': testcase,
                 'batch_size': 50,
@@ -519,6 +530,58 @@ def kol3d_methods(group:str, testcase:str, sensor_randseed:int):
                 'lr_scheduler': 'exponential_decay',
                 'weight_momentum': 1.0
             }
+
+        case str(x) if 'planes_share' in x:
+            _cfgstr = 'observe@slice_pin,model@shareparts'
+            num_z = int(group[-1])
+            zplane = zplane_locs[num_z]
+            traincfg_update = {
+                'learning_rate': 0.0025,
+                'lr_scheduler': "exponential_decay",
+                'weight_momentum': 2.0,
+                'randseed': randseed*17,
+            }
+            datacfg_update = {
+                'val_batch_idx': (-5,-4,-3,-2,-1),
+                'pressure_inlet_slice': ((None,),(0,1,None),(None,)),
+                'components': testcase,
+                'batch_size': 100,
+                'xplane': xplane,
+                'zplane': zplane
+            }
+            mdlcfg_update = {
+                'b1_channels': (4,),
+                'b2_channels': (4,16,16,8),
+                'img_shapes3d': ((32,32,32),(32,32,32),(64,64,64)),
+                'channels3d': (8,8,4),
+                'filters3d': (3,5,5),
+            }
+        case str(x) if 'planes_notshare' in x:
+            num_z = int(group[-1])
+            zplane = zplane_locs[num_z]
+            _cfgstr = 'observe@slice_pin,model@fc2branch'
+            datacfg_update = {
+                'val_batch_idx': (-2,-1),
+                'pressure_inlet_slice': ((None,),(0,1,None),(None,)),
+                'components': testcase,
+                'batch_size': 250,
+                'xplane': xplane,
+                'zplane': zplane
+            }
+            mdlcfg_update = {
+                'b1_channels': (4,),
+                'b2_channels': (4,8,8,4),
+                'b3_filters': ((3,3,3),),
+                'img_shapes': ((32,32,32),(16,16,16),(4,4,4),(8,8,8),(16,16,16),(64,64,64)),
+                'fft_branch': False,
+            }
+            traincfg_update = {
+                'learning_rate': 0.001,
+                'lr_scheduler': 'cyclic_decay_default',
+                'weight_momentum': 3.0
+            }
+        case _:
+            raise NotImplementedError
     return _cfgstr, mdlcfg_update, datacfg_update, traincfg_update
 
     
@@ -533,7 +596,7 @@ def get_config(cfgstr:str):
         'clean_minimum': 'model@fc2branch,',
         'noise-2dkol': 'dataloader@2dkol,model@fc2branch,observe@random_pin,',
         'extreme-events': 'dataloader@2dkol,model@fc2branch,observe@random_pin,',
-        '3dkol-methods': 'dataloader@3dkolsets,loss_fn@physicswithdata,observe@random_pin,',
+        '3dkol-methods': 'dataloader@3dkolsets,loss_fn@physicswithdata,',
     }
 
     objective = experiment['objective']
@@ -623,6 +686,14 @@ def get_config(cfgstr:str):
                 '1': '2dmethod',
                 '2': 'slice_inn_share',
                 '3': 'slice_inn_notshare',
+                '4-8': 'planes_share-8',
+                '5-8': 'planes_notshare-8',
+                '4-4': 'planes_share-4',
+                '5-4': 'planes_notshare-4',
+                '4-2': 'planes_share-2',
+                '5-2': 'planes_notshare-2',
+                '4-1': 'planes_share-1',
+                '5-1': 'planes_notshare-1',
             }
             testcase = {
                 '1': 'all', # default case
@@ -634,7 +705,7 @@ def get_config(cfgstr:str):
             _fn_input = {
                 'group': testgroup[experiment['group']],
                 'testcase': testcase[experiment['case']],
-                'sensor_randseed': int(experiment['sensor_randseed'])
+                'randseed': int(experiment['sensor_randseed'])
             }
 
             _cfgstr, mdlcfg_update, datacfg_update, traincfg_update = kol3d_methods(**_fn_input)
