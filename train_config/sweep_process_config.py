@@ -10,7 +10,7 @@ def sweep_preprocess_cfg(cfg):
     # cfg.update({'cnn_channels':t2}, allow_val_change=True)
 
     b1_channels = literal_eval(cfg._b1_channels)
-    b2_channels = literal_eval(cfg._b2_channels)
+#     b2_channels = literal_eval(cfg._b2_channels)
     # _img_shapes = {
     #     3: ((32,32,32),(16,16,16),(4,4,4),(8,8,8),(64,64,64)),
     #     4: ((32,32,32),(16,16,16),(4,4,4),(8,8,8),(16,16,16),(64,64,64))
@@ -33,11 +33,11 @@ def sweep_preprocess_cfg(cfg):
     cfg.update(
         {
         'b1_channels': b1_channels,
-        'b2_channels': b2_channels,
+      #   'b2_channels': b2_channels,
         'img_shapes3d': img_shapes3d,
         'channels3d' : channels3d[len(img_shapes3d)],
         'filters3d': filters3d[len(img_shapes3d)],
-        'val_batch_idx': val_batch_idx
+        'val_batch_idx': val_batch_idx,
         # 'img_shapes': _img_shapes[len(b2_channels)],
         # 'b3_filters': b3_filters,
         },
