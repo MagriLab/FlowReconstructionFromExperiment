@@ -1,8 +1,11 @@
 # https://github.com/github/linguist/blob/master/docs/overrides.md
 
-visualisation_notebook/* linguist-documentation
-visualisation_notebook/sweep_compare_loss_fn.ipynb linguist-documentation
+visualisation_notebook/** linguist-documentation
 
-admin/* linguist-documentation
+admin/** linguist-documentation
 
 figures_for_paper/* linguist-documentation
+
+.python-version linguist-generated
+uv.lock linguist-generated
+
