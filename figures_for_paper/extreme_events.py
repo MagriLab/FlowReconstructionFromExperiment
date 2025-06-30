@@ -4,12 +4,14 @@ sys.path.append('..')
 import re
 import yaml
 import jax
+import pandas as pd
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
 
 from pathlib import Path
 from mpl_toolkits.axes_grid1 import ImageGrid
+from matplotlib import patches as mpatches
 from flowrec.utils import my_discrete_cmap, truegrey
 from flowrec.utils.myplots import create_custom_colormap
 from flowrec.utils.system import set_gpu
@@ -23,10 +25,11 @@ from functools import partial
 from flowrec.utils.simulation import kolsol_forcing_term
 
 # ============== Control here ====================
-save1 = True
-save2 = True
+savepdf = True
+savefig = True
+run_fft_study = False
 
-if save1:
+if savepdf:
     matplotlib.use('pdf')
     plt.ioff()
 else:
@@ -48,7 +51,7 @@ stylefile = Path('./flowrec/utils/a4.mplstyle')
 if not stylefile.exists():
     stylefile = Path('../', stylefile)
 plt.style.use(stylefile)
-grey = '#808080'
+grey = truegrey
 
 results_dir = Path('./local_results/2dkol/extreme-events')
 if not results_dir.exists():
@@ -56,12 +59,22 @@ if not results_dir.exists():
     if not results_dir.exists():
         raise ValueError('Results folder does not exist.')
     
-figpath = Path('./figures_for_paper/figs2')
+figpath = Path('./figures_for_paper/figs-extreme-events')
 if not figpath.exists():
-    figpath = Path('../', results_dir)
+    figpath = Path('../', figpath)
     if not figpath.exists():
-        raise ValueError('Folder "figs2" does not exist.')
+        raise ValueError(f'Folder {figpath.absolute()} does not exist.')
 
+results_dir_fft5 = Path('../local_results/2dkol/extreme-events/gridsearchloss3')
+results_dir_fft10 = Path('../local_results/2dkol/extreme-events/gridsearchloss3-snr10')
+if not results_dir_fft5.exists():
+    results_dir_fft5 = Path('../', results_dir_fft5)
+    if not results_dir_fft5.exists():
+        raise ValueError(f'Folder {results_dir_fft5.absolute()} does not exist.')
+if not results_dir_fft10.exists():
+    results_dir_fft10 = Path('../', results_dir_fft10)
+    if not results_dir_fft10.exists():
+        raise ValueError(f'Folder {results_dir_fft10.absolute()} does not exist.')
 
 interpolator = Interpolator().kolmogorov2d
 
@@ -161,7 +174,7 @@ def stats_one_group(results, datainfo):
     ls = [losses.mse(pred_sensor[i,...], np.nan_to_num(results['observed'][i,...])) for i in range(3)]
     
     # physics
-    lm = np.array([losses.momentum_loss(results['pred'][i,...], datainfo) for i in range(3)])
+    lm = np.array([losses.momentum_loss(results['pred'][i,...], datainfo, forcing=forcing) for i in range(3)])
     ld = np.array([losses.divergence(results['pred'][i,...,:-1], datainfo) for i in range(3)])
     spectrum = []
     spectrum_interp = []
@@ -265,7 +278,7 @@ for i in range(3):
     axes[i,1].imshow(results_sensor80['pred'][0,t2,...,0].T, vmin=vmin, vmax=vmax)
     axes[i,2].imshow(results_sensor64['pred'][1,t2,...,0].T, vmin=vmin, vmax=vmax)
     axes[i,3].imshow(results_sensor48['pred'][2,t2,...,0].T, vmin=vmin, vmax=vmax)
-savefig(fig0, save1, f'At t={t2}')
+savefig(fig0, savefig, f'At t={t2}')
 fig1 = plt.figure(figsize=(6,4.5))
 grid = ImageGrid(fig1, 111, (3,4), cbar_mode='single')    
 axes = np.reshape(grid.axes_all, (3,4))
@@ -277,7 +290,7 @@ for i in range(3):
     axes[i,1].imshow(results_sensor80['pred'][0,t1,...,0].T, vmin=vmin, vmax=vmax)
     axes[i,2].imshow(results_sensor64['pred'][1,t1,...,0].T, vmin=vmin, vmax=vmax)
     axes[i,3].imshow(results_sensor48['pred'][2,t1,...,0].T, vmin=vmin, vmax=vmax)
-savefig(fig1, save1, f'At t={t1}')
+savefig(fig1, savefig, f'At t={t1}')
 
 
 ## plot error
@@ -295,7 +308,7 @@ axes[0].set(xlabel='sensors', ylabel='relateive error')
 axes[1].set(ylabel='lp')
 axes[2].set(ylabel='interpolated error')
 fig2.tight_layout()
-savefig(fig2, save1, 'errors')
+savefig(fig2, savefig, 'errors')
 
 
 ## sensors
@@ -305,7 +318,7 @@ for i,(_data,_names) in enumerate(zip([results_sensor80,results_sensor64,results
         axes[i,j].imshow(_data['ref'][0,...,0].T, zorder=1)
         axes[i,j].spy(_data['observed'][j,0,...,0].T, zorder=10, marker='o', markersize=5, color='k', origin='lower')
         axes[i,j].set_title(_names[j].name)
-savefig(fig3, save1, 'sensors')
+savefig(fig3, savefig, 'sensors')
 
 
 ## tke
@@ -315,7 +328,7 @@ for i, _stats in enumerate([stats80, stats64, stats48]):
         axes[i].loglog(_stats['k'], _stats['tke'][j,...], ':', color='b', alpha=0.7)
     axes[i].loglog(_stats['k'], _stats['tke'][-1,...], 'k', label='True')
 axes[0].legend()
-savefig(fig4, save1, 'tke')
+savefig(fig4, savefig, 'tke')
 
 ## Dissipation
 fig5, axes = plt.subplots(3,1,figsize=(6,6))
@@ -328,7 +341,7 @@ for i, _stats in enumerate([stats80, stats64, stats48]):
     axes[i].hlines([threshold1,threshold2], 0, len(_stats['eavg'][-1,:]), color=['k','b'], linestyle='dashed')
     axes[i].vlines([t1,t2], _stats['eavg'][-1,:].min(), _stats['eavg'][-1,:].max(), 'r', linestyle='dashed')
 axes[0].legend()
-savefig(fig5, save1, 'dissipation')
+savefig(fig5, savefig, 'dissipation')
 
 
 
@@ -338,7 +351,6 @@ def get_best_results_index(results_dir):
     return [i for i, d in enumerate(results_dir) if d.name.endswith(best_seed)]
 
 idx80 = get_best_results_index(result_dir80)[0]
-print(idx80)
 idx64 = get_best_results_index(result_dir64)[0]
 idx48 = get_best_results_index(result_dir48)[0]
 
@@ -352,9 +364,9 @@ vortref = vorticity(results_sensor80['ref'][...,:-1], datainfo)
 
 
 # =========================== plot single cases =====================
-if not save1:
+if not savefig:
     wait = input("Press Enter to continue.")
-if save2:
+if savepdf:
     matplotlib.use('pdf')
     plt.ioff()
 else:
@@ -366,10 +378,10 @@ else:
 def plot_instantaneous_onecase(vortpred, vortinterp, results_dict, figname):
     fig6 = plt.figure(figsize=(7,3.3))
     # vorticity
-    grid1 = ImageGrid(fig6, (0.07,0.07,0.45,0.85), (3,4), cbar_mode='single', axes_pad=0.0, cbar_pad=0.05, share_all=True, cbar_location='top')
+    grid1 = ImageGrid(fig6, (0.07,0.07,0.43,0.85), (3,4), cbar_mode='single', axes_pad=0.0, cbar_pad=0.05, share_all=True, cbar_location='top')
     axes1 = grid1.axes_all
     cax1 = grid1.cbar_axes[0]
-    grid2 = ImageGrid(fig6, (0.55,0.07,0.45,0.85), (3,4), cbar_mode='single', axes_pad=0.0, cbar_pad=0.05, share_all=True, cbar_location='top')
+    grid2 = ImageGrid(fig6, (0.55,0.07,0.43,0.85), (3,4), cbar_mode='single', axes_pad=0.0, cbar_pad=0.05, share_all=True, cbar_location='top')
     axes2 = grid2.axes_all
     cax2 = grid2.cbar_axes[0]
     vmax1 = vortref.max()
@@ -403,8 +415,8 @@ def plot_instantaneous_onecase(vortpred, vortinterp, results_dict, figname):
     cbar2.set_ticks(newticks)
     cbar2.ax.xaxis.set_label_position('top')
     cbar2.ax.xaxis.set_ticks_position('top')
-    fig6.text(0.07,0.01,'$t=$',ha='right',va='bottom')
-    fig6.text(0.55,0.01,'$t=$',ha='right',va='bottom')
+    fig6.text(0.08,0.06,'$t=$',ha='right',va='bottom')
+    fig6.text(0.56,0.06,'$t=$',ha='right',va='bottom')
     # fig6.text(0.205,0.02,f'{t1*datainfo.dt:.1f}',ha='center',va='bottom')
     # fig6.text(0.205+0.18,0.02,f'{t2*datainfo.dt:.1f}',ha='center',va='bottom')
     # fig6.text(0.205+0.18*2,0.02,f'{t3*datainfo.dt:.1f}',ha='center',va='bottom')
@@ -420,7 +432,7 @@ def plot_instantaneous_onecase(vortpred, vortinterp, results_dict, figname):
         axes[9].set_xlabel(f'{t2*datainfo.dt:.1f}')
         axes[10].set_xlabel(f'{t3*datainfo.dt:.1f}')
         axes[11].set_xlabel(f'{t4*datainfo.dt:.1f}')
-    savefig(fig6, save2, figname)
+    savefig(fig6, savefig, figname)
 
 plot_instantaneous_onecase(vort80, vort80interp, results_sensor80, 'bestcase-vort80inst')
 plot_instantaneous_onecase(vort64, vort64interp, results_sensor64, 'bestcase-vort64inst')
@@ -428,12 +440,12 @@ plot_instantaneous_onecase(vort64, vort64interp, results_sensor64, 'bestcase-vor
 
 ## sensors
 fig7, ax = plt.subplots(1,1,figsize=(2,2))
-ax.imshow(results_sensor80['ref'][0,...,0].T, zorder=1)
+ax.imshow(results_sensor80['ref'][0,...,0].T, zorder=1, alpha=0.3)
 ax.spy(results_sensor80['observed'][idx80,0,...,2].T, zorder=2, marker='o', color='r', origin='lower', markersize=1)
 ax.spy(results_sensor80['observed'][idx80,0,...,0].T, zorder=3, marker='o', color='k', origin='lower', markersize=1)
-ax.set(xticks=[-0.5, 128-0.5], yticks=[-0.5, 128-0.5], xticklabels=[0,f'{2*np.pi-datainfo.dx:.1f}'], yticklabels=[0,f'{2*np.pi-datainfo.dy:.1f}'])
+ax.set(xticks=[], yticks=[], xlabel='$x_1$', ylabel='$x_2$')
 fig7.tight_layout()
-savefig(fig7, save2, 'bestcase-sensor')
+savefig(fig7, savefig, 'bestcase-sensor80')
 
 
 ## tke and dissipation
@@ -454,8 +466,8 @@ def plot_tke_and_dissipation(stats, idxbest, dt, figname):
     ax2.plot(t, stats['eavg'][idxbest,:],color=my_discrete_cmap(0),linewidth=1)
     ax2.set_ylabel('Dissipation')
     ax2.set_xlabel('$t$', labelpad=0.0)
-    threshold1 = np.mean(stats['eavg'][-1,:]) + 2*np.std(_stats['eavg'][-1,:])
-    threshold2 = np.mean(stats['eavg'][idxbest,:]) + 2*np.std(_stats['eavg'][idxbest,:])
+    threshold1 = np.mean(stats['eavg'][-1,:]) + 2*np.std(stats['eavg'][-1,:])
+    threshold2 = np.mean(stats['eavg'][idxbest,:]) + 2*np.std(stats['eavg'][idxbest,:])
     idx1, nevents1 = count_extreme_events(stats['eavg'][-1,:], threshold1)
     idx2, nevents2 = count_extreme_events(stats['eavg'][idxbest,:], threshold2)
     print(f"Reference flow has {nevents1} extreme events, at {idx1}, the reconstructed flow has {nevents2} extreme events, at {idx2}.")
@@ -466,7 +478,7 @@ def plot_tke_and_dissipation(stats, idxbest, dt, figname):
     handles, labels = ax1.get_legend_handles_labels()
     fig.legend(handles, labels, loc='upper center', ncols=3, bbox_to_anchor=(0.5,1.05), fontsize='smaller')
     fig.subplots_adjust(bottom=0.2)
-    savefig(fig, save2, figname)
+    savefig(fig, savefig, figname)
 
 plot_tke_and_dissipation(stats80, idx80, datainfo.dt, 'bestcase-tke-dissipation-80')
 plot_tke_and_dissipation(stats64, idx64, datainfo.dt, 'bestcase-tke-dissipation-64')
@@ -482,12 +494,130 @@ fig8.legend(handles, labels, loc='upper center', ncols=2, bbox_to_anchor=(0.5,1.
 fig8.subplots_adjust(bottom=0.2)
 ax.set_ylabel('dissipation')
 ax.set_xlabel('$t$', labelpad=0.0)
-savefig(fig8, save2, 'bestcase-dissipation-multiple')
+savefig(fig8, savefig, 'bestcase-dissipation-multiple')
 
+## Comparing reference dissipation to the pressure input
+sensors_inns_and_general = ~np.isnan(results_sensor80['observed'][idx80,0,...,2])
+sensors_general = ~np.isnan(results_sensor80['observed'][idx80,0,...,0])
+sensors_inns = sensors_inns_and_general != sensors_general
+inns = results_sensor80['ref'][:,sensors_inns,-1]
+num_sensors = np.count_nonzero(sensors_inns)
 
+fig9, ax = plt.subplots(1,1,figsize=(6.5,2.5))
+eavgref = stats80['eavg'][-1,:]
+p = inns**2
+pmax = p.max()
+pmin = p.min()
+time = np.arange(p.shape[0])*datainfo.dt
+enorm = (eavgref - eavgref.min()) / (eavgref.max() - eavgref.min())
+ax.plot(time, enorm, color='k', linewidth=0.8, linestyle='dotted', label='Ref. dissipation')
+pnorm = (p[:,0] - pmin) / (pmax - pmin)
+ax.plot(time, pnorm, alpha=0.3, color=my_discrete_cmap(0), label='$P_{in}^2$')
+for i in range(1,num_sensors):
+    pnorm = (p[:,i] - pmin) / (pmax - pmin)
+    ax.plot(time, pnorm, alpha=0.3, color=my_discrete_cmap(0))
+ax.legend(ncols=2,loc='upper left', bbox_to_anchor=(0.1, 1.02))
+ax.set_ylim([0,1.18])
+ax.set_xlim([0,600])
+ax.set(ylabel='Normalised values', xlabel='t')
+fig9.tight_layout()
+savefig(fig9, savefig, 'dissipation-compare-pin')
+
+## print stats
 print(f"Relative errors: {stats80['lrel']}")
 print(f"Interpolation errors: {stats80['lrel_interp']}")
 print(f"physics loss: {stats80['lp']}")
 
-if not save2:
+if not savefig:
     wait = input("Press Enter to continue.")
+
+
+if run_fft_study:
+    def get_fft_compare(results_dir:Path):
+        results_dir_list = [x for x in results_dir.iterdir() if x.is_dir()]
+
+        loss_dict = {'run':[], 'rel-l2':[], 'physics':[], 'noise-floor':[], 'fft-branch':[]}
+        (ref, nref, _, _), datainfo, _ = get_summary_onecase(results_dir_list[0]) # get the slow part first
+        # nref, _ = get_summary_onecase(results_dir_list[0], predict_only=True)
+        nt = nref.shape[0]
+        fs = 1./datainfo.dt
+        loss_dict['run'].extend(['ref', 'noisyref'])
+        loss_dict['rel-l2'].extend([
+            np.nan, float(losses.relative_error(nref, ref))
+        ])
+        loss_dict['physics'].extend([
+            float(losses.momentum_loss(ref, datainfo, forcing=forcing) + losses.divergence(ref[...,:-1], datainfo)),
+            float(losses.momentum_loss(nref, datainfo, forcing=forcing) + losses.divergence(nref[...,:-1], datainfo)),
+        ])
+        estimated_power, _ = vestimate(nref.reshape((nt,-1)), fs)
+        estimated_power = np.mean(estimated_power)
+        loss_dict['noise-floor'].extend([
+            np.nan, float(estimated_power)
+        ])
+        loss_dict['fft-branch'].extend([pd.NA, pd.NA])
+        
+        for d in results_dir_list:
+            with open(Path(d,'config.yml'), 'r') as f:
+                cfg = yaml.load(f, Loader=yaml.UnsafeLoader)
+            fft_branch = cfg.model_config.fft_branch
+
+            pred_train, _ = get_summary_onecase(d, predict_only=True)
+
+            loss_dict['run'].append(d.name.split('-')[-1])
+            loss_dict['rel-l2'].append(float(losses.relative_error(pred_train, ref)))
+            loss_dict['physics'].append(float(
+                losses.momentum_loss(pred_train, datainfo, forcing=forcing) + losses.divergence(pred_train[...,:-1], datainfo)
+            ))
+            estimated_power, _ = vestimate(pred_train.reshape((nt,-1)), fs)
+            estimated_power = np.mean(estimated_power)
+            loss_dict['noise-floor'].append(float(estimated_power))
+            loss_dict['fft-branch'].append(fft_branch)
+
+        df = pd.DataFrame(loss_dict)
+        df.set_index('run', inplace=True)
+        return df
+
+    fftstats_snr5 = get_fft_compare(results_dir_fft5)
+    fftstats_snr5['snr'] = [5.0]*len(fftstats_snr5)
+    fftstats_snr5.loc['ref','snr'] = np.nan
+
+    fftstats_snr10 = get_fft_compare(results_dir_fft10)
+    fftstats_snr10['snr'] = [10.0]*len(fftstats_snr10)
+    fftstats_snr10.loc['ref','snr'] = np.nan
+
+    fftstats = pd.concat([fftstats_snr5,fftstats_snr10]).drop_duplicates()
+
+    bp_dict = fftstats.plot.box(by=['snr','fft-branch'],column=['noise-floor','rel-l2'],figsize=(6,3), return_type='both', patch_artist = True, positions=[4.5,5.5,9.5,10.5], showfliers=False)
+    fig10 = bp_dict.iloc[0][0].get_figure()
+    for row_key, (ax,row) in bp_dict.items():
+        ax.set_xlabel('SNR')
+        ax.set_xticks([5,10],labels=[5,10])
+        ax.set_title('')
+        # print(row.keys())
+        for i,box in enumerate(row['boxes']):
+            box.set_facecolor(my_discrete_cmap(i%2))
+        for l in ['whiskers', 'caps', 'medians', 'means']:
+            for line in row[l]:
+                line.set_color('black')
+    ax0,_ = bp_dict.iloc[0]
+    ax1,_ = bp_dict.iloc[1]
+    ax0.set_ylabel('Estmated power of noise')
+    ax1.set_ylabel('Relative error')
+    plt.subplots_adjust(wspace=0.4, top=0.85, bottom=0.2, right=0.95)
+    ax0.scatter(fftstats.loc['noisyref','snr'], fftstats.loc['noisyref','noise-floor'], color='r',s=5, label='Noisy data')
+    ax0.set_yscale('log')
+    # Get legend handles/labels from ax0 (for scatter)
+    scatter_handles, scatter_labels = ax0.get_legend_handles_labels()
+
+    # Define patch handles (for box colors)
+    box_handles = [
+        mpatches.Patch(color=my_discrete_cmap(0), label='Without FFT'),
+        mpatches.Patch(color=my_discrete_cmap(1), label='With FFT')
+    ]
+    legend_handles = scatter_handles + box_handles
+    # Add legend to one axis (e.g., top plot)
+    fig10.legend(handles=legend_handles,bbox_to_anchor=(0.5,1.00), loc='upper center', ncols=3)
+    savefig(fig10, savefig, 'extreme-event-study-fft')
+
+    if not savefig:
+        wait = input("Press Enter to continue.")

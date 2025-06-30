@@ -15,6 +15,7 @@ dependencies = [
     "nbformat>=5.10.4",
     "numpy<2.0.0",
     "optax==0.1.7",
+    "pandas>=2.3.0",
     "pip>=25.0.1",
     "plotly>=6.0.1",
     "pyqt5>=5.15.11",
