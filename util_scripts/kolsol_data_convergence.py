@@ -96,11 +96,11 @@ if __name__ == '__main__':
 
 
     plot_mean(
-        'Kolsol_converge_skipsets(2).png',
+        'Kolsol_converge_skipsets(3)_thesis.png',
         Path('/storage0/ym917/data/simulations/kolsol/dim3_re34_k32_f4_dt01_grid64_478_t200-250.h5'),
         # Path('/storage0/ym917/data/simulations/kolsol/dim3_re34_k32_f4_dt01_grid64_478_t280-330.h5'), # 4GB per file
         Path('/storage0/ym917/data/simulations/kolsol/dim3_re34_k32_f4_dt01_grid64_478_t360-410.h5'),
         Path('/storage0/ym917/data/simulations/kolsol/dim3_re34_k32_f4_dt01_grid64_1372_t200-250.h5'),
-        Path('/storage0/ym917/data/simulations/kolsol/dim3_re34_k32_f4_dt01_grid64_691_t200-250.h5'),
+        # Path('/storage0/ym917/data/simulations/kolsol/dim3_re34_k32_f4_dt01_grid64_691_t200-250.h5'),
         Path('/storage0/ym917/data/simulations/kolsol/dim3_re34_k32_f4_dt01_grid64_57_t180-230.h5'),
     )
