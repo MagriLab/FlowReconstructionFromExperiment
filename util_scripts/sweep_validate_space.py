@@ -8,6 +8,7 @@ import matplotlib
 matplotlib.use('agg')
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 import jax.numpy as jnp
 import flowrec.training_and_states as state_utils
 import flowrec.data as data_utils
@@ -37,7 +38,6 @@ standard_data_keys = ['u_train_clean', 'u_val_clean', 'train_minmax', 'val_minma
 def get_summary_onecase(
         results_dir:Path,
         idx_z:int,
-        return_ref:bool
 ):
     with open(Path(results_dir,'config.yml'),'r') as f:
         cfg = yaml.load(f, Loader=yaml.UnsafeLoader)
@@ -120,11 +120,13 @@ def get_summary_onecase(
     
     l = {
         'rel-l2-pred': float(losses.relative_error(pred_train, u_train_clean)),
+        'mse-pred': float(losses.mse(pred_train, u_train_clean)),
         'sensor-train-pred': float(losses.mse(observed_pred_train, observed_ref_train)),
         'sensor-val-pred': float(losses.mse(observed_pred_val, observed_ref_val)),
         'momentum-pred': float(losses.momentum_loss(pred_train, datainfo, forcing=forcing)),
         'div-pred': float(losses.divergence(pred_train[...,:-1], datainfo)),
         'rel-l2-noisy': float(losses.relative_error(u_train, u_train_clean)),
+        'mse-noisy': float(losses.mse(u_train, u_train_clean)),
         'sensor-train-noisy': float(losses.mse(observed_ref_train, observed_clean_train)),
         'sensor-val-noisy': float(losses.mse(observed_ref_val, observed_clean_val)),
     }
@@ -137,8 +139,18 @@ def get_summary_onecase(
 
 
 
-def main(result_dir:Path):
+def main(result_dir:Path, idx_z:int):
     dir_list = [d for d in result_dir.iterdir() if d.is_dir()]
+    df = None
+    for d in dir_list:
+        name, l = get_summary_onecase(d, idx_z)
+        if df:
+            df = pd.concatenate(df, pd.Dataframe(l, index=[name]))
+        else:
+            df = pd.DataFrame(l, index=[name])
+    
+    
+        
 
     
 
@@ -150,5 +162,5 @@ if __name__ == '__main__':
     parser.add_argument('z', type=int, help='z coordinate of the plane to use as validation set.')
     args = parser.parse_args()
 
-    main(Path(args.result_dir))
+    main(Path(args.result_dir), args.z)
 
