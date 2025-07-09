@@ -2,8 +2,8 @@ import sys
 sys.path.append('..')
 import h5py
 import jax
+jax.config.update('jax_platform_name', 'cpu')
 import yaml
-import warnings
 import matplotlib
 matplotlib.use('agg')
 import matplotlib.pyplot as plt
@@ -22,14 +22,11 @@ from argparse import ArgumentParser
 from pathlib import Path
 from flowrec import losses
 from mpl_toolkits.axes_grid1 import ImageGrid, make_axes_locatable
-from matplotlib import gridspec
-from scipy.interpolate import RBFInterpolator
 from flowrec.utils import simulation
 from flowrec import losses
 from flowrec.utils.py_helper import slice_from_tuple
 from flowrec.utils.myplots import truegrey, create_custom_colormap, make_cax
 cmap_trafficlight = create_custom_colormap('trafficlight')
-from flowrec.utils import my_continuous_cmap, my_discrete_cmap
 from flowrec.training_and_states import restore_trainingstate, params_split, params_merge, generate_update_fn, TrainingState
 from flowrec.data import unnormalise_group, normalise
 
@@ -42,7 +39,8 @@ def get_summary_onecase(
     with open(Path(results_dir,'config.yml'),'r') as f:
         cfg = yaml.load(f, Loader=yaml.UnsafeLoader)
 
-    cfg.data_config.update({'data_dir':'.'+cfg.data_config.data_dir})
+    if not Path(cfg.data_config.data_dir).exists():
+        cfg.data_config.update({'data_dir':'.'+cfg.data_config.data_dir})
     datacfg = cfg.data_config
     traincfg = cfg.train_config
 
@@ -109,13 +107,13 @@ def get_summary_onecase(
     observed_ref_val = [_u[s] for _u in data['u_train']]
     observed_ref_val = jnp.concatenate(observed_ref_val, axis=0)
     observed_pred_val = pred_train[s]
-    observed_clean_train = take_observation(data['u_train_clean'])
-    observed_clean_val = data['u_train_clean'][s]
+    u_train_clean = np.concatenate(data['u_train_clean'], axis=0)
+    observed_clean_train = take_observation(u_train_clean)
+    observed_clean_val = u_train_clean[s]
 
     ## Compute losses
 
     u_train = jnp.concatenate(u_train, axis=0)
-    u_train_clean = data['u_train_clean']
     forcing = data['forcing']
     
     l = {
@@ -140,19 +138,42 @@ def get_summary_onecase(
 
 
 def main(result_dir:Path, idx_z:int):
+    if not result_dir.exists():
+        raise ValueError(f'{result_dir.absolute()} not found.')
+
+
+    sweep_losses_file = Path(result_dir,'SweepLosses.csv')
+    if sweep_losses_file.exists():
+        raise ValueError("'SweepLosses.csv' already exists.")
+
     dir_list = [d for d in result_dir.iterdir() if d.is_dir()]
+    ndirs = len(dir_list)
     df = None
-    for d in dir_list:
+    for i in range(ndirs):
+        print(f'Folder {i+1} / {ndirs}.')
+        d = dir_list[i]
         name, l = get_summary_onecase(d, idx_z)
-        if df:
-            df = pd.concatenate(df, pd.Dataframe(l, index=[name]))
-        else:
+        if df is None:
             df = pd.DataFrame(l, index=[name])
+        else:
+            df = pd.concat([df, pd.DataFrame(l, index=[name])])
+        
+    df['total-val-pred'] = df['sensor-val-pred'] + df['momentum-pred'] + df['div-pred']
+    df['total-train-pred'] = df['sensor-train-pred'] + df['momentum-pred'] + df['div-pred']
+    df.sort_values(['total-val-pred','total-train-pred','rel-l2-pred'], inplace=True)
+    df.to_csv(sweep_losses_file)
+
+
+    ax0 = df.plot.scatter('total-val-pred', 'total-train-pred')
+    ax0.axis('equal')
+    fig0 = ax0.get_figure()
+    fig0.savefig(result_dir / 'train-val.png')
     
+    ax1 = df.plot.scatter('total-val-pred', 'rel-l2-pred')
+    fig1 = ax1.get_figure()
+    fig1.savefig(result_dir / 'relerror-val.png')
     
         
-
-    
 
 
 
