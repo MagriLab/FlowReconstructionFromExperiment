@@ -1,3 +1,4 @@
+import warnings
 import train_config.config as base_config
 from absl import flags
 
@@ -584,6 +585,70 @@ def kol3d_methods(group:str, testcase:str, randseed:int):
             raise NotImplementedError
     return _cfgstr, mdlcfg_update, datacfg_update, traincfg_update
 
+
+def kol3d_noisy(group:str, randseed:int):
+    xplane = "32"
+    zplane = "16,48"
+
+    match group:
+        case 'noisy-share':
+            _cfgstr = 'observe@slice_pin,model@shareparts'
+            traincfg_update = {
+                'learning_rate': 0.0026,
+                'lr_scheduler': "cyclic_decay_default",
+                'weight_momentum': 14.0,
+                'randseed': randseed*17,
+                'regularisation_strength':0.0028,
+                'weight_sensors':45.0,
+            }
+            datacfg_update = {
+                'val_batch_idx': (-10,-9,-8,-7,-6,-5,-4,-3,-2,-1),
+                'pressure_inlet_slice': ((None,),(0,1,None),(None,)),
+                'components': 'velocity',
+                'batch_size': 50,
+                'xplane': xplane,
+                'zplane': zplane,
+                'randseed':randseed*43,
+                'snr': 15,
+            }
+            mdlcfg_update = {
+                'b1_channels': (1,),
+                'b2_channels': (4,16,16,8),
+                'img_shapes3d': ((32, 32, 32), (32, 32, 32), (64, 64, 64)),
+                'channels3d': (8,8,4),
+                'filters3d': (3,5,5),
+                'dropout_rate': 0.004,
+            }
+        case 'noisy-notshare':
+            _cfgstr = 'observe@slice_pin,model@fc2branch'
+            traincfg_update = {
+                'learning_rate': 0.0043,
+                'lr_scheduler': "cyclic_decay_default",
+                'weight_momentum': 4.0,
+                'randseed': randseed*17,
+                'regularisation_strength':0.0094,
+                'weight_sensors':32.0,
+            }
+            datacfg_update = {
+                'val_batch_idx': (-10,-9,-8,-7,-6,-5,-4,-3,-2,-1),
+                'pressure_inlet_slice': ((None,),(0,1,None),(None,)),
+                'components': 'velocity',
+                'batch_size': 50,
+                'xplane': xplane,
+                'zplane': zplane,
+                'randseed':randseed*43,
+                'snr': 15,
+            }
+            mdlcfg_update = {
+                'b1_channels': (4,),
+                'b2_channels': (4,8,8,4),
+                'dropout_rate': 0.0009,
+                'img_shapes': ((32, 32, 32), (16, 16, 16), (4, 4, 4), (8, 8, 8), (16, 16, 16), (64, 64, 64)),
+                'fft_branch': False
+            }
+        case _:
+            raise NotImplementedError
+    return _cfgstr, mdlcfg_update, datacfg_update, traincfg_update
     
 
 def get_config(cfgstr:str):
@@ -597,6 +662,7 @@ def get_config(cfgstr:str):
         'noise-2dkol': 'dataloader@2dkol,model@fc2branch,observe@random_pin,',
         'extreme-events': 'dataloader@2dkol,model@fc2branch,observe@random_pin,',
         '3dkol-methods': 'dataloader@3dkolsets,loss_fn@physicswithdata,',
+        '3dkol-noisy': 'dataloader@3dkolsets,loss_fn@physicsreplacemean,',
     }
 
     objective = experiment['objective']
@@ -680,7 +746,7 @@ def get_config(cfgstr:str):
             )
 
         case '3dkol-methods':
-            print("running experiment '3dkol-methods")
+            print("running experiment '3dkol-methods'")
             
             testgroup = {
                 '1': '2dmethod',
@@ -709,6 +775,19 @@ def get_config(cfgstr:str):
             }
 
             _cfgstr, mdlcfg_update, datacfg_update, traincfg_update = kol3d_methods(**_fn_input)
+
+        case '3dkol-noisy':
+            print("running experiment '3dkol-noisy'")
+            testgroup = {
+                '1': 'noisy-share',
+                '2': 'noisy-notshare',
+            }
+            _fn_input = {
+                'group': testgroup[experiment['group']],
+                'randseed': int(experiment['sensor_randseed'])
+            }
+
+            _cfgstr, mdlcfg_update, datacfg_update, traincfg_update = kol3d_noisy(**_fn_input)
 
         case _:
             raise NotImplementedError
