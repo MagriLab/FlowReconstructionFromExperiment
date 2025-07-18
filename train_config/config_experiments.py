@@ -583,6 +583,9 @@ def kol3d_methods(group:str, testcase:str, randseed:int):
             }
         case _:
             raise NotImplementedError
+    if 'divfree' in group:
+        print('Divergence free.')
+        mdlcfg_update.update({'divfree': True})
     return _cfgstr, mdlcfg_update, datacfg_update, traincfg_update
 
 
@@ -760,6 +763,7 @@ def get_config(cfgstr:str):
                 '5-2': 'planes_notshare-2',
                 '4-1': 'planes_share-1',
                 '5-1': 'planes_notshare-1',
+                '6': 'planes_share_divfree-2',
             }
             testcase = {
                 '1': 'all', # default case

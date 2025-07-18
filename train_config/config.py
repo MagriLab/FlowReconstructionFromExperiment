@@ -355,6 +355,7 @@ _default_mdlcfg = {
             'b3_filters': ((3,3),),
             'fft_branch': False,
             'small_mlp': False,
+            'divfree': False
         }
     }
 }

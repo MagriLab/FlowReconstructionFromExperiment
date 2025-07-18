@@ -105,6 +105,7 @@ def get_config(cfgstr:str = None):
         cfg.config.b3_filters = placeholder(tuple)
         cfg.config.fft_branch = placeholder(bool)
         cfg.config.small_mlp = placeholder(bool)
+        cfg.config.divfree = placeholder(bool)
     else:
         raise ValueError('Invalid model option for wandb configuration.')
 
