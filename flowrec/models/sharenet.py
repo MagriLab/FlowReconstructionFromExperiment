@@ -9,6 +9,7 @@ from .layers import MyConv
 from .fourier2branch import Fourier2Branch
 from .._typing import *
 from ..training_and_states import params_merge
+from ..physics_and_derivatives import derivative1
 
 from typing import Callable, Sequence, Tuple
 from jax.tree_util import Partial
@@ -44,6 +45,13 @@ class ShareNet(hk.Module):
         - 
         """
         super().__init__(name)
+
+        ## handle the extra inputs
+        self.divfree = False
+        if 'divfree' in kwargs:
+            self.divfree = kwargs.pop('divfree')
+            if self.divfree:
+                logger.warning('Forcing divergence free output.')
 
         if isinstance(activation,str):
             self.act = getattr(jax.nn,activation)
@@ -113,6 +121,11 @@ class ShareNet(hk.Module):
             out = self.vv_resize(out, newshape)
             out = layer(out)
         
+        if self.divfree:
+            out_u = _cross_product(out[...,:-1])
+            out_p = out[...,-1]
+            out = jnp.concatenate([out_u, out_p[:,:,:,:,None]], axis=-1)
+        
         return out
 
 
@@ -166,3 +179,28 @@ class Model(BaseModel):
         all_params = params_merge(*params)
         param_count = sum(x.size for x in jax.tree_util.tree_leaves(all_params))
         print(f'Number of parameters {param_count:,}')
+
+
+
+def _cross_product(u: Array):
+    # u: [t, x, ..., u]
+    # axis_space = list(range(1,v.ndim-1))
+    u = jnp.moveaxis(u[...],-1,0) # move velocity axis to 0
+    v_derivative1 = jax.vmap(derivative1,(0,None,None),0)
+    def _didj(de_fun,inn):
+        didj_T = de_fun(inn,1.0,1).reshape((-1,)+inn.shape)
+        for j in range(1,u.shape[0]):
+            didj_T = jnp.concatenate(
+                (
+                didj_T,
+                de_fun(inn,1.0,j+1).reshape((-1,)+inn.shape)
+                ),
+                axis=0
+            )
+        return didj_T # for de_fun = v_derivative1 and inn=u -> [j,i,t,x,y,z]
+    dui_dxj = jnp.einsum('jit... -> ijt...', _didj(v_derivative1, u)) # [i,j,t,x,y,z]
+    cross0 = dui_dxj[2,1,...] - dui_dxj[1,2,...]
+    cross1 = dui_dxj[0,2,...] - dui_dxj[2,0,...]
+    cross2 = dui_dxj[1,0,...] - dui_dxj[0,1,...]
+    cross = jnp.stack([cross0,cross1,cross2])
+    return jnp.einsum('utxyz -> txyzu', cross)
