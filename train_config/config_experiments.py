@@ -584,7 +584,6 @@ def kol3d_methods(group:str, testcase:str, randseed:int):
         case _:
             raise NotImplementedError
     if 'divfree' in group:
-        print('Divergence free.')
         mdlcfg_update.update({'divfree': True})
     return _cfgstr, mdlcfg_update, datacfg_update, traincfg_update
 
