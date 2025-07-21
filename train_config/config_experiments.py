@@ -585,6 +585,7 @@ def kol3d_methods(group:str, testcase:str, randseed:int):
             raise NotImplementedError
     if 'divfree' in group:
         mdlcfg_update.update({'divfree': True})
+        traincfg_update.update({'weight_continuity': 0.0})
     return _cfgstr, mdlcfg_update, datacfg_update, traincfg_update
 
 
