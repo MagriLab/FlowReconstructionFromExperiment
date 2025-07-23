@@ -764,6 +764,7 @@ def get_config(cfgstr:str):
                 '4-1': 'planes_share-1',
                 '5-1': 'planes_notshare-1',
                 '6': 'planes_share_divfree-2',
+                '6-1': 'planes_share_divfree-1',
             }
             testcase = {
                 '1': 'all', # default case
