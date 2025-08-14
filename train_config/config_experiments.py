@@ -649,6 +649,36 @@ def kol3d_noisy(group:str, randseed:int):
                 'img_shapes': ((32, 32, 32), (16, 16, 16), (4, 4, 4), (8, 8, 8), (16, 16, 16), (64, 64, 64)),
                 'fft_branch': False
             }
+        case 'noisy-share-divfree': # this is the same parameters as noisy-share
+            _cfgstr = 'observe@slice_pin,model@shareparts'
+            traincfg_update = {
+                'learning_rate': 0.0026,
+                'lr_scheduler': "cyclic_decay_default",
+                'weight_momentum': 14.0,
+                'randseed': randseed*17,
+                'regularisation_strength':0.0028,
+                'weight_sensors':45.0,
+            }
+            datacfg_update = {
+                'val_batch_idx': (-10,-9,-8,-7,-6,-5,-4,-3,-2,-1),
+                'pressure_inlet_slice': ((None,),(0,1,None),(None,)),
+                'components': 'velocity',
+                'batch_size': 50,
+                'xplane': xplane,
+                'zplane': zplane,
+                'randseed':randseed*43,
+                'snr': 15,
+            }
+            mdlcfg_update = {
+                'b1_channels': (1,),
+                'b2_channels': (4,16,16,8),
+                'img_shapes3d': ((32, 32, 32), (32, 32, 32), (64, 64, 64)),
+                'channels3d': (8,8,4),
+                'filters3d': (3,5,5),
+                'dropout_rate': 0.004,
+            }
+            mdlcfg_update.update({'divfree': True})
+            traincfg_update.update({'weight_continuity': 0.0})
         case _:
             raise NotImplementedError
     return _cfgstr, mdlcfg_update, datacfg_update, traincfg_update
@@ -786,6 +816,7 @@ def get_config(cfgstr:str):
             testgroup = {
                 '1': 'noisy-share',
                 '2': 'noisy-notshare',
+                '3': 'noisy-share-divfree'
             }
             _fn_input = {
                 'group': testgroup[experiment['group']],
