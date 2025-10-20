@@ -802,10 +802,15 @@ def get_config(cfgstr:str):
             }
             if 'case' not in experiment.keys():
                 experiment.update({'case': 1}) # using default case all components
+            try:
+                _component_code = testcase[experiment['case']]
+            except KeyError as _:
+                _component_code = experiment['case'].replace(';',',')
+                print(f"Using customised component code '{_component_code}'.")
 
             _fn_input = {
                 'group': testgroup[experiment['group']],
-                'testcase': testcase[experiment['case']],
+                'testcase': _component_code,
                 'randseed': int(experiment['sensor_randseed'])
             }
 
