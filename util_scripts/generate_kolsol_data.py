@@ -64,6 +64,15 @@ def generate_data(args) -> None:
         print(f'restarting from {args.restart_from}')
         with h5py.File(args.restart_from) as hf:
             field_hat = np.array(hf.get('state_hat')[-1, ..., :-1]) 
+            if args.perturb > 0:
+                field_hat = field_hat * (1.0 + args.perturb)
+                print(f'Adding a percentage perturbation {args.perturb*100}% to the restart checkpoint.')
+            elif args.uniform_perturb > 0:
+                uniform_perturbation = np.zeros_like(field_hat)
+                _idx = [args.nk]*args.ndim
+                uniform_perturbation[*_idx,:] = args.uniform_perturb + 0.j
+                field_hat = field_hat + uniform_perturbation
+                print(f'Adding a uniform perturbation {args.uniform_perturb} to the restart checkpoint.')
             field_hat = torch.from_numpy(field_hat).to(device)
             old_dt = float(hf.get('dt')[()])
         if old_dt != args.dt:
@@ -233,6 +242,18 @@ if __name__ == '__main__':
         default=None,
         type=str,
         help='Restart from a file'
+    )
+    parser_g.add_argument(
+        '--perturb', 
+        default=0.0,
+        type=float,
+        help='Add a perturbation to all grid points to the restart file before starting computation. If perturb=1e-3, then the restart checkpoint will be checkpoint*1.001 .'
+    )
+    parser_g.add_argument(
+        '--uniform_perturb', 
+        default=0.0,
+        type=float,
+        help='Add a uniform perturbation to all grid points to the restart file before starting computation. If perturb=1e-3, then the restart checkpoint will be checkpoint + 0.001 .'
     )
     parser_g.add_argument(
         '--save_frequency',
