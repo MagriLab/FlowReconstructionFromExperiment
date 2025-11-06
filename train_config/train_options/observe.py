@@ -457,7 +457,9 @@ def observe_slice_pin(
         binary_snapshot[_s] = 1
 
     try:
-        if data_config.shadow == 'box':
+        if data_config.shadow is None:
+            pass
+        elif data_config.shadow == 'box':
             binary_snapshot = _shadow_of_box(binary_snapshot,)
             logger.info(f"Making a box shape shadow in the domain.")
         else:

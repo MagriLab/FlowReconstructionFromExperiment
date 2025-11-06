@@ -149,7 +149,8 @@ def get_config(cfgstr:str = None):
             'xplane': "", # "x1,x2..." must be integer
             'yplane': "", # "y1,y2..." must be integer
             'zplane': "32", # "z1,z2..." must be integer
-            'components': "velocity"  # component codes for x1,x2...,y1...,z1...
+            'components': "velocity",  # component codes for x1,x2...,y1...,z1...
+            'shadow': placeholder(str)
         })
     else:
         raise ValueError('Invalid observe option.')
