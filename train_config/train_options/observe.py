@@ -574,15 +574,16 @@ def _make_sparse_index(binary_snapshot:Array):
     return np.s_[:,*idx]
 
 
-def _shadow_of_box(binary_snapshot:Array, o:Array = (27,27,27), d:Array = (10,10,10)):
+def _shadow_of_box(binary_snapshot:Array, o:Array = (25,5,34), d:Array = (15,15,15)):
     """
     Remove all sensors in the box. 'o' is the lower left hand corner, and 'd' is the length of each side.
     Binary_snapshot where 1 means sensors and 0 means no sensor.
     """
+    binary_snapshot = np.array(binary_snapshot)
     o = np.asarray(o)
     d = np.asarray(d)
     left = list(o.astype(int))
-    right = left + list((o+d).astype(int))
+    right = list((o+d).astype(int))
     dim = len(left)
 
     def is_inside(coord):
@@ -595,15 +596,20 @@ def _shadow_of_box(binary_snapshot:Array, o:Array = (27,27,27), d:Array = (10,10
     
     snapshot_shape = binary_snapshot.shape
     grid = []
-    for a in snapshot_shape:
+    for a in snapshot_shape[:-1]:
         grid.append(np.arange(a))
     idx_group = np.meshgrid(*grid)
     idx = []
     for _idx in idx_group:
         idx.append(_idx.flatten())
     
+    count = 0
     for coord in zip(*idx):
-        if is_inside(coord):
-            binary_snapshot[coord] = 0
+        if is_inside(coord): # check if sensor is in the box
+            val = binary_snapshot[*coord,:]
+            if val.sum() > 0: # check if 
+                binary_snapshot[*coord,:] = 0
+                count += 1
+    logger.debug(f'Removing {count} sensors from within the box.')
 
     return binary_snapshot
