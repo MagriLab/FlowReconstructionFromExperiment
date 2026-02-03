@@ -581,6 +581,32 @@ def kol3d_methods(group:str, testcase:str, randseed:int):
                 'lr_scheduler': 'cyclic_decay_default',
                 'weight_momentum': 3.0
             }
+        case str(x) if 'planes_shadow_share' in x:
+            _cfgstr = 'observe@slice_pin,model@shareparts'
+            num_z = int(group[-1])
+            zplane = zplane_locs[num_z]
+            traincfg_update = {
+                'learning_rate': 0.0025,
+                'lr_scheduler': "exponential_decay",
+                'weight_momentum': 2.0,
+                'randseed': randseed*17,
+            }
+            datacfg_update = {
+                'val_batch_idx': (-5,-4,-3,-2,-1),
+                'pressure_inlet_slice': ((None,),(0,1,None),(None,)),
+                'components': testcase,
+                'batch_size': 100,
+                'xplane': xplane,
+                'zplane': zplane,
+                'shadow': 'box'
+            }
+            mdlcfg_update = {
+                'b1_channels': (4,),
+                'b2_channels': (4,16,16,8),
+                'img_shapes3d': ((32,32,32),(32,32,32),(64,64,64)),
+                'channels3d': (8,8,4),
+                'filters3d': (3,5,5),
+            }
         case _:
             raise NotImplementedError
     if 'divfree' in group:
@@ -795,6 +821,7 @@ def get_config(cfgstr:str):
                 '5-1': 'planes_notshare-1',
                 '6': 'planes_share_divfree-2',
                 '6-1': 'planes_share_divfree-1',
+                '7-2': 'planes_shadow_share-2',
             }
             testcase = {
                 '1': 'all', # default case
@@ -802,10 +829,15 @@ def get_config(cfgstr:str):
             }
             if 'case' not in experiment.keys():
                 experiment.update({'case': 1}) # using default case all components
+            try:
+                _component_code = testcase[experiment['case']]
+            except KeyError as _:
+                _component_code = experiment['case'].replace(';',',')
+                print(f"Using customised component code '{_component_code}'.")
 
             _fn_input = {
                 'group': testgroup[experiment['group']],
-                'testcase': testcase[experiment['case']],
+                'testcase': _component_code,
                 'randseed': int(experiment['sensor_randseed'])
             }
 
