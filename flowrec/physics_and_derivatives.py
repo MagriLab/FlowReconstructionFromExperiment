@@ -416,3 +416,42 @@ def get_tke(ufluc:Array, datainfo:ClassDataMetadata, domain_size:Array|float = 2
         spectrum[i] += 0.5*np.sum(ke_avg[kgrid_magnitude_int==i])
     
     return spectrum, kbins
+
+
+def kl_div(p:Array, q:Array, dx:Array|None = None):
+    """Compute the Kullback-Leibler Divergence between the true probability p and the estimate q."""
+    assert len(p) == len(q)
+    if dx is None:
+        dx = [1.]*len(p)
+        dx = np.array(dx)
+    assert len(p) == len(dx)
+    
+    def _merge_zeros(a, b, c):
+        """Merge the elements if they are 0 in a."""
+        a1, b1, c1 = [], [], []
+        a_is_zero = a == 0
+
+        i = 0
+        while i < len(a_is_zero):
+            if a_is_zero[i] and (i == 0):
+                while a_is_zero[i]:
+                    i += 1
+                a1.append(np.sum(a[:i+1]))
+                b1.append(np.sum(b[:i+1]))
+                c1.append(np.sum(c[:i+1]))
+            elif a_is_zero[i]:
+                # a[i] = 0
+                b1[-1] = b1[-1] + b[i]
+                c1[-1] = c1[-1] + c[i]
+            else:
+                a1.append(a[i])
+                b1.append(b[i])
+                c1.append(c[i])
+            i += 1
+        
+        return np.array(a1), np.array(b1), np.array(c1)
+    
+    p1, q1, dx1 = _merge_zeros(p, q, dx) # merge zeros in p
+    q2, p2, dx2 = _merge_zeros(q1, p1, dx1) # merge zeros in q
+
+    return np.sum(dx2 * p2 * np.log(p2 / q2))
