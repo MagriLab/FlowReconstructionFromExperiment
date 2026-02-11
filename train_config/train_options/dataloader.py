@@ -339,7 +339,7 @@ def dataloader_2dkol(cfg:ConfigDict|None = None) -> tuple[dict,ClassDataMetadata
     data, datainfo = _load_kolsol(cfg,2)
 
 
-    ngrid = data['u_train'].shape[datainfo.axx]
+    ngrid = data['u_train'][0].shape[datainfo.axx]
     f = simulation.kolsol_forcing_term(cfg.forcing_frequency,ngrid,2)
     data.update({'forcing': f})
     return data, datainfo
@@ -354,7 +354,7 @@ def dataloader_3dkol(cfg:ConfigDict|None = None) -> tuple[dict,ClassDataMetadata
     data, datainfo = _load_kolsol(cfg,3)
 
 
-    ngrid = data['u_train'].shape[datainfo.axx]
+    ngrid = data['u_train'][0].shape[datainfo.axx]
     f = simulation.kolsol_forcing_term(cfg.forcing_frequency,ngrid,3)
     data.update({'forcing': f})
     
