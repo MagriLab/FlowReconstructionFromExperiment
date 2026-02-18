@@ -13,7 +13,7 @@ from ._typing import Array, Scalar, ClassDataMetadata
 
 @jax.tree_util.Partial(jax.jit,static_argnames=('axis'))
 def derivative2(f:Array, h:Scalar, axis:int=0) -> Array:
-    '''Second derivatives with second order central difference for interior points and second order forward/backward difference for boundaries.\n
+    '''Second derivatives with fourth order central difference for interior points and second order forward/backward difference for boundaries.\n
     
     Arguments:\n
         f: array of values to differentiate.\n
@@ -85,7 +85,7 @@ def derivative2(f:Array, h:Scalar, axis:int=0) -> Array:
 
 @jax.tree_util.Partial(jax.jit,static_argnames=('axis'))
 def derivative1(f:Array, h:Scalar, axis:int=0) -> Array:
-    '''First derivatives with second order central difference for interior points and second order forward/backward difference for boundaries.\n
+    '''First derivatives with fourth order central difference for interior points and second order forward/backward difference for boundaries.\n
     
     Arguments:\n
         f: array of values to differentiate.\n
@@ -419,7 +419,17 @@ def get_tke(ufluc:Array, datainfo:ClassDataMetadata, domain_size:Array|float = 2
 
 
 def kl_div(p:Array, q:Array, dx:Array|None = None):
-    """Compute the Kullback-Leibler Divergence between the true probability p and the estimate q."""
+    """
+    ## K-L Divergence
+    Compute the Kullback-Leibler Divergence between the true probability p and the estimate q.
+    
+    Defined only if 1: probability sums to zero, and 2: probability > 0 for every category
+
+    $D_{KL}(P \| Q) = \sum_{x \in X} \Delta x P(x) log \left( P(x)/Q(x) \right)$
+
+    - P is true, Q is estimate
+    - dx is the bin width (necessary because numpy.historgam estimates pdf). If None, dx is assumed to be a constant 1.
+    """
     assert len(p) == len(q)
     if dx is None:
         dx = [1.]*len(p)
