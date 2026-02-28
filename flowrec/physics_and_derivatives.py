@@ -390,6 +390,7 @@ def get_tke(ufluc:Array, datainfo:ClassDataMetadata, domain_size:Array|float = 2
 
     """
     _shape = np.array(ufluc.shape)
+    assert (_shape[-1] + 1) == len(datainfo.discretisation), "The number of velocity components do not match the data dimension."
     nx = _shape[1:-1]
     dx = datainfo.discretisation[1:]
     if 'kgrid_magnitude' in kwargs.keys():
@@ -465,3 +466,76 @@ def kl_div(p:Array, q:Array, dx:Array|None = None):
     q2, p2, dx2 = _merge_zeros(q1, p1, dx1) # merge zeros in q
 
     return np.sum(dx2 * p2 * np.log(p2 / q2))
+
+
+@jax.tree_util.Partial(jax.jit,static_argnames=('debug'))
+def second_order_structure_snapshot_longitudinal(ut2, debug=False):
+    """
+    # Compute the longitudinal second order structure function for a 2D snapshot. 
+
+    Similar style computation to numpy.signal correlate(mode='valid'), but the grid index is shifted.
+    See reference id 164, and Pope (2000) page 191.
+
+    returns:
+        - sx: [u(x) - u(x+dx)]^2 on a 2D grid, same shape as ut. Each element is summed over all x for the same dx. Index [0,0]: dx=[0,0], index[n,m]: dx=[n*dx,m*dy]
+        - scount: the number of valid grid point at each dx.
+    To get s(x) averaged over space, divide sx by scount element-wise.
+    """
+    nx, ny, nu = ut2.shape
+    ix = jnp.arange(nx)
+    iy = jnp.arange(ny)
+
+    # # broadcase indices
+    # x = ix[:,None]
+    # y = iy[None,:]
+
+    ut = ut2[...,0]
+    ut_padded = jnp.pad(ut, ((0,nx),(0,ny)), mode='empty')
+    mask_padded = jnp.pad(jnp.ones_like(ut), ((0,nx),(0,ny)), mode='empty')
+    vt = ut2[...,1]
+    vt_padded = jnp.pad(vt, ((0,nx),(0,ny)), mode='empty')
+
+    def _compute_shift(dx, dy):
+        r_mag = jnp.sqrt(dx**2 + dy**2) + 1e-12
+        rx = dx / r_mag
+        ry = dy / r_mag
+
+        shiftedu = jax.lax.dynamic_slice(ut_padded, (dx,dy), (nx,ny))
+        shiftedv = jax.lax.dynamic_slice(vt_padded, (dx,dy), (nx,ny))
+        mask = jax.lax.dynamic_slice(mask_padded, (dx,dy), (nx,ny))
+        du = (shiftedu-ut)*mask
+        dv = (shiftedv-vt)*mask
+        s = (du*rx + dv*ry)**2
+        count = (nx-dx) * (ny-dy)
+        if debug: 
+            return jnp.sum(s), count, shifted
+        return jnp.sum(s), count
+
+    vmap_over_y = jax.vmap(_compute_shift, in_axes=(None,0))
+    vmap_over_xy = jax.vmap(vmap_over_y, in_axes=(0,None))
+
+    if debug:
+        sx, scount, shifted = vmap_over_xy(ix, iy)
+        return sx, scount, shifted
+    sx, scount = vmap_over_xy(ix, iy)
+    return sx, scount
+    
+_second_order_structure_longitudinal = jax.vmap(second_order_structure_snapshot_longitudinal, in_axes=(0,None))
+def second_order_structure_longitudinal(ufluc, debug=False):
+    """
+    # Compute the longitudinal second-order structure function
+    for a batch of 2D snapshots.
+
+    Parameters
+    ----------
+    ufluc : array (nt, nx, ny, 2)
+    debug : bool
+
+    Returns
+    -------
+    sx, scount  (and shifted if debug=True)
+        - sx(x,t): [u(x,t) - u(x+dx,t)]^2 on a 2D grid, same shape as ut. Each element is summed over all x for the same dx. Index [t,0,0]: dx=[0,0], index[n,m]: dx=[n*dx,m*dy], at time t
+        - scount: the number of valid grid point at each dx.
+    To get s(x) averaged over space, divide sx by scount element-wise.
+    """
+    return _second_order_structure_longitudinal(ufluc, debug)
