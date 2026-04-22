@@ -16,7 +16,7 @@ with h5py.File('./local_data/kolmogorov/dim2_re34_k32_f4_dt1_grid128_14635.h5') 
     nref = float(hf.get('ngrid')[()])
 datainfo_ref = DataMetadata(
     re=re,
-    discretisation=[dt,np.pi/nref,np.pi/nref],
+    discretisation=[dt,2*np.pi/nref,2*np.pi/nref],
     axis_index=[0,1,2],
     problem_2d=True
 ).to_named_tuple()
