@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib
 matplotlib.use('agg')
 import matplotlib.pyplot as plt
+from argparse import ArgumentParser
 from pathlib import Path
 from flowrec.physics_and_derivatives import get_tke
 from flowrec.data import DataMetadata
@@ -93,14 +94,18 @@ def plot_mean(figname, *filenames):
 
 if __name__ == '__main__':
 
+    parser = ArgumentParser(description='Plots and save summary of sweeps.')
+    parser.add_argument('sim_dir', help="Path to where the multiple physical data is stored.")
+    args = parser.parse_args()
 
+    sim_dir = Path(args.sim_dir)
 
     plot_mean(
         'Kolsol_converge_skipsets(3)_thesis.png',
-        Path('/storage0/ym917/data/simulations/kolsol/dim3_re34_k32_f4_dt01_grid64_478_t200-250.h5'),
-        # Path('/storage0/ym917/data/simulations/kolsol/dim3_re34_k32_f4_dt01_grid64_478_t280-330.h5'), # 4GB per file
-        Path('/storage0/ym917/data/simulations/kolsol/dim3_re34_k32_f4_dt01_grid64_478_t360-410.h5'),
-        Path('/storage0/ym917/data/simulations/kolsol/dim3_re34_k32_f4_dt01_grid64_1372_t200-250.h5'),
-        # Path('/storage0/ym917/data/simulations/kolsol/dim3_re34_k32_f4_dt01_grid64_691_t200-250.h5'),
-        Path('/storage0/ym917/data/simulations/kolsol/dim3_re34_k32_f4_dt01_grid64_57_t180-230.h5'),
+        Path(sim_dir, 'dim3_re34_k32_f4_dt01_grid64_478_t200-250.h5'),
+        # Path(sim_dir, 'dim3_re34_k32_f4_dt01_grid64_478_t280-330.h5'), # 4GB per file
+        Path(sim_dir, 'dim3_re34_k32_f4_dt01_grid64_478_t360-410.h5'),
+        Path(sim_dir, 'dim3_re34_k32_f4_dt01_grid64_1372_t200-250.h5'),
+        # Path(sim_dir, 'dim3_re34_k32_f4_dt01_grid64_691_t200-250.h5'),
+        Path(sim_dir, 'dim3_re34_k32_f4_dt01_grid64_57_t180-230.h5'),
     )

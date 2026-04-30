@@ -1,3 +1,5 @@
+import sys
+sys.path.append('../')
 import h5py
 import jax
 jax.config.update("jax_enable_x64", True)
@@ -6,9 +8,12 @@ import jax.numpy as jnp
 from flowrec.data import DataMetadata
 from flowrec.physics_and_derivatives import derivative1, derivative2
 from flowrec.losses import divergence, momentum_loss
+from flowrec.utils.system import change_cwd
+
+change_cwd(__path__)
 
 
-with h5py.File('local_data/kolmogorov/dim2_re34_k32_f4_dt1_grid128_14635.h5') as hf:
+with h5py.File('../local_data/kolmogorov/dim2_re34_k32_f4_dt1_grid128_14635.h5') as hf:
     state = np.array(hf.get('state'))
     dt = float(hf.get('dt')[()])
     re = float(hf.get('re')[()])

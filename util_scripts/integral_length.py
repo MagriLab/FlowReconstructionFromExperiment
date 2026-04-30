@@ -1,15 +1,19 @@
 import sys
+sys.path.append('..')
 import h5py
 import numpy as np
-import matplotlib.pyplot as plt
-plt.style.use('./flowrec/utils/a4.mplstyle')
 
 from scipy.signal import correlate2d
 
 from flowrec.utils import my_discrete_cmap
 from flowrec.data import DataMetadata
+from flowrec.utils.system import change_cwd
+change_cwd(__file__)
 
-with h5py.File('./local_data/kolmogorov/dim2_re34_k32_f4_dt1_grid128_14635.h5') as hf:
+import matplotlib.pyplot as plt
+plt.style.use('../flowrec/utils/a4.mplstyle')
+
+with h5py.File('../local_data/kolmogorov/dim2_re34_k32_f4_dt1_grid128_14635.h5') as hf:
     state = np.array(hf.get('state'))
     dt = float(hf.get('dt')[()])
     re = float(hf.get('re')[()])
@@ -64,7 +68,7 @@ plt.legend()
 plt.xlim([0,unique_values[-1]])
 plt.xlabel('$r$')
 plt.ylabel('$\\rho(r)$')
-plt.savefig('2dkol-twopoint-correlation.pdf', bbox_inches='tight')
+plt.savefig('../2dkol-twopoint-correlation.pdf', bbox_inches='tight')
 
 
 
@@ -77,6 +81,6 @@ for i in range(c_r.shape[0]):
 l_int_x1 = np.trapz(c_r[:first_zero[0],0], unique_values[:first_zero[0]])
 l_int_x2 = np.trapz(c_r[:first_zero[1],1], unique_values[:first_zero[1]])
 
-with open('2dkol-integral-length-scale.txt','x') as f:
+with open('../2dkol-integral-length-scale.txt','x') as f:
     f.write(f"The integral length scale l_u and l_v are {l_int_x1/np.pi:.3f}\pi and {l_int_x2/np.pi:.3f}\pi.")
 

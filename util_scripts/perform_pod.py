@@ -13,7 +13,7 @@ from ml_collections import config_flags
 
 from flowrec.decomposition import POD
 from flowrec.utils.system import temporary_fix_absl_logging
-from utils import simulation2d
+from flowrec.utils.simulation import read_data_2dtriangle
 from flowrec.data import data_partition
 from flowrec.utils.py_helper import slice_from_tuple
 
@@ -32,7 +32,7 @@ flags.DEFINE_bool('training_only', True, 'Decompose each component separately')
 def load_data(cfg):
     x_base = 132
     triangle_base_coords = [49,80]
-    (ux,uy,pp) = simulation2d.read_data(cfg.data_config.data_dir,x_base)
+    (ux,uy,pp) = read_data_2dtriangle.read_data(cfg.data_config.data_dir,x_base)
     x = np.stack([ux,uy,pp],axis=0)
     # remove parts where uz is not zero
     s = slice_from_tuple(cfg.data_config.slice_to_keep)
