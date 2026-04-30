@@ -9,6 +9,7 @@ tmp*
 
 __pycache__/
 wandb/
+figures_for_paper/*/*
 
 system_config.yml
 err

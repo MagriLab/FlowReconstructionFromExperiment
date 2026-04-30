@@ -13,7 +13,7 @@ from ._typing import Array, Scalar, ClassDataMetadata
 
 @jax.tree_util.Partial(jax.jit,static_argnames=('axis'))
 def derivative2(f:Array, h:Scalar, axis:int=0) -> Array:
-    '''Second derivatives with second order central difference for interior points and second order forward/backward difference for boundaries.\n
+    '''Second derivatives with fourth order central difference for interior points and second order forward/backward difference for boundaries.\n
     
     Arguments:\n
         f: array of values to differentiate.\n
@@ -85,7 +85,7 @@ def derivative2(f:Array, h:Scalar, axis:int=0) -> Array:
 
 @jax.tree_util.Partial(jax.jit,static_argnames=('axis'))
 def derivative1(f:Array, h:Scalar, axis:int=0) -> Array:
-    '''First derivatives with second order central difference for interior points and second order forward/backward difference for boundaries.\n
+    '''First derivatives with fourth order central difference for interior points and second order forward/backward difference for boundaries.\n
     
     Arguments:\n
         f: array of values to differentiate.\n
@@ -390,6 +390,7 @@ def get_tke(ufluc:Array, datainfo:ClassDataMetadata, domain_size:Array|float = 2
 
     """
     _shape = np.array(ufluc.shape)
+    assert (_shape[-1] + 1) == len(datainfo.discretisation), "The number of velocity components do not match the data dimension."
     nx = _shape[1:-1]
     dx = datainfo.discretisation[1:]
     if 'kgrid_magnitude' in kwargs.keys():
@@ -416,3 +417,125 @@ def get_tke(ufluc:Array, datainfo:ClassDataMetadata, domain_size:Array|float = 2
         spectrum[i] += 0.5*np.sum(ke_avg[kgrid_magnitude_int==i])
     
     return spectrum, kbins
+
+
+def kl_div(p:Array, q:Array, dx:Array|None = None):
+    """
+    ## K-L Divergence
+    Compute the Kullback-Leibler Divergence between the true probability p and the estimate q.
+    
+    Defined only if 1: probability sums to zero, and 2: probability > 0 for every category
+
+    $D_{KL}(P \| Q) = \sum_{x \in X} \Delta x P(x) log \left( P(x)/Q(x) \right)$
+
+    - P is true, Q is estimate
+    - dx is the bin width (necessary because numpy.historgam estimates pdf). If None, dx is assumed to be a constant 1.
+    """
+    assert len(p) == len(q)
+    if dx is None:
+        dx = [1.]*len(p)
+        dx = np.array(dx)
+    assert len(p) == len(dx)
+    
+    def _merge_zeros(a, b, c):
+        """Merge the elements if they are 0 in a."""
+        a1, b1, c1 = [], [], []
+        a_is_zero = a == 0
+
+        i = 0
+        while i < len(a_is_zero):
+            if a_is_zero[i] and (i == 0):
+                while a_is_zero[i]:
+                    i += 1
+                a1.append(np.sum(a[:i+1]))
+                b1.append(np.sum(b[:i+1]))
+                c1.append(np.sum(c[:i+1]))
+            elif a_is_zero[i]:
+                # a[i] = 0
+                b1[-1] = b1[-1] + b[i]
+                c1[-1] = c1[-1] + c[i]
+            else:
+                a1.append(a[i])
+                b1.append(b[i])
+                c1.append(c[i])
+            i += 1
+        
+        return np.array(a1), np.array(b1), np.array(c1)
+    
+    p1, q1, dx1 = _merge_zeros(p, q, dx) # merge zeros in p
+    q2, p2, dx2 = _merge_zeros(q1, p1, dx1) # merge zeros in q
+
+    return np.sum(dx2 * p2 * np.log(p2 / q2))
+
+
+@jax.tree_util.Partial(jax.jit,static_argnames=('debug'))
+def second_order_structure_snapshot_longitudinal(ut2, debug=False):
+    """
+    # Compute the longitudinal second order structure function for a 2D snapshot. 
+
+    Similar style computation to numpy.signal correlate(mode='valid'), but the grid index is shifted.
+    See reference id 164, and Pope (2000) page 191.
+
+    returns:
+        - sx: [u(x) - u(x+dx)]^2 on a 2D grid, same shape as ut. Each element is summed over all x for the same dx. Index [0,0]: dx=[0,0], index[n,m]: dx=[n*dx,m*dy]
+        - scount: the number of valid grid point at each dx.
+    To get s(x) averaged over space, divide sx by scount element-wise.
+    """
+    nx, ny, nu = ut2.shape
+    ix = jnp.arange(nx)
+    iy = jnp.arange(ny)
+
+    # # broadcase indices
+    # x = ix[:,None]
+    # y = iy[None,:]
+
+    ut = ut2[...,0]
+    ut_padded = jnp.pad(ut, ((0,nx),(0,ny)), mode='empty')
+    mask_padded = jnp.pad(jnp.ones_like(ut), ((0,nx),(0,ny)), mode='empty')
+    vt = ut2[...,1]
+    vt_padded = jnp.pad(vt, ((0,nx),(0,ny)), mode='empty')
+
+    def _compute_shift(dx, dy):
+        r_mag = jnp.sqrt(dx**2 + dy**2) + 1e-12
+        rx = dx / r_mag
+        ry = dy / r_mag
+
+        shiftedu = jax.lax.dynamic_slice(ut_padded, (dx,dy), (nx,ny))
+        shiftedv = jax.lax.dynamic_slice(vt_padded, (dx,dy), (nx,ny))
+        mask = jax.lax.dynamic_slice(mask_padded, (dx,dy), (nx,ny))
+        du = (shiftedu-ut)*mask
+        dv = (shiftedv-vt)*mask
+        s = (du*rx + dv*ry)**2
+        count = (nx-dx) * (ny-dy)
+        if debug: 
+            return jnp.sum(s), count, shifted
+        return jnp.sum(s), count
+
+    vmap_over_y = jax.vmap(_compute_shift, in_axes=(None,0))
+    vmap_over_xy = jax.vmap(vmap_over_y, in_axes=(0,None))
+
+    if debug:
+        sx, scount, shifted = vmap_over_xy(ix, iy)
+        return sx, scount, shifted
+    sx, scount = vmap_over_xy(ix, iy)
+    return sx, scount
+    
+_second_order_structure_longitudinal = jax.vmap(second_order_structure_snapshot_longitudinal, in_axes=(0,None))
+def second_order_structure_longitudinal(ufluc, debug=False):
+    """
+    # Compute the longitudinal second-order structure function
+    for a batch of 2D snapshots.
+
+    Parameters
+    ----------
+    ufluc : array (nt, nx, ny, 2)
+    debug : bool
+
+    Returns
+    -------
+    sx, scount  (and shifted if debug=True)
+        - sx(x,t): [u(x,t) - u(x+dx,t)]^2 on a 2D grid, same shape as ut. Each element is summed over all x for the same dx. Index [t,0,0]: dx=[0,0], index[n,m]: dx=[n*dx,m*dy], at time t
+        - scount: the number of valid grid point at each dx.
+    To get s(x) averaged over space, divide sx by scount element-wise.
+    """
+    return _second_order_structure_longitudinal(ufluc, debug)

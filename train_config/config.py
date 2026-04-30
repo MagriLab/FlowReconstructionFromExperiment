@@ -276,7 +276,8 @@ _default_mdlcfg = {
             'b2_filters': ((5,5),),
             'b3_filters': ((3,3),),
             'resize_method': 'linear',
-            'fft_branch': False
+            'fft_branch': False,
+            'padding': 'SAME',
         },
         '2dkol': {
             'img_shapes': ((64,64),(64,64),(32,32),(16,16),(32,32),(64,64),(128,128)),
@@ -288,6 +289,7 @@ _default_mdlcfg = {
             'b3_filters': ((3,3),),
             'resize_method': 'linear',
             'fft_branch': True,
+            'padding': 'CIRCULAR',
         },
         '3dvolvo': {
             'img_shapes': ((20,10,10),(10,10,10),(5,5,5),(10,10,10),(40,20,20)),
@@ -306,6 +308,7 @@ _default_mdlcfg = {
             'resize_method': 'linear',
             'fft_branch': False,
             'small_mlp': True,
+            'padding': 'CIRCULAR',
         },
         '3dkolsets': {
             'img_shapes': ((32,32,32),(16,16,16),(4,4,4),(8,8,8),(16,16,16),(64,64,64)),
@@ -315,6 +318,7 @@ _default_mdlcfg = {
             'resize_method': 'linear',
             'fft_branch': False,
             'small_mlp': True,
+            'padding': 'CIRCULAR',
         }
     },
     'ff': {

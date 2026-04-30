@@ -564,15 +564,16 @@ def _make_component_index(components:str):
 
 def _make_sparse_index(binary_snapshot:Array):
     """Return the slice based on a binary_snapshot where 1 means sensors and 0 means no sensor."""
-    x, y, z, u = np.indices(binary_snapshot.shape)
+    indices = list(np.indices(binary_snapshot.shape))
+    ix = indices[:-1] # [x,y] or [x,y,z] depending on dimensions
+    u = indices[-1]
     has_values = binary_snapshot > 0
     u1 = u[has_values]
     _sort = np.argsort(u1)
     u1 = u1[_sort]
-    x1 = x[has_values][_sort]
-    y1 = y[has_values][_sort]
-    z1 = z[has_values][_sort]
-    idx = np.array(tuple(zip(x1,y1,z1,u1))).T #(4,num)
+    _idx = [x[has_values][_sort] for x in ix]
+    _idx.append(u1)
+    idx = np.array(tuple(zip(*_idx))).T #(4,num) or (3,num)
     return np.s_[:,*idx]
 
 

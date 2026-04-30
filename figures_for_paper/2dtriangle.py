@@ -9,24 +9,26 @@ import h5py
 import jax
 import yaml
 import numpy as np
-from flowrec import postprocessing
-from flowrec import losses
-from flowrec import data as data_utils
-from flowrec import training_and_states as state_utils
-from flowrec import physics_and_derivatives as derivatives
-from flowrec.lr_schedule import cyclic_cosine_decay_schedule
-from flowrec.utils import simulation
-from flowrec.utils import my_discrete_cmap as cmap
-from flowrec.utils.system import set_gpu
-from flowrec.utils.py_helper import slice_from_tuple
+from _old_2d_codes.flowrec import postprocessing
+from _old_2d_codes.flowrec import losses
+from _old_2d_codes.flowrec import data as data_utils
+from _old_2d_codes.flowrec import training_and_states as state_utils
+from _old_2d_codes.flowrec import physics_and_derivatives as derivatives
+from _old_2d_codes.flowrec.lr_schedule import cyclic_cosine_decay_schedule
+from _old_2d_codes.flowrec.utils import simulation
+from _old_2d_codes.flowrec.utils import my_discrete_cmap as cmap
+from _old_2d_codes.flowrec.utils.system import set_gpu
+from _old_2d_codes.flowrec.utils.py_helper import slice_from_tuple
 from matplotlib import pyplot as plt
 from mpl_toolkits.axes_grid1 import ImageGrid
 cmap2 = ['deepskyblue', 'limegreen', 'darkorange']
 
+from flowrec.physics_and_derivatives import kl_div
+
 
 ################## change these values #################
 save_figure = False
-save_to = './figs/'
+save_to = './thesis/'
 which_gpu = 0
 run_2dtriangle_clean = Path('../local_results/2dtriangle/repeat_clean/clean-45')
 run_dir_2dtriangle_noisy = Path('../local_results/2dtriangle/repeat_noisy/noisy_random')
@@ -192,7 +194,7 @@ def get_single_case_predictions_2dtriangle(results_dir:Path, has_noise:bool, pre
 
     rng = np.random.default_rng(cfg.data_config.randseed)
     if cfg.data_config.snr:
-        [x_train,x_val,x_test], _ = data_utils.data_partition(x,1,cfg.data_config.train_test_split,REMOVE_MEAN=cfg.data_config.remove_mean,randseed=cfg.data_config.randseed,shuffle=cfg.data_config.shuffle) # Do not shuffle, do not remove mean for training with physics informed loss
+        [x_train,x_val,x_test], _ = data_utils.data_partition(x,1,cfg.data_config.train_test_split,remove_mean=cfg.data_config.remove_mean,randseed=cfg.data_config.randseed,shuffle=cfg.data_config.shuffle) # Do not shuffle, do not remove mean for training with physics informed loss
         [ux_train,uy_train,pp_train] = np.squeeze(np.split(x_train,3,axis=0))
         # [ux_val,uy_val,pp_val] = np.squeeze(np.split(x_val,3,axis=0))
         # [ux_test,uy_test,pp_test] = np.squeeze(np.split(x_test,3,axis=0))
@@ -214,7 +216,7 @@ def get_single_case_predictions_2dtriangle(results_dir:Path, has_noise:bool, pre
         x,
         1,
         cfg.data_config.train_test_split,
-        REMOVE_MEAN=cfg.data_config.remove_mean,
+        remove_mean=cfg.data_config.remove_mean,
         randseed=cfg.data_config.randseed,
         shuffle=cfg.data_config.shuffle
     ) # Do not shuffle, do not remove mean for training with physics informed loss
@@ -376,11 +378,30 @@ def make_image_pdf(data,figname):
         plt.show()
 
 
+def compute_kl_divergence(data):
+    ## interpolation
+    interp_test_nonan = []
+    with open(save_to+'2dtriangle_pdf_comparison.txt','w') as f:
+        for i in range(3):
+            mask = ~np.isnan(data[1][0,...,i])
+            interp_test_nonan.append(data[1][...,i][:,mask])
+
+            counts_true, bins = np.histogram(data[0][...,i].flatten()-np.mean(data[0][...,i].flatten()), density=True, bins='auto')
+            counts_interp, _ = np.histogram(interp_test_nonan[i].flatten()-np.mean(interp_test_nonan[i].flatten()), density=True, bins=bins)
+            counts_pred, _ = np.histogram(data[2][...,i].flatten()-np.mean(data[2][...,i].flatten()), density=True, bins=bins)
+            dx = bins[1:] - bins[:-1]
+            kl_interp = kl_div(counts_true, counts_interp, dx)
+            kl_pred = kl_div(counts_true, counts_pred, dx)
+            f.write(f"KL divergence between the pdf for component {i}.\n")
+            f.write(f"Interpolated with reference: {kl_interp}.\n")
+            f.write(f"Predicted with reference: {kl_pred}.\n")
+
 results, datainfo, observed = get_single_case_predictions_2dtriangle(run_2dtriangle_clean, has_noise=False, predict_only=False)
 time = 100
-make_image_snapshots_vorticity_2dtriangle(results, datainfo, '2dtriangle_clean_snapshots'+str(time), time) 
-make_image_pdf(results,'2dtriangle_clean_pdf')
-
+# make_image_snapshots_vorticity_2dtriangle(results, datainfo, '2dtriangle_clean_snapshots'+str(time), time) 
+# make_image_pdf(results,'2dtriangle_clean_pdf')
+compute_kl_divergence(results)
+sys.exit(0)
 
 fig,ax = plt.subplots(1,1, figsize=(3.5,2))
 ax.imshow(results[0][time,...,-1].T, alpha=0.3)
