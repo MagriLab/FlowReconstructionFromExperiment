@@ -1,6 +1,6 @@
 # Flow Reconstruction
 
-Reconstructing 3D wake behind a bluff body with sparse sensor measurements. 
+Reconstructing turbulent flows sparse sensor measurements. 
 
 ### Publications:
 <p style="padding-left: 1em; text-indent: -1em;">
@@ -8,6 +8,13 @@ Reconstructing 3D wake behind a bluff body with sparse sensor measurements.
 </p>
 
 \*Go to branch `paper/flow-reconstruction-2d`.
+
+<p style="padding-left: 1em; text-indent: -1em;">
+**Mo, Y., Magri, L., 2026. <i>Reconstruction of three-dimensional turbulent flows from sparse and noisy planar measurements: a weight-sharing neural network approach</i>. DCE, 7, e5. https://doi.org/10.1017/dce.2026.10038
+</p>
+
+\**Go to branch `paper/flow-reconstruction-3d`.
+
 
 ## Major changes
 
@@ -40,4 +47,6 @@ Also starting from pressure measurements, and using sparse velocity & pressure m
 *An example of the mean of a 2D Kolmogorov flow.*
 
 ## Stage 3 
-Reconstruction of 3D Kolmogorv flow. TBC
+Reconstruction of 3D Kolmogorv flow. Staring from slices of measurements taken from within the domain.
+
+<img src="./admin/doc/pic/Kolsol_converge_skipsets3_thesis.png" alt="Convergence of 3D Kolmogorov flow datasets" width="500"/>
